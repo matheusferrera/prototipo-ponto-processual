@@ -44,6 +44,7 @@ export default function DashboardPage() {
           <div style={{ fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', marginTop: 2 }}>Estação</div>
         </div>
         <div
+          className="sync-badge"
           style={{
             fontFamily: 'var(--mono)',
             fontSize: 11,
@@ -51,6 +52,7 @@ export default function DashboardPage() {
             background: 'var(--quiet-soft)',
             padding: '4px 12px',
             border: '1px solid var(--quiet)',
+            flexShrink: 0,
           }}
         >
           ● SINCRONIZADO · há 12 min
@@ -61,7 +63,7 @@ export default function DashboardPage() {
         {/* Alerta crítico */}
         {prazosCriticos.length > 0 && (
           <div
-            className="mx-page"
+            className="mx-page dash-alert"
             style={{
               margin: '24px 32px 0',
               padding: '12px 20px',
@@ -72,15 +74,15 @@ export default function DashboardPage() {
               gap: 12,
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)', flexShrink: 0 }}>
               {prazosCriticos.length} prazo{prazosCriticos.length > 1 ? 's' : ''} crítico{prazosCriticos.length > 1 ? 's' : ''}
             </span>
-            <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
+            <span className="dash-alert-part" style={{ fontSize: 13, color: 'var(--ink-2)' }}>
               — {prazosCriticos[0].parte} vence em {prazosCriticos[0].diasRestantes} dia{prazosCriticos[0].diasRestantes !== 1 ? 's' : ''}
             </span>
             <Link
               href="/prazos"
-              style={{ marginLeft: 'auto', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, color: 'var(--alert)', textDecoration: 'none' }}
+              style={{ marginLeft: 'auto', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, color: 'var(--alert)', textDecoration: 'none', flexShrink: 0 }}
             >
               Ver prazos →
             </Link>
@@ -144,7 +146,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)', marginBottom: 8 }}>
                 {card.label}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 48, lineHeight: 0.9, letterSpacing: '-0.04em', color: card.color }}>
+              <div className="stat-num" style={{ fontWeight: 800, fontSize: 48, lineHeight: 0.9, letterSpacing: '-0.04em', color: card.color }}>
                 {card.value}
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 10 }}>{card.sub}</div>
@@ -218,6 +220,7 @@ export default function DashboardPage() {
                   {mov.parte}
                 </div>
                 <span
+                  className="mov-tipo"
                   style={{
                     fontSize: 10,
                     fontWeight: 600,

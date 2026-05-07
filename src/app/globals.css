@@ -115,10 +115,23 @@ body {
   .topbar-inner  { flex-wrap: wrap !important; gap: 10px !important; }
   .topbar-search { display: none !important; }
 
-  /* Stat cards do dashboard — empilha verticalmente */
-  .stat-cards              { flex-direction: column !important; }
-  .stat-card               { border-right: none !important; border-bottom: 1px solid var(--line-soft) !important; }
-  .stat-card:last-child    { border-bottom: none !important; }
+  /* Stat cards do dashboard — grade 2×2 em vez de pilha */
+  .stat-cards                { flex-direction: row !important; flex-wrap: wrap !important; }
+  .stat-card                 { flex: 0 0 50% !important; padding: 14px 16px !important; border-right: none !important; border-bottom: 1px solid var(--line-soft) !important; }
+  .stat-card:nth-child(odd)  { border-right: 1px solid var(--line-soft) !important; }
+  .stat-card:last-child      { border-bottom: none !important; }
+  .stat-card:nth-last-child(2) { border-bottom: none !important; }
+  .stat-num                  { font-size: 32px !important; }
+
+  /* Badge de sincronização — esconde em telas pequenas */
+  .sync-badge { display: none !important; }
+
+  /* Alerta crítico — quebra linha em telas pequenas */
+  .dash-alert { flex-wrap: wrap !important; gap: 8px !important; }
+  .dash-alert-part { display: none !important; }
+
+  /* Linha de movimentação — esconde coluna de tipo */
+  .mov-tipo { display: none !important; }
 
   /* Grade principal do dashboard — coluna única */
   .dash-grid { grid-template-columns: 1fr !important; }
