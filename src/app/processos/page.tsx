@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { ProcessoRow, COLS } from '@/components/processos/ProcessoRow';
 import { TribTag } from '@/components/ui/TribTag';
 import { StatusDot } from '@/components/ui/StatusDot';
@@ -15,25 +16,7 @@ const tribunaisFiltro = ['TODOS', 'TRF1', 'TJDFT', 'TRF3'];
 export default function ProcessosPage() {
   return (
     <AppLayout active="Processos">
-      {/* Topbar */}
-      <div
-        className="px-page topbar-inner"
-        style={{
-          padding: '18px 32px',
-          borderBottom: '1px solid var(--line)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          background: 'var(--paper)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>
-            142 processos · 3 tribunais
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', marginTop: 2 }}>Processos</div>
-        </div>
+      <PageHeader eyebrow="142 processos · 3 tribunais" title="Processos">
         <div
           className="topbar-search"
           style={{
@@ -69,7 +52,7 @@ export default function ProcessosPage() {
         >
           + Adicionar
         </button>
-      </div>
+      </PageHeader>
 
       {/* Barra de status e filtros */}
       <div

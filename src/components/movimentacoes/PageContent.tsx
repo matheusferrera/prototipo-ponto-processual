@@ -1,12 +1,54 @@
-import type { Movimentacao } from '@/types';
+import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { Seal } from '@/components/ui/Seal';
 import { TribTag } from '@/components/ui/TribTag';
+import type { Movimentacao } from '@/types';
 
-interface MovItemProps {
-  m: Movimentacao;
+interface PageContentProps {
+  movimentacoes: {
+    date: string;
+    day: string;
+    items: Movimentacao[];
+  }[];
+  pageInfo?: ReactNode;
 }
 
-export function MovItem({ m }: MovItemProps) {
+export function PageContent({ movimentacoes, pageInfo }: PageContentProps) {
+  return (
+    <>
+      <div className="mov-content-scroll" style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
+        {pageInfo}
+
+        <div className="px-page" style={{ padding: '20px 32px' }}>
+          {movimentacoes.map((g, gi) => (
+            <div key={gi} style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: gi === 0 ? 'var(--brick)' : 'var(--ink-3)',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  § {g.date} — {g.day}
+                </span>
+                <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+                <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                  {g.items.length} {g.items.length === 1 ? 'movimentação' : 'movimentações'}
+                </span>
+              </div>
+              {g.items.map(m => <MovItem key={m.id} m={m} />)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MovItem({ m }: { m: Movimentacao }) {
   const leftBorder =
     m.state === 'signal' ? 'var(--brick)'
     : m.state === 'alert' ? 'var(--alert)'
@@ -100,7 +142,8 @@ export function MovItem({ m }: MovItemProps) {
 
         {/* Ação */}
         <div className="mov-item-action" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center' }}>
-          <button
+          <Link
+            href={`/movimentacoes/${m.id}`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -113,10 +156,11 @@ export function MovItem({ m }: MovItemProps) {
               color: 'var(--ink)',
               borderRadius: 0,
               cursor: 'pointer',
+              textDecoration: 'none',
             }}
           >
-            Abrir →
-          </button>
+            Visualizar →
+          </Link>
         </div>
       </div>
     </div>

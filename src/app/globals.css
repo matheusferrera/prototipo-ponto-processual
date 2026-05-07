@@ -91,6 +91,81 @@ body {
 
 .dot-signal { animation: pulse 2.4s infinite; }
 .ticker-inner { animation: tick 60s linear infinite; }
+.page-info-track::-webkit-scrollbar { display: none; }
+.page-info-nav:hover { background: var(--paper-3) !important; }
+.page-info-nav:focus-visible,
+.page-info-dot:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-info-track { scroll-behavior: auto !important; }
+  .page-info-dot { transition: none !important; }
+}
+
+.page-header-breadcrumb {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.page-header-filter {
+  display: block;
+  position: relative;
+}
+
+.page-header-filter summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.page-header-filter summary::-webkit-details-marker { display: none; }
+
+.page-header-filter-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  width: min(420px, calc(100vw - 64px));
+  padding: 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 40px rgba(20, 26, 21, 0.14);
+}
+
+.page-header-filter-group + .page-header-filter-group {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.page-header-filter-label {
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+.page-header-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 
 /* ── Mobile responsivo ────────────────────────────────────────────────────── */
 .mobile-header { display: none; }
@@ -142,27 +217,136 @@ body {
   /* Topbar movimentações — simplificada */
   .whats-badge-topbar { display: none !important; }
   .sync-btn-topbar    { display: none !important; }
+  .page-header-filter-panel {
+    width: min(84vw, 340px) !important;
+  }
 
-  /* Métricas de movimentações — grade 2×2 compacta */
-  .mov-metrics-wrap { padding: 12px 16px 14px !important; }
-  .mov-metrics      { gap: 0 !important; align-items: stretch !important; }
-  .mov-divider      { display: none !important; }
-  .mov-spacer       { display: none !important; }
-  .mov-auto-envio   { display: none !important; }
-
-  .mov-metrics-grid {
+  /* PageInfo */
+  .page-info { padding: 10px 16px 8px !important; }
+  .page-info-carousel {
     display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .page-info-track {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important;
+  }
+  .page-info-controls {
+    display: flex !important;
+    min-height: 28px !important;
+  }
+  .page-info-nav {
+    width: 44px !important;
+    height: 28px !important;
+  }
+  .page-info-section {
+    flex: 0 0 100% !important;
     width: 100% !important;
+    max-width: 100% !important;
+    padding: 8px 10px !important;
+    background: var(--paper) !important;
+    border: 1px solid var(--line-soft) !important;
+    min-height: 104px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    scroll-snap-align: start !important;
   }
-  .mov-metrics-grid .mov-metric-item:nth-child(1) {
-    padding: 8px 16px 8px 0 !important;
-    border-right: 1px solid var(--line-soft) !important;
+  .page-info-section-title {
+    margin-bottom: 6px !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    color: var(--ink-2) !important;
   }
-  .mov-metrics-grid .mov-metric-item:nth-child(3) {
-    padding: 8px 0 8px 16px !important;
+  .page-info-card-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    flex: 1 !important;
   }
-  .mov-metric-num { font-size: 26px !important; }
+  .page-info-section--compact {
+    min-height: 96px !important;
+  }
+  .page-info-section--compact .page-info-section-title {
+    margin-bottom: 4px !important;
+  }
+  .page-info-section--compact .page-info-label {
+    min-height: 18px !important;
+    font-size: 9px !important;
+  }
+  .page-info-section--compact .page-info-value {
+    margin-top: 1px !important;
+    font-size: 22px !important;
+  }
+  .page-info-card {
+    padding: 0 !important;
+    min-width: 0 !important;
+  }
+  .page-info-label {
+    min-height: 22px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    line-height: 1.35 !important;
+    color: var(--ink-3) !important;
+  }
+  .page-info-value {
+    margin-top: 4px !important;
+    font-size: 24px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+  }
+  .page-info-bars {
+    display: grid !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .page-info-bar-row {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+  }
+  .page-info-bar-meta {
+    display: flex !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+  .page-info-bar-meta span {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: var(--ink-3) !important;
+  }
+  .page-info-bar-meta strong {
+    font-family: var(--mono) !important;
+    font-size: 12px !important;
+    color: var(--ink) !important;
+  }
+  .page-info-bar-track {
+    width: 100% !important;
+    height: 8px !important;
+    margin-top: 3px !important;
+    background: var(--paper-3) !important;
+    border: 1px solid var(--line-soft) !important;
+    overflow: hidden !important;
+  }
+  .page-info-bar-fill {
+    display: block !important;
+    height: 100% !important;
+    background: var(--brick) !important;
+    min-width: 8px !important;
+  }
 
   /* Filtros — scroll horizontal em duas linhas */
   .filter-bar {
@@ -180,6 +364,7 @@ body {
   }
   .filter-row::-webkit-scrollbar { display: none !important; }
   .filter-row + .filter-row { border-top: 1px solid var(--line-soft) !important; }
+  .mov-filter-bar { display: none !important; }
 
   /* ── Prazos ──────────────────────────────────────────────────────────────── */
 

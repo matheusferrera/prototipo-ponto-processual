@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import type { Prazo } from '@/types';
 import { TribTag } from '@/components/ui/TribTag';
 import { Seal } from '@/components/ui/Seal';
@@ -291,15 +292,7 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Topbar */}
-      <div className="prazos-topbar px-page" style={{ padding: '18px 32px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 16, background: 'var(--paper)', flexShrink: 0 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>
-            {prazos.length} prazos ativos
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', marginTop: 2 }}>Prazos</div>
-        </div>
-
+      <PageHeader className="prazos-topbar px-page" eyebrow={`${prazos.length} prazos ativos`} title="Prazos">
         {view === 'calendario' && (
           <div className="prazos-cal-nav" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={prevMonth} style={navBtn()}>←</button>
@@ -315,7 +308,7 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
             <button key={v} onClick={() => setView(v)} style={tabBtn(v, i)}>{VIEW_LABELS[v]}</button>
           ))}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Alerta crítico */}
       {criticalCount > 0 && (
