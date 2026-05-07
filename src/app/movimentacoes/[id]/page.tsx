@@ -6,6 +6,7 @@ import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
 import { movimentacoes, processos } from '@/lib/mock-data';
+import { getAbsoluteUrl } from '@/lib/site-url';
 import type { Movimentacao } from '@/types';
 import styles from './page.module.css';
 
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const description = `${movimentacao.tipo} · ${movimentacao.tribunal} · CNJ ${movimentacao.cnj}`;
+  const imageUrl = getAbsoluteUrl('/opengraph-image');
 
   return {
     title: `${movimentacao.tipo} — ${movimentacao.parte}`,
@@ -34,11 +36,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${movimentacao.tipo} — ${movimentacao.parte}`,
       description,
       type: 'article',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: 'Ponto Processual — Monitoramento de Processos Judiciais',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${movimentacao.tipo} — ${movimentacao.parte}`,
       description,
+      images: [imageUrl],
     },
   };
 }

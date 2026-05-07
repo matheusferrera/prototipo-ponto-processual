@@ -6,6 +6,7 @@ import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
 import { processos, timelineCarlosRibeiro } from '@/lib/mock-data';
+import { getAbsoluteUrl } from '@/lib/site-url';
 import type { TimelineEvent } from '@/types';
 import styles from './page.module.css';
 
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const description = `${processo.materia} · ${processo.tribunal} · CNJ ${processo.cnj}`;
+  const imageUrl = getAbsoluteUrl(`/processos/${processo.id}/opengraph-image`);
 
   return {
     title: processo.parte,
@@ -30,11 +32,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: processo.parte,
       description,
       type: 'article',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${processo.parte} — ${processo.cnj}`,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: processo.parte,
       description,
+      images: [imageUrl],
     },
   };
 }

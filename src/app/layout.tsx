@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Manrope, JetBrains_Mono, Geist } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
+import { getAbsoluteUrl, getSiteUrl } from '@/lib/site-url';
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -20,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: getSiteUrl(),
   title: {
     default: 'Ponto Processual',
     template: '%s — Ponto Processual',
@@ -32,11 +33,20 @@ export const metadata: Metadata = {
     siteName: 'Ponto Processual',
     locale: 'pt_BR',
     type: 'website',
+    images: [
+      {
+        url: getAbsoluteUrl('/opengraph-image'),
+        width: 1200,
+        height: 630,
+        alt: 'Ponto Processual — Monitoramento de Processos Judiciais',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Ponto Processual',
     description: 'Monitoramento de processos judiciais com alertas automáticos via WhatsApp.',
+    images: [getAbsoluteUrl('/opengraph-image')],
   },
 };
 
