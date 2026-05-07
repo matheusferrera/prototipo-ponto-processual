@@ -35,39 +35,73 @@ function ListView({ prazos }: { prazos: Prazo[] }) {
       {prazos.map(pz => {
         const isCritical = pz.diasRestantes <= 3;
         const leftBorder = pz.state === 'alert' ? 'var(--alert)' : pz.state === 'signal' ? 'var(--brick)' : 'var(--line)';
+        const diasColor = isCritical ? 'var(--alert)' : pz.diasRestantes <= 7 ? 'var(--brick)' : 'var(--ink)';
+
         return (
           <div
             key={pz.id}
-            style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderLeft: `3px solid ${leftBorder}`, marginBottom: 10 }}
+            style={{
+              background: 'var(--paper)',
+              border: '1px solid var(--line)',
+              borderLeft: `3px solid ${leftBorder}`,
+              marginBottom: 10,
+            }}
           >
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ padding: '20px 24px', borderRight: '1px solid var(--line-soft)', minWidth: 100, textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 32, letterSpacing: '-0.02em', color: isCritical ? 'var(--alert)' : pz.diasRestantes <= 7 ? 'var(--brick)' : 'var(--ink)', lineHeight: 1 }}>
-                  {pz.diasRestantes}d
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4 }}>restantes</div>
+            {/* Cabeçalho: tags + meta desktop */}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '14px 20px 0', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                <TribTag label={pz.tribunal} />
+                <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>
+                  {pz.tipo}
+                </span>
+                {isCritical && <Seal variant="erro" label="CRÍTICO" />}
               </div>
 
-              <div style={{ padding: '20px 24px', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <TribTag label={pz.tribunal} />
-                  <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>{pz.tipo}</span>
-                  {isCritical && <Seal variant="erro" label="CRÍTICO" />}
+              {/* Meta desktop — oculto no mobile via CSS */}
+              <div className="prazos-meta-desktop" style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 30, letterSpacing: '-0.02em', color: diasColor, lineHeight: 1 }}>
+                    {pz.diasRestantes}d
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>restantes</div>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{pz.parte}</div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>{pz.cnj}</div>
-              </div>
-
-              <div style={{ padding: '20px 24px', textAlign: 'right' }}>
-                <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Vence em</div>
-                <div style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 18, marginTop: 4, color: isCritical ? 'var(--alert)' : 'var(--ink)' }}>
-                  {pz.vencimento}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>
+                    Vence em
+                  </div>
+                  <div style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 17, marginTop: 3, color: isCritical ? 'var(--alert)' : 'var(--ink)' }}>
+                    {pz.vencimento}
+                  </div>
                 </div>
-              </div>
-
-              <div style={{ padding: '20px 24px' }}>
-                <button style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer' }}>
+                <button style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '7px 12px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   Ver processo →
+                </button>
+              </div>
+            </div>
+
+            {/* Corpo: parte + CNJ */}
+            <div style={{ padding: '8px 20px 14px' }}>
+              <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pz.parte}
+              </div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pz.cnj}
+              </div>
+            </div>
+
+            {/* Meta mobile — sem inline display, visível só via CSS */}
+            <div className="prazos-meta-mobile">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px 12px', borderTop: '1px solid var(--line-soft)', flexWrap: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 18, color: diasColor, lineHeight: 1, flexShrink: 0 }}>
+                  {pz.diasRestantes}d
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--ink-3)', flexShrink: 0 }}>rest.</span>
+                <span style={{ color: 'var(--line-soft)', flexShrink: 0 }}>·</span>
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: isCritical ? 'var(--alert)' : 'var(--ink-2)', flexShrink: 0 }}>
+                  {pz.vencimento}
+                </span>
+                <button style={{ marginLeft: 'auto', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 11, padding: '6px 12px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Ver →
                 </button>
               </div>
             </div>
@@ -89,11 +123,11 @@ const KANBAN_COLS = [
 
 function KanbanView({ prazos }: { prazos: Prazo[] }) {
   return (
-    <div className="px-page" style={{ padding: '24px 32px', overflow: 'auto', flex: 1, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+    <div className="px-page prazos-kanban-wrap" style={{ padding: '24px 32px', overflow: 'auto', flex: 1, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       {KANBAN_COLS.map(col => {
         const items = prazos.filter(p => p.diasRestantes >= col.minD && p.diasRestantes <= col.maxD);
         return (
-          <div key={col.label} style={{ flex: 1, minWidth: 180 }}>
+          <div key={col.label} className="prazos-kanban-col" style={{ flex: 1, minWidth: 180 }}>
             <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', background: col.soft, borderTop: `2px solid ${col.accent}`, marginBottom: 10 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: col.accent, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{col.label}</span>
               <span style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: col.accent }}>{items.length}</span>
@@ -159,7 +193,7 @@ function CalendarioView({ prazos, year, month }: { prazos: Prazo[]; year: number
           const items = day ? (byDay[day] ?? []) : [];
           const isToday = day === todayDay;
           return (
-            <div key={i} style={{ background: day ? 'var(--paper)' : 'var(--paper-2)', minHeight: 96, padding: '6px 8px' }}>
+            <div key={i} className="prazos-cal-cell" style={{ background: day ? 'var(--paper)' : 'var(--paper-2)', minHeight: 96, padding: '6px 8px' }}>
               {day && (
                 <>
                   <div style={{
@@ -177,12 +211,28 @@ function CalendarioView({ prazos, year, month }: { prazos: Prazo[]; year: number
                   }}>
                     {day}
                   </div>
-                  {items.map(pz => (
-                    <div key={pz.id} style={{ background: pz.state === 'alert' ? 'var(--alert-soft)' : pz.state === 'signal' ? 'var(--brick-soft)' : 'var(--quiet-soft)', borderLeft: `2px solid ${accentColor(pz.state)}`, padding: '3px 5px', marginBottom: 3, fontSize: 10, lineHeight: 1.3 }}>
-                      <div style={{ fontWeight: 700, color: accentColor(pz.state), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pz.tipo}</div>
-                      <div style={{ color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pz.parte}</div>
+
+                  {/* Dots — visíveis só no mobile via CSS */}
+                  {items.length > 0 && (
+                    <div className="prazos-cal-dots">
+                      {items.slice(0, 3).map(pz => (
+                        <span key={pz.id} style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor(pz.state), display: 'block', flexShrink: 0 }} />
+                      ))}
+                      {items.length > 3 && (
+                        <span style={{ fontSize: 8, color: 'var(--ink-4)', lineHeight: 1, alignSelf: 'center' }}>+{items.length - 3}</span>
+                      )}
                     </div>
-                  ))}
+                  )}
+
+                  {/* Labels — visíveis só no desktop via CSS */}
+                  <div className="prazos-cal-events">
+                    {items.map(pz => (
+                      <div key={pz.id} style={{ background: pz.state === 'alert' ? 'var(--alert-soft)' : pz.state === 'signal' ? 'var(--brick-soft)' : 'var(--quiet-soft)', borderLeft: `2px solid ${accentColor(pz.state)}`, padding: '3px 5px', marginBottom: 3, fontSize: 10, lineHeight: 1.3 }}>
+                        <div style={{ fontWeight: 700, color: accentColor(pz.state), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pz.tipo}</div>
+                        <div style={{ color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pz.parte}</div>
+                      </div>
+                    ))}
+                  </div>
                 </>
               )}
             </div>
@@ -213,7 +263,7 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
       fontFamily: 'var(--ui)',
       fontWeight: 600,
       fontSize: 12,
-      padding: '5px 14px',
+      padding: '6px 16px',
       border: '1px solid var(--line)',
       borderRight: i < VIEWS.length - 1 ? 'none' : '1px solid var(--line)',
       background: active ? 'var(--brick)' : 'var(--paper)',
@@ -251,7 +301,7 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
         </div>
 
         {view === 'calendario' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="prazos-cal-nav" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={prevMonth} style={navBtn()}>←</button>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, minWidth: 110, textAlign: 'center' }}>
               {MONTH_NAMES[calMonth - 1]} {calYear}
@@ -260,7 +310,7 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
           </div>
         )}
 
-        <div style={{ display: 'flex' }}>
+        <div className="prazos-tabs" style={{ display: 'flex' }}>
           {VIEWS.map((v, i) => (
             <button key={v} onClick={() => setView(v)} style={tabBtn(v, i)}>{VIEW_LABELS[v]}</button>
           ))}
@@ -269,7 +319,7 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
 
       {/* Alerta crítico */}
       {criticalCount > 0 && (
-        <div className="prazos-alert" style={{ margin: '24px 32px 0', padding: '14px 20px', background: 'var(--alert-soft)', borderLeft: '3px solid var(--alert)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="prazos-alert" style={{ margin: '16px 32px 0', padding: '12px 16px', background: 'var(--alert-soft)', borderLeft: '3px solid var(--alert)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)' }}>
             {criticalCount} prazo{criticalCount > 1 ? 's' : ''} crítico{criticalCount > 1 ? 's' : ''}
           </span>

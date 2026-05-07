@@ -181,9 +181,43 @@ body {
   .filter-row::-webkit-scrollbar { display: none !important; }
   .filter-row + .filter-row { border-top: 1px solid var(--line-soft) !important; }
 
-  /* Prazos */
-  .prazos-topbar { flex-wrap: wrap !important; gap: 10px !important; }
-  .prazos-alert  { margin-left: 16px !important; margin-right: 16px !important; }
+  /* ── Prazos ──────────────────────────────────────────────────────────────── */
+
+  /* Topbar — tabs e nav de calendário ocupam linha inteira */
+  .prazos-topbar { gap: 8px !important; padding-top: 14px !important; padding-bottom: 14px !important; }
+  .prazos-tabs { width: 100% !important; }
+  .prazos-tabs button { flex: 1 !important; font-size: 11px !important; padding: 8px 0 !important; text-align: center !important; }
+  .prazos-cal-nav { width: 100% !important; justify-content: center !important; }
+  .prazos-alert { margin: 12px 16px 0 !important; }
+
+  /* Lista — esconde colunas desktop, mostra footer mobile */
+  .prazos-days-col    { display: none !important; }
+  .prazos-date-col    { display: none !important; }
+  .prazos-action-col  { display: none !important; }
+  .prazos-info-col    { padding: 14px 16px !important; }
+  .prazos-mobile-footer { display: block !important; }
+
+  /* Kanban — scroll horizontal com snap (estilo Trello mobile) */
+  .prazos-kanban-wrap {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 24px !important;
+    gap: 10px !important;
+  }
+  .prazos-kanban-wrap::-webkit-scrollbar { display: none !important; }
+  .prazos-kanban-col {
+    flex: 0 0 82vw !important;
+    min-width: unset !important;
+    scroll-snap-align: start !important;
+  }
+
+  /* Calendário — células compactas com dots em vez de texto */
+  .prazos-cal-cell   { min-height: 52px !important; padding: 4px 5px !important; }
+  .prazos-cal-events { display: none !important; }
+  .prazos-cal-dots   { display: flex !important; }
 
   /* Login */
   .login-page  { flex-direction: column !important; }
