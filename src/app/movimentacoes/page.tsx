@@ -37,8 +37,11 @@ export default function MovimentacoesPage() {
           </div>
           <div style={{ fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', marginTop: 2 }}>Movimentações</div>
         </div>
-        <WhatsBadge active count={4} />
+        <span className="whats-badge-topbar" style={{ display: 'inline-flex' }}>
+          <WhatsBadge active count={4} />
+        </span>
         <button
+          className="sync-btn-topbar"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -62,7 +65,7 @@ export default function MovimentacoesPage() {
 
       {/* Métricas + toggle */}
       <div
-        className="px-page"
+        className="px-page mov-metrics-wrap"
         style={{
           padding: '24px 32px 20px',
           borderBottom: '1px solid var(--line)',
@@ -71,32 +74,21 @@ export default function MovimentacoesPage() {
         }}
       >
         <div className="mov-metrics" style={{ display: 'flex', alignItems: 'flex-end', gap: 32 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Novas hoje</div>
-            <div style={{ fontWeight: 800, fontSize: 48, lineHeight: 1, letterSpacing: '-0.04em', color: 'var(--brick)', marginTop: 4 }}>03</div>
-          </div>
-          <div className="mov-divider" style={{ width: 1, height: 50, background: 'var(--line)' }} />
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Últimos 7 dias</div>
-            <div style={{ fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', marginTop: 4 }}>27</div>
-          </div>
-          <div className="mov-divider" style={{ width: 1, height: 50, background: 'var(--line)' }} />
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>WhatsApp · enviados hoje</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
-              <span style={{ fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--quiet)' }}>04</span>
-              <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>de 04 · 100%</span>
+          <div className="mov-metrics-grid" style={{ display: 'contents' }}>
+            <div className="mov-metric-item">
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Novas hoje</div>
+              <div className="mov-metric-num" style={{ fontWeight: 800, fontSize: 48, lineHeight: 1, letterSpacing: '-0.04em', color: 'var(--brick)', marginTop: 4 }}>03</div>
+            </div>
+            <div className="mov-divider" style={{ width: 1, height: 50, background: 'var(--line)' }} />
+            <div className="mov-metric-item">
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Últimos 7 dias</div>
+              <div className="mov-metric-num" style={{ fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', marginTop: 4 }}>27</div>
             </div>
           </div>
-          <div className="mov-divider" style={{ width: 1, height: 50, background: 'var(--line)' }} />
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Falhas</div>
-            <div style={{ fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--alert)', marginTop: 4 }}>01</div>
-          </div>
 
-          <div style={{ flex: 1 }} />
+          <div className="mov-spacer" style={{ flex: 1 }} />
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <div className="mov-auto-envio" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Auto-envio WhatsApp</span>
               <ToggleSw defaultOn />
@@ -122,11 +114,15 @@ export default function MovimentacoesPage() {
           background: 'var(--paper)',
         }}
       >
-        <span style={{ fontSize: 11, color: 'var(--ink-3)', marginRight: 6 }}>Tipo:</span>
-        {tiposFiltro.map((t, i) => <TribTag key={t} label={t} active={i === 0} />)}
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Tribunal:</span>
-        {tribunaisFiltro.map((t, i) => <TribTag key={t} label={t} active={i === 0} />)}
+        <div className="filter-row" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: 'var(--ink-3)', flexShrink: 0, marginRight: 2 }}>Tipo:</span>
+          {tiposFiltro.map((t, i) => <TribTag key={t} label={t} active={i === 0} />)}
+        </div>
+        <div className="filter-separator" style={{ flex: 1 }} />
+        <div className="filter-row" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: 'var(--ink-3)', flexShrink: 0, marginRight: 2 }}>Tribunal:</span>
+          {tribunaisFiltro.map((t, i) => <TribTag key={t} label={t} active={i === 0} />)}
+        </div>
       </div>
 
       {/* Feed */}

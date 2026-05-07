@@ -5,6 +5,7 @@ export function Ticker() {
 
   return (
     <div
+      className="ticker-wrap"
       style={{
         overflow: 'hidden',
         borderTop: '1px solid var(--line)',

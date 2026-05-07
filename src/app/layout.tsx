@@ -17,8 +17,24 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Ponto Processual',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  title: {
+    default: 'Ponto Processual',
+    template: '%s — Ponto Processual',
+  },
   description: 'Monitoramento de processos judiciais com alertas automáticos via WhatsApp.',
+  openGraph: {
+    title: 'Ponto Processual',
+    description: 'Monitoramento de processos judiciais com alertas automáticos via WhatsApp.',
+    siteName: 'Ponto Processual',
+    locale: 'pt_BR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Ponto Processual',
+    description: 'Monitoramento de processos judiciais com alertas automáticos via WhatsApp.',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

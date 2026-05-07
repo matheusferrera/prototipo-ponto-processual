@@ -8,12 +8,34 @@ import { StatusDot } from '@/components/ui/StatusDot';
 import { processos, timelineCarlosRibeiro } from '@/lib/mock-data';
 import type { TimelineEvent } from '@/types';
 
-export const metadata: Metadata = {
-  title: 'Detalhe do Processo — Ponto Processual',
-};
-
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const processo = processos.find(p => p.id === id);
+
+  if (!processo) {
+    return { title: 'Processo não encontrado' };
+  }
+
+  const description = `${processo.materia} · ${processo.tribunal} · CNJ ${processo.cnj}`;
+
+  return {
+    title: processo.parte,
+    description,
+    openGraph: {
+      title: processo.parte,
+      description,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: processo.parte,
+      description,
+    },
+  };
 }
 
 function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
