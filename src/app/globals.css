@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta Ponto Processual v4 — gelo-esverdeado + verde-floresta */
+  --color-paper:      #f8faf8;
+  --color-paper-2:    #eef2ef;
+  --color-paper-3:    #e2ebe4;
+  --color-ink:        #141a15;
+  --color-ink-2:      #3a4a3d;
+  --color-ink-3:      #6b7a6e;
+  --color-ink-4:      #9aaa9d;
+  --color-line:       #cdd7cf;
+  --color-line-soft:  #dce6de;
+  --color-brick:      #166534;
+  --color-brick-soft: #dcf0e3;
+  --color-brick-deep: #14532d;
+  --color-signal:     #d97706;
+  --color-signal-soft:#fef3c7;
+  --color-quiet:      #6b7e5e;
+  --color-quiet-soft: #e8eee0;
+  --color-alert:      #991b1b;
+  --color-alert-soft: #fae5e5;
+
+  /* Fontes */
+  --font-ui:   var(--font-manrope), system-ui, sans-serif;
+  --font-jetbrains-family: var(--font-jetbrains), monospace;
+
+  /* Tipografia */
+  --text-hero:    64px;
+  --text-h1:      28px;
+  --text-h2:      18px;
+  --text-h3:      14px;
+  --text-body:    14px;
+  --text-small:   13px;
+  --text-caption: 11px;
+  --text-lbl:     10px;
+  --text-cnj:     12px;
+  --text-time:    22px;
+}
+
+/* CSS vars globais para uso via var() inline */
+:root {
+  --paper:      #f8faf8;
+  --paper-2:    #eef2ef;
+  --paper-3:    #e2ebe4;
+  --ink:        #141a15;
+  --ink-2:      #3a4a3d;
+  --ink-3:      #6b7a6e;
+  --ink-4:      #9aaa9d;
+  --line:       #cdd7cf;
+  --line-soft:  #dce6de;
+  --brick:      #166534;
+  --brick-soft: #dcf0e3;
+  --brick-deep: #14532d;
+  --signal:     #d97706;
+  --signal-soft:#fef3c7;
+  --quiet:      #6b7e5e;
+  --quiet-soft: #e8eee0;
+  --alert:      #991b1b;
+  --alert-soft: #fae5e5;
+  --ui: var(--font-manrope, 'Manrope', system-ui, sans-serif);
+  --mono: var(--font-jetbrains, 'JetBrains Mono', monospace);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--ui);
+  background: var(--paper-3);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+/* Ticker animation */
+@keyframes tick {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Pulsing dot — verde-floresta */
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(22, 101, 52, 0.5); }
+  60%  { box-shadow: 0 0 0 7px rgba(22, 101, 52, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(22, 101, 52, 0);   }
+}
+
+.dot-signal { animation: pulse 2.4s infinite; }
+.ticker-inner { animation: tick 60s linear infinite; }
+
+/* ── Mobile responsivo ────────────────────────────────────────────────────── */
+.mobile-header { display: none; }
+
+@media (max-width: 768px) {
+  /* Sidebar → escondida; header com burger → visível */
+  .sidebar                  { display: none !important; }
+  .mobile-drawer .sidebar   { display: flex !important; }
+  .mobile-header            { display: flex !important; }
+
+  /* Padding horizontal de página (32px → 16px) */
+  .px-page {
+    padding-left:  16px !important;
+    padding-right: 16px !important;
+  }
+  .mx-page {
+    margin-left:  16px !important;
+    margin-right: 16px !important;
+  }
+
+  /* Topbar — empilha quando há muitos elementos */
+  .topbar-inner  { flex-wrap: wrap !important; gap: 10px !important; }
+  .topbar-search { display: none !important; }
+
+  /* Stat cards do dashboard — empilha verticalmente */
+  .stat-cards              { flex-direction: column !important; }
+  .stat-card               { border-right: none !important; border-bottom: 1px solid var(--line-soft) !important; }
+  .stat-card:last-child    { border-bottom: none !important; }
+
+  /* Grade principal do dashboard — coluna única */
+  .dash-grid { grid-template-columns: 1fr !important; }
+
+  /* Barras de filtro */
+  .filter-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding-left:  16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Métricas de movimentações */
+  .mov-metrics { flex-wrap: wrap !important; gap: 16px !important; }
+  .mov-divider { display: none !important; }
+
+  /* Prazos */
+  .prazos-topbar { flex-wrap: wrap !important; gap: 10px !important; }
+  .prazos-alert  { margin-left: 16px !important; margin-right: 16px !important; }
+
+  /* Login */
+  .login-page  { flex-direction: column !important; }
+  .login-left  { display: none !important; }
+  .login-right { padding: 32px 20px !important; flex: unset !important; width: 100% !important; }
+
+  /* MovItem — esconde colunas secundárias */
+  .mov-item-whats  { display: none !important; }
+  .mov-item-action { display: none !important; }
+
+  /* Detalhe do processo */
+  .proc-breadcrumb { padding-left: 16px !important; padding-right: 16px !important; flex-wrap: wrap !important; }
+  .proc-hero       { padding: 24px 16px !important; }
+  .proc-title      { font-size: 26px !important; }
+  .proc-info-row   { flex-wrap: wrap !important; gap: 16px !important; }
+  .proc-main       { flex-direction: column !important; }
+  .proc-timeline   { padding: 24px 16px !important; }
+  .proc-sidebar    { width: 100% !important; border-left: none !important; border-top: 1px solid var(--line) !important; }
+}
