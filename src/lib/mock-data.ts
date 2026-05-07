@@ -50,10 +50,3 @@ export const prazos: Prazo[] = [
   { id: 'pz4', tribunal: 'TJDFT', cnj: '0008871-22.2024.8.07.0001', parte: 'Construtora Lima S.A.', tipo: 'Impugnação', vencimento: '25/05', diasRestantes: 19, state: 'quiet' },
 ];
 
-export const tickerItems = [
-  { key: 'a', signal: true, text: 'TRF1 · 0021345-67 · intimação · 09:12' },
-  { key: 'b', signal: false, text: 'TJDFT · 0007781-12 · sentença · 08:45' },
-  { key: 'c', signal: false, text: 'TJDFT · 0003329-45 · audiência · ontem 17:02' },
-  { key: 'd', signal: false, text: 'TRF3 · falha de conexão · 02h', alert: true },
-  { key: 'e', signal: false, text: 'TRF1 · 0011223-44 · despacho · ontem 11:20' },
-];

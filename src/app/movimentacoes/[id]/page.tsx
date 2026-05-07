@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { Seal } from '@/components/ui/Seal';
-import { TribTag } from '@/components/ui/TribTag';
-import { StatusDot } from '@/components/ui/StatusDot';
+import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
+import { Seal } from '@/components/ui/Seal/Seal';
+import { TribTag } from '@/components/ui/TribTag/TribTag';
+import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
 import { movimentacoes, processos } from '@/lib/mock-data';
 import type { Movimentacao } from '@/types';
+import styles from './page.module.css';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -54,7 +55,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
     <AppLayout active="Movimentações">
       {/* Breadcrumb */}
       <div
-        className="proc-breadcrumb"
+        className={styles.breadcrumb}
         style={{
           padding: '14px 32px',
           borderBottom: '1px solid var(--line)',
@@ -78,7 +79,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
 
       {/* Hero da movimentação */}
       <div
-        className="proc-hero"
+        className={styles.hero}
         style={{
           padding: '40px 48px',
           background: 'var(--paper)',
@@ -97,8 +98,8 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
           </div>
         </div>
         <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 600 }}>{movimentacao.cnj}</div>
-        <div className="proc-title" style={{ fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.03em', marginTop: 6 }}>{movimentacao.parte}</div>
-        <div className="proc-info-row" style={{ display: 'flex', gap: 32, marginTop: 18 }}>
+        <div className={styles.title} style={{ fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.03em', marginTop: 6 }}>{movimentacao.parte}</div>
+        <div className={styles.infoRow} style={{ display: 'flex', gap: 32, marginTop: 18 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Horário</div>
             <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{movimentacao.time}</div>
@@ -121,8 +122,8 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
       </div>
 
       {/* Detalhe + sidebar */}
-      <div className="proc-main" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <div className="proc-timeline" style={{ flex: 1, padding: '32px 48px', overflow: 'auto' }}>
+      <div className={styles.main} style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <div className={styles.timeline} style={{ flex: 1, padding: '32px 48px', overflow: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
             <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--brick)', letterSpacing: '0.05em' }}>§ DETALHE</span>
             <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
@@ -184,7 +185,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
         </div>
 
         <div
-          className="proc-sidebar"
+          className={styles.sidebar}
           style={{
             width: 320,
             padding: 32,

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import styles from './page.module.css';
 
 const FEATURES = [
   {
@@ -65,7 +66,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="login-page"
+      className={styles.page}
       style={{
         minHeight: '100vh',
         display: 'flex',
@@ -74,7 +75,7 @@ export default function LoginPage() {
     >
       {/* ── Painel esquerdo — branding ── */}
       <div
-        className="login-left"
+        className={styles.left}
         style={{
           width: '45%',
           background: 'var(--brick)',
@@ -207,7 +208,7 @@ export default function LoginPage() {
 
       {/* ── Painel direito — formulário ── */}
       <div
-        className="login-right"
+        className={styles.right}
         style={{
           flex: 1,
           background: 'var(--paper-2)',

@@ -1,0 +1,141 @@
+.scrollArea {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.content { padding: 20px 32px; }
+
+.dateGroup { margin-bottom: 24px; }
+
+.dateHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.dateLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+}
+
+.dateLabelFirst { color: var(--brick); }
+
+.dateDivider { flex: 1; height: 1px; background: var(--line); }
+.dateCount   { font-size: 11px; color: var(--ink-3); }
+
+/* MovItem */
+.item {
+  border: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+
+.itemSignal { border-left: 3px solid var(--brick); }
+.itemAlert  { border-left: 3px solid var(--alert); }
+.itemQuiet  { border-left: 3px solid var(--line);  }
+
+.itemInner  { display: flex; align-items: stretch; }
+
+.timeCol {
+  padding: 18px 20px;
+  border-right: 1px solid var(--line-soft);
+  min-width: 86px;
+}
+
+.time {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.timeSignal { color: var(--brick); }
+.timeNormal { color: var(--ink);   }
+
+.bodyCol {
+  padding: 18px 20px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bodyHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tipoLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.tipoSignal { color: var(--brick);  }
+.tipoNormal { color: var(--ink-3);  }
+
+.parte  { font-size: 14px; font-weight: 600; }
+.detail { font-size: 13px; margin-top: 2px; color: var(--ink-2); }
+.cnj    { font-family: var(--mono); font-size: 11px; margin-top: 6px; color: var(--ink-3); }
+
+.whatsCol {
+  padding: 18px 20px;
+  border-left: 1px solid var(--line-soft);
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.whatsRow { display: flex; align-items: center; gap: 8px; }
+
+.whatsIcon {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.whatsIconSent   { background: var(--quiet); }
+.whatsIconUnsent { background: var(--ink-4); }
+
+.whatsLabel { font-size: 13px; font-weight: 600; }
+.whatsLabelSent   { color: var(--ink);   }
+.whatsLabelUnsent { color: var(--ink-3); }
+
+.whatsStatus { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+.actionCol {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .whatsCol  { display: none; }
+  .actionCol { display: none; }
+}

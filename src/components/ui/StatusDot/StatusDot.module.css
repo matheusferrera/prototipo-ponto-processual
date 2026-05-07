@@ -1,0 +1,15 @@
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(22, 101, 52, 0.5); }
+  60%  { box-shadow: 0 0 0 7px rgba(22, 101, 52, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(22, 101, 52, 0);   }
+}
+
+.dot {
+  display: inline-block;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.signal { background: var(--brick); animation: pulse 2.4s infinite; }
+.quiet  { background: var(--quiet); }
+.alert  { background: var(--alert); }

@@ -1,0 +1,38 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.badgeActive   { background: var(--quiet-soft); border: 1px solid var(--quiet); }
+.badgeInactive { background: var(--paper-2);    border: 1px solid var(--line);  }
+
+.icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--ui);
+}
+
+.iconActive   { background: var(--quiet); }
+.iconInactive { background: var(--ink-4); }
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.labelActive   { color: var(--ink);   }
+.labelInactive { color: var(--ink-3); }
+
+.count {
+  font-size: 11px;
+  color: var(--ink-3);
+}

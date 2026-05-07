@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { prazos } from '@/lib/mock-data';
-import { PrazosView } from '@/components/prazos/PrazosView';
+import { PrazosView } from '@/components/prazos/PrazosView/PrazosView';
 
 export const metadata: Metadata = {
   title: 'Prazos — Ponto Processual',

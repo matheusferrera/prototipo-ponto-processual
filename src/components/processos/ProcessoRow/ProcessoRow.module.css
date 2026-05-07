@@ -1,0 +1,43 @@
+.row {
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--line-soft);
+  display: grid;
+  gap: 16px;
+  align-items: center;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+
+.rowNormal { background: transparent; }
+.rowSignal { background: var(--paper-2); }
+
+.leftBar {
+  width: 3px;
+  height: 28px;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.leftBarHidden  { background: transparent; }
+.leftBarSignal  { background: var(--brick); }
+.leftBarAlert   { background: var(--alert); }
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.statusDotSignal { background: var(--brick); }
+.statusDotAlert  { background: var(--alert); }
+.statusDotQuiet  { background: var(--quiet); }
+
+.cnj   { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.parte { font-size: 13px; font-weight: 500; }
+.meta  { font-size: 11px; color: var(--ink-3); }
+
+.statusEmpty { font-size: 11px; color: var(--ink-3); }

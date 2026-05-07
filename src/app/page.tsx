@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { processos, movimentacoes, prazos } from '@/lib/mock-data';
-import { TribTag } from '@/components/ui/TribTag';
-import { Seal } from '@/components/ui/Seal';
-import { StatusDot } from '@/components/ui/StatusDot';
+import { TribTag } from '@/components/ui/TribTag/TribTag';
+import { Seal } from '@/components/ui/Seal/Seal';
+import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
+import styles from './page.module.css';
 
 export const metadata: Metadata = {
   title: 'Dashboard — Ponto Processual',
@@ -44,7 +45,7 @@ export default function DashboardPage() {
           <div style={{ fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', marginTop: 2 }}>Estação</div>
         </div>
         <div
-          className="sync-badge"
+          className={styles.syncBadge}
           style={{
             fontFamily: 'var(--mono)',
             fontSize: 11,
@@ -63,7 +64,7 @@ export default function DashboardPage() {
         {/* Alerta crítico */}
         {prazosCriticos.length > 0 && (
           <div
-            className="mx-page dash-alert"
+            className={`mx-page ${styles.dashAlert}`}
             style={{
               margin: '24px 32px 0',
               padding: '12px 20px',
@@ -77,7 +78,7 @@ export default function DashboardPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)', flexShrink: 0 }}>
               {prazosCriticos.length} prazo{prazosCriticos.length > 1 ? 's' : ''} crítico{prazosCriticos.length > 1 ? 's' : ''}
             </span>
-            <span className="dash-alert-part" style={{ fontSize: 13, color: 'var(--ink-2)' }}>
+            <span className={styles.dashAlertPart} style={{ fontSize: 13, color: 'var(--ink-2)' }}>
               — {prazosCriticos[0].parte} vence em {prazosCriticos[0].diasRestantes} dia{prazosCriticos[0].diasRestantes !== 1 ? 's' : ''}
             </span>
             <Link
@@ -91,7 +92,7 @@ export default function DashboardPage() {
 
         {/* Stat cards */}
         <div
-          className="stat-cards mx-page"
+          className={`mx-page ${styles.statCards}`}
           style={{
             display: 'flex',
             margin: '24px 32px 0',
@@ -134,7 +135,7 @@ export default function DashboardPage() {
             <Link
               key={i}
               href={card.href}
-              className="stat-card"
+              className={styles.statCard}
               style={{
                 flex: 1,
                 padding: '20px 24px',
@@ -146,7 +147,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)', marginBottom: 8 }}>
                 {card.label}
               </div>
-              <div className="stat-num" style={{ fontWeight: 800, fontSize: 48, lineHeight: 0.9, letterSpacing: '-0.04em', color: card.color }}>
+              <div className={styles.statNum} style={{ fontWeight: 800, fontSize: 48, lineHeight: 0.9, letterSpacing: '-0.04em', color: card.color }}>
                 {card.value}
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 10 }}>{card.sub}</div>
@@ -156,7 +157,7 @@ export default function DashboardPage() {
 
         {/* Grade principal */}
         <div
-          className="dash-grid mx-page"
+          className={`mx-page ${styles.dashGrid}`}
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 360px',
@@ -220,7 +221,7 @@ export default function DashboardPage() {
                   {mov.parte}
                 </div>
                 <span
-                  className="mov-tipo"
+                  className={styles.movTipo}
                   style={{
                     fontSize: 10,
                     fontWeight: 600,

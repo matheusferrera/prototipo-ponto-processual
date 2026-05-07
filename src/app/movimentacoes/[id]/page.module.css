@@ -1,0 +1,9 @@
+@media (max-width: 768px) {
+  .breadcrumb { padding-left: 16px; padding-right: 16px; flex-wrap: wrap; }
+  .hero       { padding: 24px 16px; }
+  .title      { font-size: 26px; }
+  .infoRow    { flex-wrap: wrap; gap: 16px; }
+  .main       { flex-direction: column; }
+  .timeline   { padding: 24px 16px; }
+  .sidebar    { width: 100%; border-left: none; border-top: 1px solid var(--line); }
+}

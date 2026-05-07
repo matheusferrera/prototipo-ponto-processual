@@ -1,0 +1,351 @@
+.root {
+  padding: 14px 32px 12px;
+  background: var(--paper-2);
+  flex-shrink: 0;
+}
+
+.carousel {
+  display: grid;
+  gap: 8px;
+}
+
+.track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.track::-webkit-scrollbar { display: none; }
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.navBtn:hover {
+  background: var(--brick);
+  color: #fff;
+  border-color: var(--brick);
+}
+
+.navBtn:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.dot {
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--line);
+  cursor: pointer;
+  transition: width 180ms ease, background 180ms ease;
+}
+
+.dot:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}
+
+.dotInactive { width: 5px; }
+.dotActive   { width: 20px; background: var(--brick); }
+
+/* Section card */
+.section {
+  flex: 0 0 100%;
+  width: 100%;
+  padding: 10px 12px 10px;
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 7px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-3);
+}
+
+.sectionTitle::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--brick);
+  flex-shrink: 0;
+}
+
+/* Bars variant */
+.bars {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  flex: 1;
+}
+
+.barRow {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.barMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.barLabel {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.barRight {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.barValue {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.barPercent {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ink-4);
+}
+
+.barTrack {
+  width: 100%;
+  height: 5px;
+  margin-top: 4px;
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--brick);
+  min-width: 5px;
+  transition: width 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Cards variant */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  flex: 1;
+  align-content: start;
+}
+
+.card {
+  min-width: 0;
+  padding: 5px 6px;
+}
+
+.cardDefault  { background: transparent; }
+.cardSignal   { background: var(--signal-soft); }
+.cardAlert    { background: var(--alert-soft); }
+
+.label {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+
+.labelCompact { font-size: 8px; min-height: 18px; }
+.labelStatus  { font-size: 9px; min-height: 22px; }
+
+.value {
+  font-family: var(--mono);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.valueCompact { margin-top: 3px; font-size: 22px; }
+.valueStatus  { margin-top: 5px; font-size: 24px; }
+
+.colorInk    { color: var(--ink); }
+.colorSignal { color: var(--signal); }
+.colorAlert  { color: var(--alert); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .root    { padding: 10px 16px 8px; }
+  .carousel { display: grid; gap: 6px; }
+
+  .track {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .controls { display: flex; min-height: 28px; }
+
+  .navBtn { width: 44px; height: 28px; }
+
+  .section {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 10px;
+    background: var(--paper);
+    border: 1px solid var(--line-soft);
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    scroll-snap-align: start;
+  }
+
+  .sectionTitle {
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+  }
+
+  .cardGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    flex: 1;
+  }
+
+  .sectionCompact { min-height: 96px; }
+
+  .sectionCompact .sectionTitle { margin-bottom: 4px; }
+
+  .sectionCompact .label { min-height: 18px; font-size: 9px; }
+
+  .sectionCompact .value { margin-top: 1px; font-size: 22px; }
+
+  .card { padding: 0; min-width: 0; }
+
+  .label {
+    min-height: 22px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: 1.35;
+    color: var(--ink-3);
+  }
+
+  .value {
+    margin-top: 4px;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .bars {
+    display: grid;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .barRow {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .barMeta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .barLabel { font-size: 10px; font-weight: 800; color: var(--ink-3); }
+
+  .barValue { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+  .barTrack {
+    width: 100%;
+    height: 8px;
+    margin-top: 3px;
+    background: var(--paper-3);
+    border: 1px solid var(--line-soft);
+    overflow: hidden;
+  }
+
+  .barFill {
+    display: block;
+    height: 100%;
+    background: var(--brick);
+    min-width: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track { scroll-behavior: auto; }
+  .dot   { transition: none; }
+}

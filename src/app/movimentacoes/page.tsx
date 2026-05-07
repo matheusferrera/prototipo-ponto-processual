@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { PageInfo } from '@/components/layout/PageInfo';
-import { Ticker } from '@/components/layout/Ticker';
-import type { PageInfoContent } from '@/components/layout/PageInfo';
-import { PageContent } from '@/components/movimentacoes/PageContent';
+import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
+import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
+import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
+import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
+import { PageContent } from '@/components/movimentacoes/PageContent/PageContent';
 import { movimentacoes } from '@/lib/mock-data';
 
 export const metadata: Metadata = {
@@ -15,6 +14,7 @@ export const metadata: Metadata = {
 const tiposFiltro = ['TODAS', 'INTIMAÇÕES', 'SENTENÇAS', 'DESPACHOS', 'AUDIÊNCIAS', 'JUNTADAS'];
 const tribunaisFiltro = ['TODOS', 'TRF1', 'TJDFT', 'TRF3'];
 const statusFiltro = ['TODOS', 'ENVIADOS', 'NÃO ENVIADOS', 'COM ERRO'];
+const ordenacao = ['MAIS RECENTES', 'MAIS ANTIGAS', 'TRIBUNAL', 'STATUS WHATSAPP'];
 
 const pageInfoContent: PageInfoContent = [
   {
@@ -26,40 +26,33 @@ const pageInfoContent: PageInfoContent = [
       { label: 'Atualizadas hoje', value: '02' },
     ],
   },
-  {
-    title: 'Tribunais',
-    variant: 'bars',
+    {
+    title: 'Últimas movimentações',
+    variant: 'compact',
     items: [
-      { label: 'TRF1', value: '02', percent: 67 },
-      { label: 'TJDFT', value: '03', percent: 100 },
-      { label: 'TRF3', value: '02', percent: 67 },
+      { label: 'Novas hoje', value: '40', tone: 'signal' },
+      { label: 'Últimos 7 dias', value: '27' },
+      { label: 'Atualizadas hoje', value: '02' },
     ],
-  },
-  {
-    title: 'WhatsApp',
-    variant: 'status',
-    items: [
-      { label: 'Enviados', value: '05' },
-      { label: 'Pendências', value: '02', tone: 'alert' },
-      { label: 'Auto-envio', value: 'ON', tone: 'signal' },
-    ],
-  },
+  }
 ];
 
 export default function MovimentacoesPage() {
   return (
     <AppLayout active="Movimentações">
       <PageHeader
-        eyebrow="Quarta · 06 maio 2026"
         title="Movimentações"
-        breadcrumb="Início / Movimentações"
+        //breadcrumb="Início / Movimentações"
+        loading
+        searchLabel="Pesquisar movimentações"
+        searchPlaceholder="Pesquisar movimentações"
         filters={[
           { label: 'Tipo', options: tiposFiltro },
           { label: 'Tribunal', options: tribunaisFiltro },
           { label: 'WhatsApp', options: statusFiltro },
         ]}
+        sortOptions={ordenacao}
       />
-      <Ticker />
       <PageContent
         movimentacoes={movimentacoes}
         pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}

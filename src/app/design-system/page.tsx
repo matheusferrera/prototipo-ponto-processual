@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { StatusDot } from '@/components/ui/StatusDot';
-import { Seal } from '@/components/ui/Seal';
-import { TribTag } from '@/components/ui/TribTag';
+import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
+import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
+import { Seal } from '@/components/ui/Seal/Seal';
+import { TribTag } from '@/components/ui/TribTag/TribTag';
 
 export const metadata: Metadata = {
   title: 'Design System — Ponto Processual',
@@ -125,7 +125,6 @@ const spacingScale = [2, 3, 4, 6, 8, 10, 12, 16];
 const principios = [
   ['Calma editorial', 'Espaço em branco generoso. Linhas retas, sem cantos arredondados. Hierarquia tipográfica forte. Densidade só onde a tarefa exige.'],
   ['Seriedade sem rigidez', 'Para advogados, não para engenheiros. Sem terminal-vibe. Sem gradientes. Sem emojis. Tudo se refere a um documento físico.'],
-  ['Estação ao vivo', 'O sistema está sempre observando. Pulso sutil, ticker, "há 12min" — o usuário sente que algo trabalha por ele.'],
   ['Atenção é cara', 'O laranja-tijolo é raro e significa "isto é novo, olhe agora". Quando tudo é destaque, nada é. Use com parcimônia.'],
 ];
 

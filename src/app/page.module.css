@@ -1,0 +1,22 @@
+@media (max-width: 768px) {
+  .syncBadge { display: none; }
+  .movTipo   { display: none; }
+
+  .dashAlert    { flex-wrap: wrap; gap: 8px; }
+  .dashAlertPart { display: none; }
+
+  .statCards { flex-direction: row; flex-wrap: wrap; }
+  .statCard  {
+    flex: 0 0 50%;
+    padding: 14px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .statCard:nth-child(odd)    { border-right: 1px solid var(--line-soft); }
+  .statCard:last-child        { border-bottom: none; }
+  .statCard:nth-last-child(2) { border-bottom: none; }
+
+  .statNum { font-size: 32px; }
+
+  .dashGrid { grid-template-columns: 1fr; }
+}
