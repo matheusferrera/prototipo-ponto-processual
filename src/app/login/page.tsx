@@ -51,15 +51,32 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    router.push('/');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: senha }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Credenciais inválidas.');
+        return;
+      }
+      const next = new URLSearchParams(window.location.search).get('next') ?? '/';
+      router.push(next);
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleGoogle() {
     setError('');
     setGoogleLoading(true);
     await new Promise(r => setTimeout(r, 800));
-    router.push('/');
+    setGoogleLoading(false);
+    setError('Login com Google não disponível ainda.');
   }
 
   const busy = loading || googleLoading;
@@ -445,6 +462,7 @@ export default function LoginPage() {
               Ainda não tem conta?{' '}
               <button
                 type="button"
+                onClick={() => router.push('/cadastro')}
                 style={{
                   fontFamily: 'var(--ui)',
                   fontWeight: 700,
@@ -456,7 +474,7 @@ export default function LoginPage() {
                   padding: 0,
                 }}
               >
-                Solicitar acesso
+                Criar conta
               </button>
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink-4)' }}>

@@ -198,8 +198,6 @@
 }
 
 .cardDefault  { background: transparent; }
-.cardSignal   { background: var(--signal-soft); }
-.cardAlert    { background: var(--alert-soft); }
 
 .label {
   font-weight: 800;
@@ -210,7 +208,6 @@
 }
 
 .labelCompact { font-size: 8px; min-height: 18px; }
-.labelStatus  { font-size: 9px; min-height: 22px; }
 
 .value {
   font-family: var(--mono);
@@ -220,7 +217,6 @@
 }
 
 .valueCompact { margin-top: 3px; font-size: 22px; }
-.valueStatus  { margin-top: 5px; font-size: 24px; }
 
 .colorInk    { color: var(--ink); }
 .colorSignal { color: var(--signal); }

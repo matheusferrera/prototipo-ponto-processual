@@ -1,11 +1,9 @@
 import Link from 'next/link';
 import type { Processo } from '@/types';
-import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { ToggleSw } from '@/components/ui/ToggleSw/ToggleSw';
 import styles from './ProcessoRow.module.css';
 
-const COLS = '12px 70px 280px 1fr 110px 60px 90px 90px 60px';
+const COLS = '12px 70px 240px 1fr 1fr 1.4fr';
 
 interface ProcessoRowProps {
   p: Processo;
@@ -18,7 +16,7 @@ export function ProcessoRow({ p }: ProcessoRowProps) {
 
   return (
     <Link
-      href={`/processos/${p.id}`}
+      href={`/processos/${encodeURIComponent(p.cnj)}`}
       className={`${styles.row} ${rowClass}`}
       style={{ gridTemplateColumns: COLS }}
     >
@@ -29,18 +27,9 @@ export function ProcessoRow({ p }: ProcessoRowProps) {
       <TribTag label={p.tribunal} />
 
       <span className={styles.cnj}>{p.cnj}</span>
-      <span className={styles.parte}>{p.parte}</span>
-      <span className={styles.meta}>{p.materia}</span>
-      <span className={styles.meta}>{p.grau}</span>
-      <span className={styles.meta}>{p.ultimaMov}</span>
-
-      <div>
-        {p.state === 'signal' && <Seal variant="nova" />}
-        {p.state === 'alert'  && <Seal variant="erro" />}
-        {p.state === 'quiet'  && <span className={styles.statusEmpty}>—</span>}
-      </div>
-
-      <ToggleSw defaultOn={p.whatsEnabled} />
+      <span className={`${styles.parte} ${styles.ellipsis}`}>{p.classeJudicial ?? '—'}</span>
+      <span className={`${styles.parte} ${styles.ellipsis}`} title={p.parte}>{p.parte}</span>
+      <span className={`${styles.meta} ${styles.ellipsis}`} title={p.ultimaMov}>{p.ultimaMov}</span>
     </Link>
   );
 }

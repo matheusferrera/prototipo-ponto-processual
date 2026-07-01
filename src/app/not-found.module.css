@@ -1,0 +1,124 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 48px;
+  background: var(--paper);
+}
+
+.inner {
+  max-width: 520px;
+  width: 100%;
+}
+
+.stamp {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--brick);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+
+.code {
+  font-family: var(--mono);
+  font-size: 128px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin-bottom: 28px;
+}
+
+.rule {
+  height: 1px;
+  background: var(--line);
+  margin-bottom: 28px;
+}
+
+.brand {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  margin: 0 0 24px;
+}
+
+.title {
+  font-family: var(--ui);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 14px;
+  line-height: 1.1;
+}
+
+.body {
+  font-family: var(--ui);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin: 0 0 36px;
+  max-width: 400px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-block;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+  border: 1px solid var(--ink);
+  transition: background 150ms, border-color 150ms;
+  cursor: pointer;
+}
+
+.ctaPrimary:hover {
+  background: var(--brick);
+  border-color: var(--brick);
+}
+
+.ctaSecondary {
+  display: inline-block;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  transition: border-color 150ms, color 150ms;
+  cursor: pointer;
+}
+
+.ctaSecondary:hover {
+  border-color: var(--ink);
+}
+
+.footer {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  margin-top: 56px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}

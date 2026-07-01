@@ -40,4 +40,11 @@
 .parte { font-size: 13px; font-weight: 500; }
 .meta  { font-size: 11px; color: var(--ink-3); }
 
+.ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .statusEmpty { font-size: 11px; color: var(--ink-3); }

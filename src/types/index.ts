@@ -30,10 +30,12 @@ export interface Processo {
   cnj: string;
   parte: string;
   materia: string;
+  classeJudicial?: string;
   grau: string;
   ultimaMov: string;
   state: StatusType;
   whatsEnabled: boolean;
+  link?: string | null;
 }
 
 export interface TimelineEvent {
@@ -45,6 +47,7 @@ export interface TimelineEvent {
   body?: string;
   state: StatusType;
   n: string;
+  rawDate?: string;
 }
 
 export interface Prazo {

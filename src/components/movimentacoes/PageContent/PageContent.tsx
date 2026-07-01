@@ -14,9 +14,16 @@ interface PageContentProps {
     items: Movimentacao[];
   }[];
   pageInfo?: ReactNode;
+  total: number;
+  totalPages: number;
+  currentPage: number;
 }
 
-export function PageContent({ movimentacoes, pageInfo }: PageContentProps) {
+export function PageContent({ movimentacoes, pageInfo, total, totalPages, currentPage }: PageContentProps) {
+  const itemsOnPage = movimentacoes.flatMap(g => g.items).length;
+  const rangeStart = total === 0 ? 0 : (currentPage - 1) * 20 + 1;
+  const rangeEnd = (currentPage - 1) * 20 + itemsOnPage;
+
   return (
     <>
       <div className={styles.scrollArea}>
@@ -38,6 +45,30 @@ export function PageContent({ movimentacoes, pageInfo }: PageContentProps) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className={`px-page ${styles.pagination}`}>
+        <span className={styles.paginationInfo}>{rangeStart}–{rangeEnd} de {total}</span>
+        <div className={styles.spacer} />
+        <Link
+          href={`?page=${currentPage - 1}`}
+          aria-disabled={currentPage === 1}
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'icon-sm' }),
+            'border-[var(--line)] text-[var(--ink-2)] hover:bg-[var(--paper-2)]',
+            currentPage === 1 && 'pointer-events-none opacity-40',
+          )}
+        >←</Link>
+        <span className={styles.paginationPage}>{currentPage} / {totalPages}</span>
+        <Link
+          href={`?page=${currentPage + 1}`}
+          aria-disabled={currentPage === totalPages}
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'icon-sm' }),
+            'border-[var(--line)] text-[var(--ink-2)] hover:bg-[var(--paper-2)]',
+            currentPage === totalPages && 'pointer-events-none opacity-40',
+          )}
+        >→</Link>
       </div>
     </>
   );

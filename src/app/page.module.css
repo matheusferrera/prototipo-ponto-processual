@@ -1,14 +1,40 @@
+/* ===== Grade principal ===== */
+.dashGrid {
+  grid-template-columns: 1fr 360px;
+}
+
+/* ===== Stat cards ===== */
+.statCard {
+  flex: 1;
+  padding: 20px 24px;
+  text-decoration: none;
+  display: block;
+  border-right: 1px solid var(--line-soft);
+}
+.statCard:last-child {
+  border-right: none;
+}
+
+.statNum {
+  font-weight: 800;
+  font-size: 48px;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+/* ===== Mobile ===== */
 @media (max-width: 768px) {
   .syncBadge { display: none; }
   .movTipo   { display: none; }
 
-  .dashAlert    { flex-wrap: wrap; gap: 8px; }
+  .dashAlert     { flex-wrap: wrap; gap: 8px; }
   .dashAlertPart { display: none; }
 
-  .statCards { flex-direction: row; flex-wrap: wrap; }
-  .statCard  {
+  /* stat cards → 2×2 */
+  .statCards { flex-wrap: wrap; }
+  .statCard {
     flex: 0 0 50%;
-    padding: 14px 16px;
+    padding: 16px;
     border-right: none;
     border-bottom: 1px solid var(--line-soft);
   }
@@ -16,7 +42,8 @@
   .statCard:last-child        { border-bottom: none; }
   .statCard:nth-last-child(2) { border-bottom: none; }
 
-  .statNum { font-size: 32px; }
+  .statNum { font-size: 30px; }
 
+  /* grade → coluna única */
   .dashGrid { grid-template-columns: 1fr; }
 }

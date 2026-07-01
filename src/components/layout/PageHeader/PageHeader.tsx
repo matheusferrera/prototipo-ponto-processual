@@ -18,6 +18,7 @@ interface PageHeaderProps {
   sortOptions?: string[];
   searchLabel?: string;
   searchPlaceholder?: string;
+  searchValue?: string;
   whatsBadge?: {
     active?: boolean;
     count: number;
@@ -36,6 +37,7 @@ export function PageHeader({
   sortOptions = [],
   searchLabel = 'Pesquisar',
   searchPlaceholder,
+  searchValue,
   whatsBadge,
   syncButtonLabel,
   loading = false,
@@ -52,17 +54,18 @@ export function PageHeader({
       </div>
 
       {searchPlaceholder && (
-        <div className={styles.search} role="search">
+        <form className={styles.search} role="search" method="get">
           <label className="sr-only" htmlFor="page-header-search-input">{searchLabel}</label>
           <SearchIcon />
           <input
             id="page-header-search-input"
-            name="search"
+            name="q"
             type="search"
+            defaultValue={searchValue}
             placeholder={searchPlaceholder}
             aria-label={searchLabel}
           />
-        </div>
+        </form>
       )}
 
       {(filters.length > 0 || sortOptions.length > 0) && (

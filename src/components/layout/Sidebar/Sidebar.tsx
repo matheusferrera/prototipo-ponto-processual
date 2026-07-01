@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import styles from './Sidebar.module.css';
+import { LogoutButton } from './LogoutButton';
 
 export interface SidebarProps {
   active: 'Dashboard' | 'Processos' | 'Movimentações' | 'Prazos' | 'WhatsApp' | 'E-mail' | 'Credenciais' | 'Configurações' | 'Design System';
@@ -10,16 +11,6 @@ const navMain = [
   { label: 'Processos',     href: '/processos',     badge: null },
   { label: 'Movimentações', href: '/movimentacoes',  badge: '03' },
   { label: 'Prazos',        href: '/prazos',         badge: '02' },
-] as const;
-
-const navNoti = [
-  { label: 'WhatsApp', href: '/configuracoes/whatsapp' },
-  { label: 'E-mail',   href: '/configuracoes/email' },
-] as const;
-
-const navConta = [
-  { label: 'Credenciais',   href: '/credenciais' },
-  { label: 'Configurações', href: '/configuracoes' },
 ] as const;
 
 function NavItem({ label, href, badge, active }: { label: string; href: string; badge?: string | null; active: boolean }) {
@@ -64,20 +55,6 @@ export function Sidebar({ active, onClose }: SidebarProps) {
 
       <div className={styles.spacer} />
 
-      <SectionLabel>Notificações</SectionLabel>
-      {navNoti.map(item => (
-        <NavItem key={item.label} label={item.label} href={item.href} active={active === item.label} />
-      ))}
-
-      <div className={styles.spacer} />
-
-      <SectionLabel>Conta</SectionLabel>
-      {navConta.map(item => (
-        <NavItem key={item.label} label={item.label} href={item.href} active={active === item.label} />
-      ))}
-
-      <div className={styles.spacer} />
-
       <SectionLabel>Produto</SectionLabel>
       <NavItem label="Design System" href="/design-system" active={active === 'Design System'} />
 
@@ -91,6 +68,7 @@ export function Sidebar({ active, onClose }: SidebarProps) {
           <span className={styles.userName}>João M.</span>
           <span className={styles.userOAB}>DF/12.345</span>
         </div>
+        <LogoutButton />
       </div>
     </aside>
   );

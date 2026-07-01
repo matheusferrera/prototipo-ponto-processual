@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
 import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
 import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
 import { PageContent } from '@/components/movimentacoes/PageContent/PageContent';
-import { movimentacoes } from '@/lib/mock-data';
+import { getMovimentacoes } from '@/lib/api.server';
 
 export const metadata: Metadata = {
   title: 'Movimentações — Ponto Processual',
@@ -16,34 +16,32 @@ const tribunaisFiltro = ['TODOS', 'TRF1', 'TJDFT', 'TRF3'];
 const statusFiltro = ['TODOS', 'ENVIADOS', 'NÃO ENVIADOS', 'COM ERRO'];
 const ordenacao = ['MAIS RECENTES', 'MAIS ANTIGAS', 'TRIBUNAL', 'STATUS WHATSAPP'];
 
-const pageInfoContent: PageInfoContent = [
-  {
-    title: 'Últimas movimentações',
-    variant: 'compact',
-    items: [
-      { label: 'Novas hoje', value: '40', tone: 'signal' },
-      { label: 'Últimos 7 dias', value: '27' },
-      { label: 'Atualizadas hoje', value: '02' },
-    ],
-  },
-    {
-    title: 'Últimas movimentações',
-    variant: 'compact',
-    items: [
-      { label: 'Novas hoje', value: '40', tone: 'signal' },
-      { label: 'Últimos 7 dias', value: '27' },
-      { label: 'Atualizadas hoje', value: '02' },
-    ],
-  }
-];
+export default async function MovimentacoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, Number(pageParam ?? 1));
 
-export default function MovimentacoesPage() {
+  const { groups, total, totalPages, newToday } = await getMovimentacoes(currentPage);
+
+  const pageInfoContent: PageInfoContent = [
+    {
+      title: 'Últimas movimentações',
+      variant: 'compact',
+      items: [
+        { label: 'Novas (48h)', value: String(newToday).padStart(2, '0'), tone: 'signal' },
+        { label: 'Nesta página', value: String(groups.flatMap(g => g.items).length).padStart(2, '0') },
+        { label: 'Total', value: String(total) },
+      ],
+    },
+  ];
+
   return (
     <AppLayout active="Movimentações">
       <PageHeader
         title="Movimentações"
-        //breadcrumb="Início / Movimentações"
-        loading
         searchLabel="Pesquisar movimentações"
         searchPlaceholder="Pesquisar movimentações"
         filters={[
@@ -54,7 +52,11 @@ export default function MovimentacoesPage() {
         sortOptions={ordenacao}
       />
       <PageContent
-        movimentacoes={movimentacoes}
+        key={currentPage}
+        movimentacoes={groups}
+        total={total}
+        totalPages={totalPages}
+        currentPage={currentPage}
         pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
       />
     </AppLayout>

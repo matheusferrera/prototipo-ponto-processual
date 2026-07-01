@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { processos } from '@/lib/mock-data';
+import { getProcesso } from '@/lib/api.server';
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
@@ -17,12 +17,12 @@ const stateLabel: Record<string, string> = {
 };
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ numero: string }>;
 }
 
 export default async function Image({ params }: Props) {
-  const { id } = await params;
-  const processo = processos.find(p => p.id === id);
+  const { numero } = await params;
+  const processo = await getProcesso(numero).catch(() => null);
 
   const title = processo?.parte ?? 'Processo não encontrado';
   const cnj = processo?.cnj ?? '—';

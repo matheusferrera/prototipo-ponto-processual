@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import type { Prazo } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { Seal } from '@/components/ui/Seal/Seal';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 import styles from './PrazosView.module.css';
 
 type View = 'lista' | 'kanban' | 'calendario';
@@ -63,7 +65,6 @@ function ListView({ prazos }: { prazos: Prazo[] }) {
                   <div className={styles.venceLabel}>Vence em</div>
                   <div className={`${styles.venceNum} ${venceClass}`}>{pz.vencimento}</div>
                 </div>
-                <Button variant="outline" size="sm" className="border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-2)] whitespace-nowrap">Ver processo →</Button>
               </div>
             </div>
 
@@ -78,7 +79,12 @@ function ListView({ prazos }: { prazos: Prazo[] }) {
                 <span className={styles.mRest}>rest.</span>
                 <span className={styles.mSep}>·</span>
                 <span className={`${styles.mVence} ${venceClass}`}>{pz.vencimento}</span>
-                <Button variant="outline" size="sm" className="ml-auto border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-2)] shrink-0">Ver →</Button>
+                <Link
+                  href={`/processos/${encodeURIComponent(pz.cnj)}`}
+                  className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'ml-auto border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-2)] shrink-0')}
+                >
+                  Ver →
+                </Link>
               </div>
             </div>
           </div>

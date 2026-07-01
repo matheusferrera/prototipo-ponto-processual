@@ -5,7 +5,7 @@ import styles from './PageInfo.module.css';
 
 export type PageInfoContent = {
   title: string;
-  variant: 'compact' | 'bars' | 'status';
+  variant: 'compact' | 'bars';
   items: {
     label: string;
     value: string;
@@ -16,7 +16,6 @@ export type PageInfoContent = {
 
 type PageInfoSection = PageInfoContent[number];
 type PageInfoItem = PageInfoSection['items'][number];
-type PageInfoVariant = PageInfoSection['variant'];
 
 interface PageInfoProps {
   pageInfoContent: PageInfoContent;
@@ -111,8 +110,7 @@ function PageInfoSectionCard({ section, active }: { section: PageInfoSection; ac
 function PageInfoSectionContent({ section }: { section: PageInfoSection }) {
   switch (section.variant) {
     case 'bars':    return <PageInfoBars items={section.items} />;
-    case 'compact': return <PageInfoCards items={section.items} variant="compact" />;
-    case 'status':  return <PageInfoCards items={section.items} variant="status" />;
+    case 'compact': return <PageInfoCards items={section.items} />;
   }
 }
 
@@ -139,31 +137,24 @@ function PageInfoBars({ items }: { items: PageInfoItem[] }) {
   );
 }
 
-function PageInfoCards({ items, variant }: { items: PageInfoItem[]; variant: Extract<PageInfoVariant, 'compact' | 'status'> }) {
-  const isCompact = variant === 'compact';
+function PageInfoCards({ items }: { items: PageInfoItem[] }) {
   return (
     <div className={styles.cardGrid}>
       {items.map(item => (
         <div
-          className={`${styles.card} ${getCardBgClass(item.tone, styles)}`}
+          className={`${styles.card} ${styles.cardDefault}`}
           key={item.label}
         >
-          <div className={`${styles.label} ${isCompact ? styles.labelCompact : styles.labelStatus}`}>
+          <div className={`${styles.label} ${styles.labelCompact}`}>
             {item.label}
           </div>
-          <div className={`${styles.value} ${isCompact ? styles.valueCompact : styles.valueStatus} ${getColorClass(item.tone, styles)}`}>
+          <div className={`${styles.value} ${styles.valueCompact} ${getColorClass(item.tone, styles)}`}>
             {item.value}
           </div>
         </div>
       ))}
     </div>
   );
-}
-
-function getCardBgClass(tone: PageInfoItem['tone'], s: typeof styles) {
-  if (tone === 'signal') return s.cardSignal;
-  if (tone === 'alert')  return s.cardAlert;
-  return s.cardDefault;
 }
 
 function getColorClass(tone: PageInfoItem['tone'], s: typeof styles) {

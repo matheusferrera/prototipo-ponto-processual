@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
-import { prazos } from '@/lib/mock-data';
+import { getPrazos } from '@/lib/api.server';
 import { PrazosView } from '@/components/prazos/PrazosView/PrazosView';
 
 export const metadata: Metadata = {
@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   description: 'Próximos prazos processuais.',
 };
 
-export default function PrazosPage() {
+export default async function PrazosPage() {
+  const prazos = await getPrazos();
   return (
     <AppLayout active="Prazos">
       <PrazosView prazos={prazos} />

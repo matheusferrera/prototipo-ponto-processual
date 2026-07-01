@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
-import { processos, movimentacoes, prazos } from '@/lib/mock-data';
+import { getProcessos, getMovimentacoes, getPrazos } from '@/lib/api.server';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { Seal } from '@/components/ui/Seal/Seal';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
@@ -12,10 +12,13 @@ export const metadata: Metadata = {
   description: 'Visão geral da carteira.',
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { processos } = await getProcessos();
+  const { groups: movimentacoes, newToday } = await getMovimentacoes(1, 50);
+  const prazos = await getPrazos();
   const allMovs = movimentacoes.flatMap(g => g.items);
-  const movsHoje = movimentacoes[0]?.items ?? [];
-  const novasHoje = movsHoje.filter(m => m.state === 'signal').length;
+  const movsHoje = movimentacoes.find(g => g.date === 'HOJE')?.items ?? [];
+  const novasHoje = newToday;
   const prazosCriticos = prazos.filter(p => p.diasRestantes <= 3);
   const prazosOrdenados = [...prazos].sort((a, b) => a.diasRestantes - b.diasRestantes);
   const processosAlert = processos.filter(p => p.state === 'alert').length;
@@ -136,18 +139,11 @@ export default function DashboardPage() {
               key={i}
               href={card.href}
               className={styles.statCard}
-              style={{
-                flex: 1,
-                padding: '20px 24px',
-                borderRight: i < 3 ? '1px solid var(--line-soft)' : 'none',
-                textDecoration: 'none',
-                display: 'block',
-              }}
             >
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)', marginBottom: 8 }}>
                 {card.label}
               </div>
-              <div className={styles.statNum} style={{ fontWeight: 800, fontSize: 48, lineHeight: 0.9, letterSpacing: '-0.04em', color: card.color }}>
+              <div className={styles.statNum} style={{ color: card.color }}>
                 {card.value}
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 10 }}>{card.sub}</div>
@@ -160,7 +156,6 @@ export default function DashboardPage() {
           className={`mx-page ${styles.dashGrid}`}
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 360px',
             gap: 20,
             margin: '20px 32px 32px',
             alignItems: 'start',
