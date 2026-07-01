@@ -9,9 +9,13 @@ import styles from './AppLayout.module.css';
 interface AppLayoutProps {
   active: React.ComponentProps<typeof Sidebar>['active'];
   children: React.ReactNode;
+  /** Título exibido no header mobile (substitui a marca "Ponto"). */
+  mobileTitle?: string;
+  /** Breadcrumb exibido abaixo do título no header mobile. */
+  mobileBreadcrumb?: string;
 }
 
-export function AppLayout({ active, children }: AppLayoutProps) {
+export function AppLayout({ active, children, mobileTitle, mobileBreadcrumb }: AppLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -26,15 +30,22 @@ export function AppLayout({ active, children }: AppLayoutProps) {
 
       <main className={styles.main}>
         <div className={styles.mobileHeader}>
-          <button onClick={() => setDrawerOpen(true)} className={styles.burgerBtn}>
+          <button onClick={() => setDrawerOpen(true)} className={styles.burgerBtn} aria-label="Abrir menu">
             <span className={styles.burgerLine} />
             <span className={styles.burgerLine} />
             <span className={styles.burgerLine} />
           </button>
-          <span className={styles.brand}>
-            <span className={styles.brandDot} />
-            Ponto
-          </span>
+          {mobileTitle ? (
+            <div className={styles.mobileHeading}>
+              <span className={styles.mobileTitle}>{mobileTitle}</span>
+              {mobileBreadcrumb && <span className={styles.mobileBreadcrumb}>{mobileBreadcrumb}</span>}
+            </div>
+          ) : (
+            <span className={styles.brand}>
+              <span className={styles.brandDot} />
+              Ponto
+            </span>
+          )}
         </div>
         {children}
       </main>

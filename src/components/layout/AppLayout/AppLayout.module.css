@@ -24,11 +24,30 @@
   display: none;
   align-items: center;
   gap: 12px;
-  padding: 0 16px;
-  height: 52px;
+  padding: 8px 16px;
+  min-height: 52px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
   flex-shrink: 0;
+}
+
+.mobileHeading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mobileTitle {
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.mobileBreadcrumb {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--ink-3);
 }
 
 .burgerBtn {

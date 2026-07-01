@@ -27,25 +27,19 @@ export default async function DashboardPage() {
   const whatsAtivos = processos.filter(p => p.whatsEnabled).length;
 
   return (
-    <AppLayout active="Dashboard">
+    <AppLayout active="Dashboard" mobileTitle="Dashboard" mobileBreadcrumb="Início / Dashboard">
       {/* Topbar */}
       <div
-        className="px-page"
+        className={styles.topbar}
         style={{
-          padding: '18px 32px',
           borderBottom: '1px solid var(--line)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
           background: 'var(--paper)',
           flexShrink: 0,
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>
-            07.05.2026 — Quarta-feira
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em', marginTop: 2 }}>Estação</div>
+          <div className={styles.topbarTitle}>Dashboard</div>
+          <div className={styles.topbarBreadcrumb}>Início / Dashboard</div>
         </div>
         <div
           className={styles.syncBadge}
@@ -67,15 +61,12 @@ export default async function DashboardPage() {
         {/* Alerta crítico */}
         {prazosCriticos.length > 0 && (
           <div
-            className={`mx-page ${styles.dashAlert}`}
+            className={styles.dashAlert}
             style={{
-              margin: '24px 32px 0',
-              padding: '12px 20px',
               background: 'var(--alert-soft)',
               borderLeft: '3px solid var(--alert)',
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
             }}
           >
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)', flexShrink: 0 }}>
@@ -95,10 +86,9 @@ export default async function DashboardPage() {
 
         {/* Stat cards */}
         <div
-          className={`mx-page ${styles.statCards}`}
+          className={styles.statCards}
           style={{
             display: 'flex',
-            margin: '24px 32px 0',
             border: '1px solid var(--line)',
             background: 'var(--paper)',
           }}
@@ -153,19 +143,17 @@ export default async function DashboardPage() {
 
         {/* Grade principal */}
         <div
-          className={`mx-page ${styles.dashGrid}`}
+          className={styles.dashGrid}
           style={{
             display: 'grid',
-            gap: 20,
-            margin: '20px 32px 32px',
             alignItems: 'start',
           }}
         >
           {/* Movimentações recentes */}
           <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
             <div
+              className={styles.panelHead}
               style={{
-                padding: '14px 20px',
                 borderBottom: '1px solid var(--line)',
                 display: 'flex',
                 alignItems: 'center',
@@ -183,12 +171,11 @@ export default async function DashboardPage() {
             {allMovs.slice(0, 5).map((mov, i) => (
               <div
                 key={mov.id}
+                className={styles.movRow}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '12px 20px',
                   borderBottom: i < 4 ? '1px solid var(--line-soft)' : 'none',
-                  gap: 12,
                   background:
                     mov.state === 'signal'
                       ? 'var(--brick-soft)'
@@ -239,8 +226,8 @@ export default async function DashboardPage() {
             {/* Prazos */}
             <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
               <div
+                className={styles.panelHead}
                 style={{
-                  padding: '14px 20px',
                   borderBottom: '1px solid var(--line)',
                   display: 'flex',
                   alignItems: 'center',
@@ -261,12 +248,11 @@ export default async function DashboardPage() {
                 return (
                   <div
                     key={pz.id}
+                    className={styles.prazoRow}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '10px 20px',
                       borderBottom: i < prazosOrdenados.length - 1 ? '1px solid var(--line-soft)' : 'none',
-                      gap: 12,
                     }}
                   >
                     <div
@@ -306,12 +292,12 @@ export default async function DashboardPage() {
 
             {/* Estado da carteira */}
             <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)' }}>
+              <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)' }}>
                 <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--brick)', letterSpacing: '0.05em' }}>
                   § CARTEIRA
                 </span>
               </div>
-              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className={styles.carteiraBody} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { label: 'Novidade', count: processosSignal, color: 'var(--brick)' },
                   { label: 'Monitorado', count: processosQuiet, color: 'var(--quiet)' },
