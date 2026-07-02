@@ -66,8 +66,10 @@ Nada de lógica de negócio ou state no `page.tsx` — só composição.
 
 - Renderiza `<Sidebar active={active} />` fixa no desktop
 - Renderiza `<Sheet>` (shadcn) com `<Sidebar>` dentro para mobile (drawer lateral)
-- Renderiza o header mobile com botão hambúrguer e marca "Ponto"
+- Renderiza o header mobile (só aparece em `≤768px`) com botão hambúrguer + `mobileTitle`/`mobileBreadcrumb` (substituem a marca "Ponto") + `mobileActions`
 - Envolve `children` em `<main>`
+
+**Header unificado no mobile:** no mobile o `PageHeader` inteiro fica `display:none` e os controles migram para a barra do menu. As páginas passam `mobileTitle`/`mobileBreadcrumb` (nome no lugar da marca) e `mobileActions={<HeaderControls … variant="mobile" />}` (busca/filtro/ordenação à direita, abas em linha própria abaixo). No desktop vale o `PageHeader` normal e a barra do menu some. A barra do menu tem `data-mobile-header`; o form de busca aberto marca `data-search-open`, e um `:has()` esconde o título/abas para a busca ocupar a barra.
 
 O prop `active` é uma string literal union definida em `Sidebar.tsx`:
 ```ts
@@ -77,18 +79,26 @@ Adicionar nova rota exige atualizar esse tipo e o array de navegação em `Sideb
 
 ### `<PageHeader>` — barra de topo
 
-Server Component. Recebe props declarativas (não callbacks — filtros ainda não têm state):
+Server Component. Filtros/busca/ordenação/abas são **funcionais via URL search params** (sem state de cliente): cada opção é um `<Link>` que altera um param, e o header marca o ativo lendo `currentParams`. O helper `buildQuery` (`src/lib/utils.ts`) monta os hrefs preservando os demais params e resetando `page`.
+
+Os controles em si (busca/filtro/ordenação/abas) vivem em `HeaderControls` (mesma pasta) — reutilizado em dois lugares: dentro do `PageHeader` no desktop (`variant="desktop"`, fragmento na linha do título) e na barra do menu do `AppLayout` no mobile (`variant="mobile"`, via prop `mobileActions`). O `PageHeader` recebe os mesmos props que `HeaderControls`; as páginas definem um objeto `headerControls` e o espalham (`{...headerControls}`) nos dois. O `SearchControl` usa `useId` (evita id duplicado entre as duas instâncias).
 
 | Prop | Descrição |
 |---|---|
+| `basePath` | Caminho base para montar os hrefs (ex.: `"/processos"`) |
+| `currentParams` | `Record<string, string \| undefined>` — params atuais da URL (marca ativo + preserva no form de busca) |
 | `title` | Título da página |
 | `breadcrumb` | Caminho de navegação (opcional) |
-| `searchLabel` / `searchPlaceholder` | Campo de busca (sem state, estático) |
-| `filters` | Array de `{ label, options[] }` — renderiza `<details>` dropdown |
-| `sortOptions` | Array de strings — renderiza `<details>` dropdown |
-| `loading` | Adiciona classe `page-header--loading` (indicador visual) |
+| `tabs` | `{ param, options: { label, value }[] }` — segmented control na linha do título (ex.: view Lista/Kanban/Calendário em Prazos) |
+| `searchLabel` / `searchPlaceholder` | Campo de busca — `<form method="get">` que envia `q` + hidden inputs com os params atuais |
+| `searchValue` | Valor inicial da busca (vem de `?q=`) |
+| `filters` | Array de `{ label, param, options: { label, value }[] }` — dropdown `<details>`; 1ª opção (value `""`) = default/TODOS |
+| `sortParam` / `sortOptions` | Param (default `"sort"`) e opções `{ label, value }[]` de ordenação |
+| `loading` | Adiciona classe de indicador visual |
 | `whatsBadge` | Badge de status WhatsApp |
 | `syncButtonLabel` | Botão de sincronização |
+
+Filtragem/ordenação real acontece no servidor em `api.server.ts` (`getProcessos`/`getMovimentacoes`/`getPrazos` recebem um objeto de filtros): como o backend filtra pouco, busca-se um conjunto amplo (`limit=100`) e filtra-se/ordena-se no servidor, colapsando em 1 página quando há filtro/busca ativos.
 
 ### `<Ticker>` — faixa de alertas
 
@@ -131,7 +141,7 @@ Não seguem o padrão `PageHeader + PageContent`. O layout é montado diretament
 |---|---|---|
 | `page.tsx` | Server | Busca de dados, metadata |
 | `AppLayout` | Client | `useState` do drawer mobile |
-| `PageHeader` | Server | Sem estado — filtros são estáticos |
+| `PageHeader` | Server | Filtros/busca/abas via URL params (Links), sem state de cliente |
 | `Ticker` | Server | Sem estado |
 | `PageInfo` | Client | `useState` + `useRef` do carousel |
 | `PageContent` | Server | Renderização de lista pura |
@@ -187,7 +197,7 @@ Tudo vem de `src/lib/mock-data.ts`. A timeline em `/processos/[id]` usa `timelin
 
 - [ ] Conectar `/api/movimentacoes` e `/api/processos` ao backend (substituir mock-data)
 - [ ] Autenticação JWT + middleware de proteção de rotas
-- [ ] Filtros interativos (transformar `PageHeader` ou criar wrapper client com state)
+- [x] Filtros/busca/ordenação interativos via URL search params (feito em `PageHeader` + `api.server`)
 - [ ] Telas: `/credenciais`, `/configuracoes/whatsapp`
 - [ ] Onboarding (primeira vez sem processos)
 - [ ] Responsivo mobile

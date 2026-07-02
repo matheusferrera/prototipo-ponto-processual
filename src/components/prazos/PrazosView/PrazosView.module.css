@@ -1,48 +1,17 @@
-.root { display: flex; flex-direction: column; height: 100%; }
+.root { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
-/* ── Eyebrow / Title (mirrors PageHeader typography) ── */
-.eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--ink-3);
-}
+/* container de scroll único: alerta crítico + view rolam juntos */
+.scrollArea { flex: 1; min-height: 0; overflow: auto; }
 
-.title {
-  font-weight: 700;
-  font-size: 28px;
-  line-height: 1.14;
-}
-
-/* ── Header ── */
-.header {
-  padding: 18px 32px 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
-  flex-shrink: 0;
-}
-
-.headerCopy { padding-bottom: 14px; }
-
-.headerBottom {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-/* ── Tabs ── */
-.tabs { display: flex; }
-
-.tabBtn        { border-right: none !important; }
-.tabBtn:last-child { border-right: 1px solid var(--line) !important; }
-
-/* ── Cal nav ── */
-.calNav {
+/* ── Cal nav (barra acima do calendário) ── */
+.calNavBar {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  padding: 12px 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  flex-shrink: 0;
 }
 
 .calNavLabel {
@@ -55,6 +24,8 @@
 
 /* ── Alerta crítico ── */
 .alert {
+  /* sobrescreve o w-full do shadcn: com margem lateral, 100% estoura o container */
+  width: auto;
   margin: 16px 32px 0;
   padding: 12px 16px;
   background: var(--alert-soft);
@@ -72,7 +43,13 @@
 .alertDesc  { font-size: 13px; color: var(--ink-2); }
 
 /* ── Lista ── */
-.listView { padding: 24px 32px; overflow: auto; flex: 1; }
+.listView { padding: 24px 32px; }
+
+.emptyState {
+  padding: 32px 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
 
 .listHeader {
   display: flex;
@@ -199,8 +176,6 @@
 /* ── Kanban ── */
 .kanbanWrap {
   padding: 24px 32px;
-  overflow: auto;
-  flex: 1;
   display: flex;
   gap: 12px;
   align-items: flex-start;
@@ -254,7 +229,7 @@
 .kanbanVence    { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
 
 /* ── Calendário ── */
-.calView { padding: 24px 32px; overflow: auto; flex: 1; }
+.calView { padding: 24px 32px; }
 
 .calDayNames { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-bottom: 1px; }
 .calDayName  { padding: 6px; text-align: center; font-size: 10px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; background: var(--paper-2); }
@@ -295,16 +270,20 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-  .header { gap: 8px; padding-top: 14px; padding-bottom: 14px; }
+  .root {
+    display: block;
+    flex: none;
+    min-height: auto;
+  }
 
-  .tabs { width: 100%; }
-  .tabs button { flex: 1; font-size: 11px; padding: 8px 0; text-align: center; }
+  .scrollArea {
+    overflow: visible;
+    min-height: auto;
+  }
 
-  .calNav { width: 100%; justify-content: center; }
+  .calNavBar { padding: 10px 16px; justify-content: center; }
 
   .alert { margin: 12px 16px 0; }
-
-  .title { font-size: 24px; line-height: 1.08; }
 
   /* Kanban — scroll horizontal com snap */
   .kanbanWrap {

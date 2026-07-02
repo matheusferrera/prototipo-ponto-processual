@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeft, Check, Download, ExternalLink } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
 import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
@@ -48,52 +49,42 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
   const isNew = e.state === 'signal';
   return (
-    <div style={{ display: 'flex', paddingBottom: isLast ? 0 : 28 }}>
-      <div style={{ width: 90, flexShrink: 0, textAlign: 'right', paddingRight: 16, paddingTop: 2 }}>
-        <div style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 14, color: isNew ? 'var(--brick)' : 'var(--ink)' }}>
-          {e.date}
-        </div>
-        {e.time && <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{e.time}</div>}
+    <article className={`${styles.timelineItem}${isLast ? ` ${styles.timelineItemLast}` : ''}`}>
+      <div className={styles.timelineDate}>
+        <div className={isNew ? styles.timelineDateNew : undefined}>{e.date}</div>
+        {e.time && <div className={styles.timelineTime}>{e.time}</div>}
       </div>
 
-      <div style={{ width: 20, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div
-          style={{
-            width: 12,
-            height: 12,
-            borderRadius: 999,
-            flexShrink: 0,
-            background: isNew ? 'var(--brick)' : 'var(--paper)',
-            border: `2px solid ${isNew ? 'var(--brick)' : 'var(--ink-3)'}`,
-            marginTop: 4,
-          }}
-        />
-        {!isLast && <div style={{ width: 1, flex: 1, background: 'var(--line)', marginTop: 6 }} />}
+      <div className={styles.timelineRail} aria-hidden="true">
+        <div className={`${styles.timelineMarker}${isNew ? ` ${styles.timelineMarkerNew}` : ''}`} />
+        {!isLast && <div className={styles.timelineLine} />}
       </div>
 
-      <div style={{ flex: 1, paddingLeft: 16, paddingBottom: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', letterSpacing: '0.05em' }}>
+      <div className={styles.timelineContent}>
+        <div className={styles.timelineMeta}>
+          <span className={styles.timelineCode}>
             § {e.n}
           </span>
           {e.label && <Seal variant="nova" />}
         </div>
-        <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.01em' }}>{e.title}</div>
+        <h2 className={styles.timelineTitle}>{e.title}</h2>
         {e.body && (
-          <div style={{ marginTop: 12, padding: 16, background: 'var(--brick-soft)', borderLeft: '3px solid var(--brick)' }}>
-            <div style={{ fontSize: 13 }}>{e.body}</div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 0, cursor: 'pointer' }}>
+          <div className={styles.timelineBody}>
+            <p>{e.body}</p>
+            <div className={styles.inlineActions}>
+              <button type="button" className={`${styles.actionButton} ${styles.actionButtonPrimary}`}>
+                <Check aria-hidden="true" size={16} strokeWidth={2} />
                 Marcar como visto
               </button>
-              <button style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer' }}>
-                Abrir no tribunal ↗
+              <button type="button" className={styles.actionButton}>
+                <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
+                Abrir no tribunal
               </button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -143,94 +134,114 @@ export default async function ProcessoDetailPage({ params }: Props) {
   ];
 
   return (
-    <AppLayout active="Processos">
-      <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-      {/* Breadcrumb */}
-      <div
-        className={styles.breadcrumb}
-        style={{ padding: '14px 32px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}
-      >
-        <Link href="/processos" style={{ fontSize: 11, color: 'var(--ink-3)', textDecoration: 'none' }}>← Carteira</Link>
-        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>/</span>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-3)' }}>{processo.cnj.slice(0, 14)}…</span>
-        <div style={{ flex: 1 }} />
-        <button style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer' }}>
-          Exportar PDF
-        </button>
-        {processo.link ? (
-          <a
-            href={processo.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 0, cursor: 'pointer', textDecoration: 'none' }}
-          >
-            Ver no PJE ↗
-          </a>
-        ) : (
-          <span
-            title="Link do PJE indisponível"
-            style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--line)', background: 'var(--paper-2)', color: 'var(--ink-3)', borderRadius: 0, cursor: 'not-allowed' }}
-          >
-            Ver no PJE ↗
-          </span>
-        )}
-      </div>
+    <AppLayout
+      active="Processos"
+      mobileTitle="Processo"
+      mobileBreadcrumb={`Processos / ${processo.cnj.slice(0, 14)}...`}
+      mobileActions={processo.link ? (
+        <a
+          href={processo.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${styles.mobileHeaderAction} ${styles.mobileHeaderActionPrimary}`}
+          aria-label="Abrir processo no PJE"
+          title="Ver no PJE"
+        >
+          <ExternalLink aria-hidden="true" size={18} strokeWidth={2} />
+        </a>
+      ) : undefined}
+    >
+      <div className={styles.pageShell}>
+        <nav
+          className={styles.breadcrumb}
+          aria-label="Navegação do processo"
+        >
+          <Link href="/processos" className={styles.backLink}>
+            <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
+            Carteira
+          </Link>
+          <span className={styles.breadcrumbDivider}>/</span>
+          <span className={styles.breadcrumbCurrent}>{processo.cnj}</span>
+          <div className={styles.breadcrumbSpacer} />
+          <button type="button" className={styles.actionButton}>
+            <Download aria-hidden="true" size={16} strokeWidth={2} />
+            Exportar PDF
+          </button>
+          {processo.link ? (
+            <a
+              href={processo.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
+            >
+              <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
+              Ver no PJE
+            </a>
+          ) : (
+            <span
+              title="Link do PJE indisponível"
+              className={`${styles.actionButton} ${styles.actionButtonDisabled}`}
+              aria-disabled="true"
+            >
+              <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
+              Ver no PJE
+            </span>
+          )}
+        </nav>
 
-      {/* Hero do processo */}
-      <div className={styles.hero} style={{ padding: '40px 48px', background: 'var(--paper)', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <TribTag label={processo.tribunal} />
-          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>·</span>
-          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{processo.materia}</span>
-          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>·</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <StatusDot state={syncState} />
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{syncLabel}</span>
-          </div>
-        </div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 600 }}>{processo.cnj}</div>
-        <div className={styles.title} style={{ fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.03em', marginTop: 6 }}>
-          {processo.parte}
-        </div>
-        <div className={styles.infoRow} style={{ display: 'flex', gap: 32, marginTop: 18 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Vara</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{processo.materia}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Grau</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{processo.grau}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Última mov.</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{processo.ultimaMov}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Alertas WhatsApp</div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2, color: processo.whatsEnabled ? 'var(--brick)' : 'var(--ink-3)' }}>
-              {processo.whatsEnabled ? 'Ativos' : 'Desativados'}
+        <section className={styles.hero} aria-labelledby="processo-title">
+          <div className={styles.heroMeta}>
+            <TribTag label={processo.tribunal} />
+            <span className={styles.metaSeparator}>·</span>
+            <span className={styles.heroMetaText}>{processo.materia}</span>
+            <span className={styles.metaSeparator}>·</span>
+            <div className={styles.statusPill}>
+              <StatusDot state={syncState} />
+              <span>{syncLabel}</span>
             </div>
           </div>
-        </div>
-      </div>
+          <div className={styles.cnj}>{processo.cnj}</div>
+          <h1 id="processo-title" className={styles.title}>
+            {processo.parte}
+          </h1>
+          <dl className={styles.infoGrid}>
+            <div className={styles.infoItem}>
+              <dt>Vara</dt>
+              <dd>{processo.materia}</dd>
+            </div>
+            <div className={styles.infoItem}>
+              <dt>Grau</dt>
+              <dd>{processo.grau}</dd>
+            </div>
+            <div className={styles.infoItem}>
+              <dt>Última mov.</dt>
+              <dd>{processo.ultimaMov}</dd>
+            </div>
+            <div className={styles.infoItem}>
+              <dt>Alertas WhatsApp</dt>
+              <dd className={processo.whatsEnabled ? styles.infoEmphasis : styles.infoMuted}>
+                {processo.whatsEnabled ? 'Ativos' : 'Desativados'}
+              </dd>
+            </div>
+          </dl>
+        </section>
 
-      <PageInfo pageInfoContent={pageInfoContent} />
+        <PageInfo pageInfoContent={pageInfoContent} />
 
-      {/* Timeline */}
-      <div className={styles.timeline} style={{ padding: '32px 48px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--brick)', letterSpacing: '0.05em' }}>§ MOVIMENTAÇÕES</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>do mais recente ao mais antigo</span>
-        </div>
-        {timeline.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--ink-3)', fontFamily: 'var(--mono)' }}>
-            § Nenhuma movimentação registrada.
+        <section className={styles.timeline} aria-labelledby="movimentacoes-title">
+          <div className={styles.sectionHeader}>
+            <h2 id="movimentacoes-title">§ MOVIMENTAÇÕES</h2>
+            <div className={styles.sectionRule} />
+            <span>do mais recente ao mais antigo</span>
           </div>
-        ) : (
-          timeline.map((e, i) => <TimelineItem key={e.id} e={e} isLast={i === timeline.length - 1} />)
-        )}
-      </div>
+          {timeline.length === 0 ? (
+            <div className={styles.emptyState}>
+              § Nenhuma movimentação registrada.
+            </div>
+          ) : (
+            timeline.map((e, i) => <TimelineItem key={e.id} e={e} isLast={i === timeline.length - 1} />)
+          )}
+        </section>
       </div>
     </AppLayout>
   );

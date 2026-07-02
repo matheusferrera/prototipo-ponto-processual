@@ -23,7 +23,9 @@
 .mobileHeader {
   display: none;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 10px;
   padding: 8px 16px;
   min-height: 52px;
   border-bottom: 1px solid var(--line);
@@ -34,7 +36,13 @@
 .mobileHeading {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+/* ao abrir a busca, o título cede o lugar para a barra crescer */
+.mobileHeader:has([data-search-open]) .mobileHeading {
+  display: none;
 }
 
 .mobileTitle {
@@ -88,5 +96,21 @@
 }
 
 @media (max-width: 768px) {
-  .mobileHeader { display: flex; }
+  .root {
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main {
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .mobileHeader {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+  }
 }

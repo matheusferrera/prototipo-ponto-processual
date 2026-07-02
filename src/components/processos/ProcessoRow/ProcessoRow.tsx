@@ -5,6 +5,12 @@ import styles from './ProcessoRow.module.css';
 
 const COLS = '12px 70px 240px 1fr 1fr 1.4fr';
 
+const STATE_LABEL: Record<Processo['state'], string> = {
+  signal: 'Com novidade',
+  alert: 'Com erro',
+  quiet: 'Monitorado',
+};
+
 interface ProcessoRowProps {
   p: Processo;
 }
@@ -18,18 +24,29 @@ export function ProcessoRow({ p }: ProcessoRowProps) {
     <Link
       href={`/processos/${encodeURIComponent(p.cnj)}`}
       className={`${styles.row} ${rowClass}`}
-      style={{ gridTemplateColumns: COLS }}
+      aria-label={`Processo ${p.cnj} — ${STATE_LABEL[p.state]}`}
     >
-      <div className={`${styles.leftBar} ${barClass}`} />
+      <div className={`${styles.leftBar} ${barClass}`} aria-hidden="true" />
 
-      <span className={`${styles.statusDot} ${dotClass}`} />
+      {/* Desktop: linha de tabela */}
+      <div className={styles.rowGrid} style={{ gridTemplateColumns: COLS }}>
+        <span className={`${styles.statusDot} ${dotClass}`} />
+        <TribTag label={p.tribunal} />
+        <span className={styles.cnj}>{p.cnj}</span>
+        <span className={`${styles.parte} ${styles.ellipsis}`}>{p.classeJudicial ?? '—'}</span>
+        <span className={`${styles.parte} ${styles.ellipsis}`} title={p.parte}>{p.parte}</span>
+        <span className={`${styles.meta} ${styles.ellipsis}`} title={p.ultimaMov}>{p.ultimaMov}</span>
+      </div>
 
-      <TribTag label={p.tribunal} />
-
-      <span className={styles.cnj}>{p.cnj}</span>
-      <span className={`${styles.parte} ${styles.ellipsis}`}>{p.classeJudicial ?? '—'}</span>
-      <span className={`${styles.parte} ${styles.ellipsis}`} title={p.parte}>{p.parte}</span>
-      <span className={`${styles.meta} ${styles.ellipsis}`} title={p.ultimaMov}>{p.ultimaMov}</span>
+      {/* Mobile: card empilhado */}
+      <div className={styles.card}>
+        <span className={styles.cardCnj}>{p.cnj}</span>
+        <div className={styles.cardTribLine}>
+          <TribTag label={p.tribunal} />
+          {p.classeJudicial && <span className={styles.cardClasse}>· {p.classeJudicial}</span>}
+        </div>
+        <span className={styles.cardParte}>{p.parte}</span>
+      </div>
     </Link>
   );
 }

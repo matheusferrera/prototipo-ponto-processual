@@ -1,6 +1,6 @@
 .root {
   position: relative;
-  padding: 18px 32px;
+  padding: 10px 32px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
@@ -9,9 +9,13 @@
   flex-shrink: 0;
 }
 
+/* título + breadcrumb na mesma linha, alinhados pela base */
 .copy {
-  flex: 1 1 260px;
+  flex: 1 1 200px;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 .eyebrow {
@@ -24,17 +28,62 @@
 
 .title {
   font-weight: 700;
-  font-size: 28px;
-  line-height: 1.14;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
 }
 
-.titleWithEyebrow { margin-top: 2px; }
+.titleWithEyebrow { margin-top: 0; }
 
 .breadcrumb {
-  margin-top: 4px;
   font-size: 11px;
   color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
+
+.breadcrumb::before {
+  content: "·";
+  margin-right: 10px;
+  color: var(--ink-4);
+}
+
+/* Abas (segmented control) — ex.: Lista / Kanban / Calendário */
+.tabs {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  font: 600 12px var(--ui);
+  color: var(--ink-2);
+  text-decoration: none;
+  border-right: 1px solid var(--line);
+}
+
+.tab:last-child { border-right: none; }
+.tab:hover { background: var(--paper-2); }
+
+.tab:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: -2px;
+}
+
+.tabActive {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.tabActive:hover { background: var(--ink); }
 
 /* Loading bar */
 @keyframes loadingBar {
@@ -69,27 +118,59 @@
   pointer-events: none;
 }
 
-/* Search */
+/* Search (ícone que expande inline) */
 .search {
   position: relative;
-  flex: 0 1 360px;
-  width: min(360px, 32vw);
-  min-width: 220px;
+  flex: 0 0 auto;
 }
 
-.searchIcon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ink-3);
-  pointer-events: none;
+/* aberta: cresce e ocupa o espaço do título */
+.searchOpen {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
 }
+
+/* ao abrir a busca, o título cede o lugar e a barra ocupa o espaço dele */
+.root:has(.searchOpen) .copy {
+  display: none;
+}
+
+.root:has(.searchOpen) .actions {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* botão-lupa dentro do campo aberto (submete o form) */
+.searchSubmit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.searchSubmit:hover { color: var(--ink); }
+
+.searchSubmit:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: -2px;
+}
+
+.searchIcon { display: block; }
 
 .search input {
   width: 100%;
-  min-height: 44px;
-  padding: 0 14px 0 40px;
+  min-height: 36px;
+  padding: 0 12px 0 36px;
   border: 1px solid var(--line);
   border-radius: 0;
   background: var(--paper);
@@ -142,8 +223,8 @@
 }
 
 .iconControl {
-  width: 44px;
-  min-height: 44px;
+  width: 36px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -165,6 +246,22 @@
   outline-offset: 2px;
 }
 
+/* filtro/ordenação com seleção ativa */
+.iconControlActive {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.iconControlActive:hover { background: var(--ink); }
+
+/* link que envolve o chip de opção (TribTag) dentro do dropdown */
+.optionLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  text-decoration: none;
+}
+
 .filter summary::-webkit-details-marker { display: none; }
 
 .filterPanel {
@@ -177,6 +274,70 @@
   background: var(--paper);
   border: 1px solid var(--line);
   box-shadow: 0 18px 40px rgba(20, 26, 21, 0.14);
+}
+
+.filterPanelHeader {
+  display: none;
+}
+
+.filterDragHandle {
+  display: none;
+}
+
+.filterPanelTitle {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.filterPanelSubtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.filterPanelActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterClear,
+.filterClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.filterClose {
+  border-color: var(--ink);
+  color: var(--ink);
+  width: 36px;
+  padding: 0;
+}
+
+.filterClear:hover,
+.filterClose:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.filterClear:focus-visible,
+.filterClose:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
 }
 
 .filterGroup + .filterGroup {
@@ -204,58 +365,149 @@
   width: min(240px, calc(100vw - 64px));
 }
 
+/* ── Barra do menu (mobile): controles injetados no AppLayout ── */
+/* ações (busca/filtro/ordenação) à direita, na linha do título */
+.mobileActions {
+  order: 3;
+  margin-left: auto;
+}
+
+/* abas (Lista/Kanban/Calendário) ocupam uma linha própria abaixo */
+.mobileTabsRow {
+  order: 4;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.mobileTabsRow .tabs {
+  display: flex;
+  width: 100%;
+}
+
+/* busca aberta ocupa a barra: ações crescem e as abas somem */
+[data-mobile-header]:has([data-search-open]) .mobileActions {
+  flex: 1 1 auto;
+  margin-left: 0;
+  min-width: 0;
+}
+
+[data-mobile-header]:has([data-search-open]) .mobileTabsRow {
+  display: none;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
-  .root {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 10px 12px;
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
+  /* o header desktop some no mobile — os controles migram para a barra do menu
+     (AppLayout), junto do título; ver .mobileActions / .mobileTabsRow */
+  .root { display: none; }
 
-  .copy {
-    flex: 1 1 calc(100% - 116px);
-    order: 1;
-  }
-
-  .title {
-    font-size: 24px;
-    line-height: 1.08;
-  }
-
-  .breadcrumb {
-    margin-top: 3px;
-    font-size: 11px;
-    line-height: 1.3;
-  }
-
-  .search {
-    order: 3;
-    flex: 1 1 100%;
-    width: 100%;
-    min-width: 0;
-  }
-
+  /* tamanhos confortáveis para toque (aplicam-se às instâncias na barra do menu) */
   .search input {
     min-height: 42px;
     padding-left: 38px;
     font-size: 13px;
   }
+  .searchSubmit { width: 38px; }
 
-  .searchIcon { left: 13px; }
+  .tab { flex: 1; justify-content: center; }
 
-  .actions {
-    order: 2;
-    margin-left: auto;
+  .iconControl {
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .filter[open]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgba(20, 26, 21, 0.34);
+    pointer-events: none;
+  }
+
+  .filterPanel,
+  .sortPanel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    width: 100%;
+    max-height: min(76dvh, 560px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+    border-width: 1px 0 0;
+    box-shadow: 0 -18px 48px rgba(20, 26, 21, 0.22);
+  }
+
+  .filterDragHandle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    margin: -4px 0 10px;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .filterDragHandle:active {
+    cursor: grabbing;
+  }
+
+  .filterDragHandle span {
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--line);
+  }
+
+  .filterPanelHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .filterPanelActions {
+    flex-shrink: 0;
+  }
+
+  .filterClear,
+  .filterClose {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .filterGroup + .filterGroup {
+    margin-top: 18px;
+    padding-top: 18px;
+  }
+
+  .filterLabel {
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  .filterOptions {
     gap: 8px;
   }
 
-  .filterPanel { width: min(84vw, 340px); }
-  .sortPanel   { width: min(72vw, 260px); }
+  .optionLink {
+    min-height: 44px;
+  }
 
-  .whatsBadge { display: none; }
-  .syncBtn    { display: none; }
+  .optionLink > span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 10px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

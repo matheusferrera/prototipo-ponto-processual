@@ -30,5 +30,64 @@
 .paginationInfo { font-size: 11px; color: var(--ink-3); }
 .spacer         { flex: 1; }
 
+.pageBtn { transition: background-color 150ms ease; }
 
 .paginationPage { font-size: 11px; color: var(--ink-3); margin: 0 12px; }
+
+/* ---- Empty state ---- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding-top: 72px;
+  padding-bottom: 72px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.emptyMark {
+  width: 32px;
+  height: 3px;
+  background: var(--brick);
+  margin-bottom: 4px;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.emptyText {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+@media (max-width: 768px) {
+  .scrollArea {
+    flex: none;
+    overflow: visible;
+    min-height: auto;
+  }
+
+  /* remove o scroll horizontal: cards ocupam a largura da tela */
+  .tableMinWidth { min-width: 0; }
+  .tableHeader { display: none; }
+
+  .pagination { padding: 12px 16px; }
+
+  /* alvo de toque ≥44px sem alterar o tamanho no desktop */
+  .pageBtn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .empty {
+    padding-top: 56px;
+    padding-bottom: 56px;
+  }
+}

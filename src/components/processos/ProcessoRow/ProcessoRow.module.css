@@ -1,16 +1,24 @@
 .row {
   padding: 14px 32px;
   border-bottom: 1px solid var(--line-soft);
-  display: grid;
-  gap: 16px;
-  align-items: center;
   position: relative;
   text-decoration: none;
   color: inherit;
+  display: block;
+  transition: background-color 150ms ease;
 }
 
 .rowNormal { background: transparent; }
 .rowSignal { background: var(--paper-2); }
+
+.row:hover { background: var(--paper-2); }
+.row:active { background: var(--paper-3); }
+
+.rowGrid {
+  display: grid;
+  gap: 16px;
+  align-items: center;
+}
 
 .leftBar {
   width: 3px;
@@ -48,3 +56,61 @@
 }
 
 .statusEmpty { font-size: 11px; color: var(--ink-3); }
+
+/* ---- Card mobile ---- */
+.card { display: none; }
+
+.cardCnj {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.cardTribLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardClasse {
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cardParte {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+@media (max-width: 768px) {
+  .row {
+    padding: 16px;
+    /* alvo de toque confortável */
+    min-height: 44px;
+  }
+
+  .rowGrid { display: none; }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* barra de status ocupa a altura do card */
+  .leftBar {
+    height: auto;
+    top: 0;
+    bottom: 0;
+    transform: none;
+  }
+}

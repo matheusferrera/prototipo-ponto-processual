@@ -85,7 +85,7 @@ export default function LoginPage() {
     <div
       className={styles.page}
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         fontFamily: 'var(--ui)',
       }}
@@ -235,9 +235,14 @@ export default function LoginPage() {
           padding: '48px 40px',
         }}
       >
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div className={styles.mobileBrand} aria-hidden="true">
+          <span className={styles.mobileBrandMark} />
+          <span>Ponto Processual</span>
+        </div>
+
+        <div className={styles.formPanel} style={{ width: '100%', maxWidth: 400 }}>
           {/* Cabeçalho do form */}
-          <div style={{ marginBottom: 32 }}>
+          <div className={styles.formHeader} style={{ marginBottom: 32 }}>
             <div
               style={{
                 fontSize: 10,
@@ -265,6 +270,7 @@ export default function LoginPage() {
           {/* Botão Google */}
           <button
             type="button"
+            className={styles.control}
             onClick={handleGoogle}
             disabled={busy}
             style={{
@@ -336,6 +342,7 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
+                className={styles.control}
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -357,7 +364,7 @@ export default function LoginPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className={styles.passwordRow} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <label
                   htmlFor="senha"
                   style={{
@@ -390,6 +397,7 @@ export default function LoginPage() {
               </div>
               <input
                 id="senha"
+                className={styles.control}
                 type="password"
                 autoComplete="current-password"
                 value={senha}
@@ -427,6 +435,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              className={styles.control}
               disabled={busy}
               style={{
                 fontFamily: 'var(--ui)',
@@ -449,6 +458,7 @@ export default function LoginPage() {
 
           {/* Rodapé */}
           <div
+            className={styles.footer}
             style={{
               marginTop: 32,
               paddingTop: 20,

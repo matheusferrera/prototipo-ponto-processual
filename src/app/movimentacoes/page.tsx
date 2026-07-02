@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
+import { HeaderControls } from '@/components/layout/PageHeader/HeaderControls';
 import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
 import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
 import { PageContent } from '@/components/movimentacoes/PageContent/PageContent';
@@ -11,20 +12,51 @@ export const metadata: Metadata = {
   description: 'Feed geral de movimentações de todos os processos monitorados.',
 };
 
-const tiposFiltro = ['TODAS', 'INTIMAÇÕES', 'SENTENÇAS', 'DESPACHOS', 'AUDIÊNCIAS', 'JUNTADAS'];
-const tribunaisFiltro = ['TODOS', 'TRF1', 'TJDFT', 'TRF3'];
-const statusFiltro = ['TODOS', 'ENVIADOS', 'NÃO ENVIADOS', 'COM ERRO'];
-const ordenacao = ['MAIS RECENTES', 'MAIS ANTIGAS', 'TRIBUNAL', 'STATUS WHATSAPP'];
+const tiposFiltro = [
+  { label: 'TODAS', value: '' },
+  { label: 'INTIMAÇÕES', value: 'Intimação' },
+  { label: 'SENTENÇAS', value: 'Sentença' },
+  { label: 'DESPACHOS', value: 'Despacho' },
+  { label: 'AUDIÊNCIAS', value: 'Audiência' },
+  { label: 'JUNTADAS', value: 'Juntada' },
+];
+const tribunaisFiltro = [
+  { label: 'TODOS', value: '' },
+  { label: 'TRF1', value: 'TRF1' },
+  { label: 'TJDFT', value: 'TJDFT' },
+  { label: 'TRF3', value: 'TRF3' },
+];
+const statusFiltro = [
+  { label: 'TODOS', value: '' },
+  { label: 'ENVIADOS', value: 'enviados' },
+  { label: 'NÃO ENVIADOS', value: 'nao-enviados' },
+  { label: 'COM ERRO', value: 'erro' },
+];
+const ordenacao = [
+  { label: 'MAIS RECENTES', value: '' },
+  { label: 'MAIS ANTIGAS', value: 'antigas' },
+  { label: 'TRIBUNAL', value: 'tribunal' },
+  { label: 'STATUS WHATSAPP', value: 'whats' },
+];
 
 export default async function MovimentacoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; tipo?: string; tribunal?: string; status?: string; sort?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
-  const currentPage = Math.max(1, Number(pageParam ?? 1));
+  const sp = await searchParams;
+  const query = sp.q?.trim() ?? '';
+  const currentPage = Math.max(1, Number(sp.page ?? 1));
 
-  const { groups, total, totalPages, newToday } = await getMovimentacoes(currentPage);
+  const filters = {
+    q: query,
+    tipo: sp.tipo,
+    tribunal: sp.tribunal,
+    status: sp.status,
+    sort: sp.sort,
+  };
+
+  const { groups, total, totalPages, newToday } = await getMovimentacoes(currentPage, 20, filters);
 
   const pageInfoContent: PageInfoContent = [
     {
@@ -38,25 +70,37 @@ export default async function MovimentacoesPage({
     },
   ];
 
+  const currentParams = { q: query || undefined, tipo: sp.tipo, tribunal: sp.tribunal, status: sp.status, sort: sp.sort };
+
+  const headerControls = {
+    basePath: '/movimentacoes',
+    currentParams,
+    searchLabel: 'Pesquisar movimentações',
+    searchPlaceholder: 'Pesquisar movimentações',
+    searchValue: query,
+    filters: [
+      { label: 'Tipo', param: 'tipo', options: tiposFiltro },
+      { label: 'Tribunal', param: 'tribunal', options: tribunaisFiltro },
+      { label: 'WhatsApp', param: 'status', options: statusFiltro },
+    ],
+    sortOptions: ordenacao,
+  };
+
   return (
-    <AppLayout active="Movimentações">
-      <PageHeader
-        title="Movimentações"
-        searchLabel="Pesquisar movimentações"
-        searchPlaceholder="Pesquisar movimentações"
-        filters={[
-          { label: 'Tipo', options: tiposFiltro },
-          { label: 'Tribunal', options: tribunaisFiltro },
-          { label: 'WhatsApp', options: statusFiltro },
-        ]}
-        sortOptions={ordenacao}
-      />
+    <AppLayout
+      active="Movimentações"
+      mobileTitle="Movimentações"
+      mobileBreadcrumb="Início / Movimentações"
+      mobileActions={<HeaderControls {...headerControls} variant="mobile" />}
+    >
+      <PageHeader {...headerControls} title="Movimentações" breadcrumb="Início / Movimentações" />
       <PageContent
         key={currentPage}
         movimentacoes={groups}
         total={total}
         totalPages={totalPages}
         currentPage={currentPage}
+        listParams={currentParams}
         pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
       />
     </AppLayout>

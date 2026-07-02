@@ -13,9 +13,11 @@ interface AppLayoutProps {
   mobileTitle?: string;
   /** Breadcrumb exibido abaixo do título no header mobile. */
   mobileBreadcrumb?: string;
+  /** Controles (busca/filtro/ordenação/abas) injetados na barra do menu no mobile. */
+  mobileActions?: React.ReactNode;
 }
 
-export function AppLayout({ active, children, mobileTitle, mobileBreadcrumb }: AppLayoutProps) {
+export function AppLayout({ active, children, mobileTitle, mobileBreadcrumb, mobileActions }: AppLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -29,7 +31,7 @@ export function AppLayout({ active, children, mobileTitle, mobileBreadcrumb }: A
       </Sheet>
 
       <main className={styles.main}>
-        <div className={styles.mobileHeader}>
+        <div className={styles.mobileHeader} data-mobile-header>
           <button onClick={() => setDrawerOpen(true)} className={styles.burgerBtn} aria-label="Abrir menu">
             <span className={styles.burgerLine} />
             <span className={styles.burgerLine} />
@@ -46,6 +48,7 @@ export function AppLayout({ active, children, mobileTitle, mobileBreadcrumb }: A
               Ponto
             </span>
           )}
+          {mobileActions}
         </div>
         {children}
       </main>

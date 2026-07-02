@@ -9,7 +9,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import styles from './PrazosView.module.css';
 
-type View = 'lista' | 'kanban' | 'calendario';
+export type PrazoView = 'lista' | 'kanban' | 'calendario';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAY_NAMES   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -40,6 +40,10 @@ function ListView({ prazos }: { prazos: Prazo[] }) {
         <span className={styles.listHeaderLabel}>§ PRÓXIMOS VENCIMENTOS</span>
         <div className={styles.listDivider} />
       </div>
+
+      {prazos.length === 0 && (
+        <div className={styles.emptyState}>Nenhum prazo encontrado com os filtros atuais.</div>
+      )}
 
       {prazos.map(pz => {
         const isCritical  = pz.diasRestantes <= 3;
@@ -226,12 +230,8 @@ function CalendarioView({ prazos, year, month }: { prazos: Prazo[]; year: number
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
-const VIEW_LABELS: Record<View, string> = { lista: 'Lista', kanban: 'Kanban', calendario: 'Calendário' };
-const VIEWS: View[] = ['lista', 'kanban', 'calendario'];
-
-export function PrazosView({ prazos }: { prazos: Prazo[] }) {
-  const [view, setView]       = useState<View>('lista');
-  const now                   = new Date();
+export function PrazosView({ prazos, view }: { prazos: Prazo[]; view: PrazoView }) {
+  const now                     = new Date();
   const [calYear, setCalYear]   = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
 
@@ -252,53 +252,32 @@ export function PrazosView({ prazos }: { prazos: Prazo[] }) {
 
   return (
     <div className={styles.root}>
-      <div className={styles.header}>
-        <div className={styles.headerCopy}>
-          <div className={styles.eyebrow}>{prazos.length} prazos ativos</div>
-          <div className={styles.title}>Prazos</div>
+      {view === 'calendario' && (
+        <div className={styles.calNavBar}>
+          <Button onClick={prevMonth} variant="outline" size="icon-sm" className="border-[var(--line)] text-[var(--ink-2)]">←</Button>
+          <span className={styles.calNavLabel}>{MONTH_NAMES[calMonth - 1]} {calYear}</span>
+          <Button onClick={nextMonth} variant="outline" size="icon-sm" className="border-[var(--line)] text-[var(--ink-2)]">→</Button>
         </div>
-
-        <div className={styles.headerBottom}>
-          <div className={styles.tabs}>
-            {VIEWS.map(v => (
-              <Button
-                key={v}
-                onClick={() => setView(v)}
-                variant={view === v ? 'default' : 'outline'}
-                size="sm"
-                className={`${styles.tabBtn}${view === v ? ` ${styles.tabBtnActive}` : ' border-[var(--line)] text-[var(--ink-2)] hover:bg-[var(--paper-2)]'}`}
-              >
-                {VIEW_LABELS[v]}
-              </Button>
-            ))}
-          </div>
-
-          {view === 'calendario' && (
-            <div className={styles.calNav}>
-              <Button onClick={prevMonth} variant="outline" size="icon-sm" className="border-[var(--line)] text-[var(--ink-2)]">←</Button>
-              <span className={styles.calNavLabel}>{MONTH_NAMES[calMonth - 1]} {calYear}</span>
-              <Button onClick={nextMonth} variant="outline" size="icon-sm" className="border-[var(--line)] text-[var(--ink-2)]">→</Button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {criticalCount > 0 && (
-        <Alert className={styles.alert}>
-          <AlertTitle className={styles.alertCount}>
-            {criticalCount} prazo{criticalCount > 1 ? 's' : ''} crítico{criticalCount > 1 ? 's' : ''}
-          </AlertTitle>
-          {firstCritical && (
-            <AlertDescription className={styles.alertDesc}>
-              — {firstCritical.parte} vence em {firstCritical.diasRestantes} dia{firstCritical.diasRestantes !== 1 ? 's' : ''}
-            </AlertDescription>
-          )}
-        </Alert>
       )}
 
-      {view === 'lista'      && <ListView      prazos={prazos} />}
-      {view === 'kanban'     && <KanbanView     prazos={prazos} />}
-      {view === 'calendario' && <CalendarioView prazos={prazos} year={calYear} month={calMonth} />}
+      <div className={styles.scrollArea}>
+        {criticalCount > 0 && (
+          <Alert className={styles.alert}>
+            <AlertTitle className={styles.alertCount}>
+              {criticalCount} prazo{criticalCount > 1 ? 's' : ''} crítico{criticalCount > 1 ? 's' : ''}
+            </AlertTitle>
+            {firstCritical && (
+              <AlertDescription className={styles.alertDesc}>
+                — {firstCritical.parte} vence em {firstCritical.diasRestantes} dia{firstCritical.diasRestantes !== 1 ? 's' : ''}
+              </AlertDescription>
+            )}
+          </Alert>
+        )}
+
+        {view === 'lista'      && <ListView      prazos={prazos} />}
+        {view === 'kanban'     && <KanbanView     prazos={prazos} />}
+        {view === 'calendario' && <CalendarioView prazos={prazos} year={calYear} month={calMonth} />}
+      </div>
     </div>
   );
 }

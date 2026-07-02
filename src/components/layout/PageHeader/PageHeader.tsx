@@ -1,21 +1,26 @@
 import type { ReactNode } from 'react';
-import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { WhatsBadge } from '@/components/ui/WhatsBadge/WhatsBadge';
+import { HeaderControls } from './HeaderControls';
+import type { PageHeaderFilterGroup, PageHeaderTabs, FilterOption, CurrentParams } from './HeaderControls';
 import styles from './PageHeader.module.css';
 
-type PageHeaderFilterGroup = {
-  label: string;
-  options: string[];
-};
+export type { FilterOption, PageHeaderFilterGroup, PageHeaderTabs } from './HeaderControls';
 
 interface PageHeaderProps {
+  /** Caminho base para montar os hrefs dos filtros/abas (ex.: "/processos"). */
+  basePath: string;
+  /** Params atuais da URL, usados para marcar o estado ativo e preservar filtros. */
+  currentParams?: CurrentParams;
   eyebrow?: ReactNode;
   title: ReactNode;
   children?: ReactNode;
   className?: string;
   breadcrumb?: ReactNode;
+  /** Abas (ex.: Lista/Kanban/Calendário) renderizadas na linha do título. */
+  tabs?: PageHeaderTabs;
   filters?: PageHeaderFilterGroup[];
-  sortOptions?: string[];
+  sortParam?: string;
+  sortOptions?: FilterOption[];
   searchLabel?: string;
   searchPlaceholder?: string;
   searchValue?: string;
@@ -28,12 +33,16 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({
+  basePath,
+  currentParams = {},
   eyebrow,
   title,
   children,
   className = 'px-page',
   breadcrumb,
+  tabs,
   filters = [],
+  sortParam = 'sort',
   sortOptions = [],
   searchLabel = 'Pesquisar',
   searchPlaceholder,
@@ -53,27 +62,17 @@ export function PageHeader({
         {breadcrumb && <div className={styles.breadcrumb}>{breadcrumb}</div>}
       </div>
 
-      {searchPlaceholder && (
-        <form className={styles.search} role="search" method="get">
-          <label className="sr-only" htmlFor="page-header-search-input">{searchLabel}</label>
-          <SearchIcon />
-          <input
-            id="page-header-search-input"
-            name="q"
-            type="search"
-            defaultValue={searchValue}
-            placeholder={searchPlaceholder}
-            aria-label={searchLabel}
-          />
-        </form>
-      )}
-
-      {(filters.length > 0 || sortOptions.length > 0) && (
-        <div className={styles.actions} aria-label="Ações de listagem">
-          {filters.length > 0 && <PageHeaderFilters groups={filters} />}
-          {sortOptions.length > 0 && <PageHeaderSort options={sortOptions} />}
-        </div>
-      )}
+      <HeaderControls
+        basePath={basePath}
+        currentParams={currentParams}
+        tabs={tabs}
+        filters={filters}
+        sortParam={sortParam}
+        sortOptions={sortOptions}
+        searchLabel={searchLabel}
+        searchPlaceholder={searchPlaceholder}
+        searchValue={searchValue}
+      />
 
       {whatsBadge && (
         <span className={styles.whatsBadge}>
@@ -89,74 +88,5 @@ export function PageHeader({
 
       {children}
     </div>
-  );
-}
-
-function PageHeaderFilters({ groups }: { groups: PageHeaderFilterGroup[] }) {
-  return (
-    <details className={styles.filter}>
-      <summary className={styles.iconControl} aria-label="Abrir filtros" title="Filtros">
-        <FilterIcon />
-        <span className="sr-only">Filtros</span>
-      </summary>
-      <div className={styles.filterPanel}>
-        {groups.map(group => (
-          <div className={styles.filterGroup} key={group.label}>
-            <div className={styles.filterLabel}>{group.label}</div>
-            <div className={styles.filterOptions}>
-              {group.options.map((option, index) => (
-                <TribTag key={option} label={option} active={index === 0} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function PageHeaderSort({ options }: { options: string[] }) {
-  return (
-    <details className={styles.filter}>
-      <summary className={styles.iconControl} aria-label="Abrir ordenação" title="Ordenação">
-        <SortIcon />
-        <span className="sr-only">Ordenação</span>
-      </summary>
-      <div className={`${styles.filterPanel} ${styles.sortPanel}`}>
-        <div className={styles.filterGroup}>
-          <div className={styles.filterLabel}>Ordenação</div>
-          <div className={styles.filterOptions}>
-            {options.map((option, index) => (
-              <TribTag key={option} label={option} active={index === 0} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </details>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.35-4.35" />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 5h18" /><path d="M7 12h10" /><path d="M10 19h4" />
-    </svg>
-  );
-}
-
-function SortIcon() {
-  return (
-    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" />
-    </svg>
   );
 }

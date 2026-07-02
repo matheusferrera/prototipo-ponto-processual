@@ -149,6 +149,12 @@
 .paginationPage { font-size: 11px; color: var(--ink-3); margin: 0 12px; }
 
 @media (max-width: 768px) {
+  .scrollArea {
+    flex: none;
+    overflow: visible;
+    min-height: auto;
+  }
+
   .whatsCol  { display: none; }
   .actionCol { display: none; }
 }

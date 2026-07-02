@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, buildQuery } from '@/lib/utils';
 import type { Movimentacao } from '@/types';
 import styles from './PageContent.module.css';
 
@@ -17,12 +17,15 @@ interface PageContentProps {
   total: number;
   totalPages: number;
   currentPage: number;
+  /** params de filtro/busca a preservar nos links de paginação */
+  listParams?: Record<string, string | undefined>;
 }
 
-export function PageContent({ movimentacoes, pageInfo, total, totalPages, currentPage }: PageContentProps) {
+export function PageContent({ movimentacoes, pageInfo, total, totalPages, currentPage, listParams = {} }: PageContentProps) {
   const itemsOnPage = movimentacoes.flatMap(g => g.items).length;
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * 20 + 1;
   const rangeEnd = (currentPage - 1) * 20 + itemsOnPage;
+  const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
 
   return (
     <>
@@ -51,7 +54,7 @@ export function PageContent({ movimentacoes, pageInfo, total, totalPages, curren
         <span className={styles.paginationInfo}>{rangeStart}–{rangeEnd} de {total}</span>
         <div className={styles.spacer} />
         <Link
-          href={`?page=${currentPage - 1}`}
+          href={pageHref(currentPage - 1)}
           aria-disabled={currentPage === 1}
           className={cn(
             buttonVariants({ variant: 'outline', size: 'icon-sm' }),
@@ -61,7 +64,7 @@ export function PageContent({ movimentacoes, pageInfo, total, totalPages, curren
         >←</Link>
         <span className={styles.paginationPage}>{currentPage} / {totalPages}</span>
         <Link
-          href={`?page=${currentPage + 1}`}
+          href={pageHref(currentPage + 1)}
           aria-disabled={currentPage === totalPages}
           className={cn(
             buttonVariants({ variant: 'outline', size: 'icon-sm' }),

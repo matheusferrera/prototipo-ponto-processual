@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type { Processo, StatusType, TimelineEvent, MovimentacaoGroup, Prazo } from '@/types';
+import type { Processo, StatusType, TimelineEvent, Movimentacao, MovimentacaoGroup, Prazo } from '@/types';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -110,23 +110,62 @@ type ProcessoPage = {
   page: number;
 };
 
-export async function getProcessos(page = 1, limit = 20, q?: string): Promise<ProcessoPage> {
-  const term = q?.trim().toLowerCase();
+export type ProcessoFilters = {
+  q?: string;
+  /** nome do tribunal (ex.: "TRF1") — "" = todos */
+  tribunal?: string;
+  /** state: "signal" | "alert" | "quiet" — "" = todos */
+  status?: string;
+  /** "ativos" | "inativos" — "" = todos */
+  whats?: string;
+  /** "cnj" | "tribunal" | "status" — "" = mais recentes (ordem do backend) */
+  sort?: string;
+};
 
-  // Busca: o backend só filtra `numero` exato, então trazemos um conjunto amplo
-  // e filtramos por substring em número, tribunal, parte e classe judicial.
-  if (term) {
+const PROCESSO_STATE_ORDER: Record<StatusType, number> = { signal: 0, alert: 1, quiet: 2 };
+
+function sortProcessos(list: Processo[], sort?: string): void {
+  switch (sort) {
+    case 'cnj':
+      list.sort((a, b) => a.cnj.localeCompare(b.cnj));
+      break;
+    case 'tribunal':
+      list.sort((a, b) => a.tribunal.localeCompare(b.tribunal) || a.cnj.localeCompare(b.cnj));
+      break;
+    case 'status':
+      list.sort((a, b) => PROCESSO_STATE_ORDER[a.state] - PROCESSO_STATE_ORDER[b.state]);
+      break;
+    // default: mantém a ordem do backend (mais recentes)
+  }
+}
+
+export async function getProcessos(page = 1, limit = 20, filters: ProcessoFilters = {}): Promise<ProcessoPage> {
+  const { q, tribunal, status, whats, sort } = filters;
+  const term = q?.trim().toLowerCase();
+  const hasFilter = Boolean(term || tribunal || status || whats || sort);
+
+  // Busca/filtros: o backend só filtra `numero` exato, então trazemos um conjunto
+  // amplo e filtramos/ordenamos no servidor, colapsando em uma única página.
+  if (hasFilter) {
     const body: { data: BackendProcess[]; total: number } =
       await backendGet(`/processes?page=1&limit=100`);
-    const filtrados = body.data
-      .map(toProcesso)
-      .filter(p =>
+    let list = body.data.map(toProcesso);
+
+    if (term) {
+      list = list.filter(p =>
         p.cnj.toLowerCase().includes(term) ||
         p.tribunal.toLowerCase().includes(term) ||
         p.parte.toLowerCase().includes(term) ||
         (p.classeJudicial ?? '').toLowerCase().includes(term),
       );
-    return { processos: filtrados, total: filtrados.length, totalPages: 1, page: 1 };
+    }
+    if (tribunal) list = list.filter(p => p.tribunal === tribunal);
+    if (status)   list = list.filter(p => p.state === status);
+    if (whats)    list = list.filter(p => (whats === 'ativos' ? p.whatsEnabled : !p.whatsEnabled));
+
+    sortProcessos(list, sort);
+
+    return { processos: list, total: list.length, totalPages: 1, page: 1 };
   }
 
   const body: { data: BackendProcess[]; total: number; totalPages: number; page: number } =
@@ -250,38 +289,63 @@ type MovimentacoesResult = {
   newToday: number;
 };
 
-export async function getMovimentacoes(page = 1, limit = 20): Promise<MovimentacoesResult> {
-  const movBody = await backendGet(`/movements?page=${page}&limit=${limit}`) as {
+export type MovimentacaoFilters = {
+  q?: string;
+  /** tipo canônico (ex.: "Intimação") — "" = todas */
+  tipo?: string;
+  /** nome do tribunal — "" = todos */
+  tribunal?: string;
+  /** "enviados" | "nao-enviados" | "erro" — "" = todos */
+  status?: string;
+  /** "antigas" | "tribunal" | "whats" — "" = mais recentes */
+  sort?: string;
+};
+
+/** Movimentação + data de ocorrência, para filtrar/ordenar antes de agrupar. */
+type MovEntry = { item: Movimentacao; ocorrido: Date; isNew: boolean };
+
+function sortMovEntries(entries: MovEntry[], sort?: string): void {
+  switch (sort) {
+    case 'antigas':
+      entries.sort((a, b) => a.ocorrido.getTime() - b.ocorrido.getTime());
+      break;
+    case 'tribunal':
+      entries.sort((a, b) =>
+        a.item.tribunal.localeCompare(b.item.tribunal) || b.ocorrido.getTime() - a.ocorrido.getTime(),
+      );
+      break;
+    case 'whats':
+      entries.sort((a, b) =>
+        Number(b.item.whats.sent) - Number(a.item.whats.sent) || b.ocorrido.getTime() - a.ocorrido.getTime(),
+      );
+      break;
+    default: // mais recentes
+      entries.sort((a, b) => b.ocorrido.getTime() - a.ocorrido.getTime());
+  }
+}
+
+export async function getMovimentacoes(page = 1, limit = 20, filters: MovimentacaoFilters = {}): Promise<MovimentacoesResult> {
+  const { q, tipo, tribunal, status, sort } = filters;
+  const term = q?.trim().toLowerCase();
+  const hasFilter = Boolean(term || tipo || tribunal || status || sort);
+
+  // com filtro/busca ativos, trazemos um conjunto amplo e colapsamos em 1 página
+  const fetchPage = hasFilter ? 1 : page;
+  const fetchLimit = hasFilter ? 100 : limit;
+
+  const movBody = await backendGet(`/movements?page=${fetchPage}&limit=${fetchLimit}`) as {
     data: BackendMovement[];
     total: number;
     page: number;
     totalPages: number;
   };
 
-  // ordena pela data em que a movimentação ocorreu (ocorridoEm), mais recente primeiro
-  const sorted = [...movBody.data].sort(
-    (a, b) => new Date(b.ocorridoEm).getTime() - new Date(a.ocorridoEm).getTime(),
-  );
-
-  const groupMap = new Map<string, MovimentacaoGroup>();
-  let newToday = 0;
-
-  for (const m of sorted) {
+  let entries: MovEntry[] = movBody.data.map(m => {
     const proc = m.process;
-    const detectedAt = new Date(m.detectedAt);
-    const isNew = Date.now() - detectedAt.getTime() < 1000 * 60 * 60 * 48;
-    if (isNew) newToday++;
-
-    // agrupamento e horário derivam de ocorridoEm
+    const isNew = Date.now() - new Date(m.detectedAt).getTime() < 1000 * 60 * 60 * 48;
     const ocorrido = new Date(m.ocorridoEm);
     const timeStr = `${String(ocorrido.getHours()).padStart(2,'0')}:${String(ocorrido.getMinutes()).padStart(2,'0')}`;
-
-    const { dateLabel, dayLabel, dateKey } = formatDateGroup(ocorrido);
-
-    if (!groupMap.has(dateKey)) {
-      groupMap.set(dateKey, { date: dateLabel, day: dayLabel, items: [] });
-    }
-    groupMap.get(dateKey)!.items.push({
+    const item: Movimentacao = {
       id: m.id,
       tribunal: proc ? proc.tribunal.replace(/G[12]$/, '') : '—',
       cnj: proc ? proc.numero : '—',
@@ -291,14 +355,45 @@ export async function getMovimentacoes(page = 1, limit = 20): Promise<Movimentac
       time: timeStr,
       whats: { sent: false, reason: '—' },
       state: isNew ? 'signal' : 'quiet',
-    });
+    };
+    return { item, ocorrido, isNew };
+  });
+
+  // "novas (48h)" reflete o conjunto trazido, antes de aplicar filtros
+  const newToday = entries.filter(e => e.isNew).length;
+
+  if (term) {
+    entries = entries.filter(({ item }) =>
+      item.parte.toLowerCase().includes(term) ||
+      item.cnj.toLowerCase().includes(term) ||
+      item.tipo.toLowerCase().includes(term) ||
+      item.detail.toLowerCase().includes(term) ||
+      item.tribunal.toLowerCase().includes(term),
+    );
+  }
+  if (tipo)     entries = entries.filter(e => e.item.tipo === tipo);
+  if (tribunal) entries = entries.filter(e => e.item.tribunal === tribunal);
+  if (status === 'erro')         entries = entries.filter(e => e.item.state === 'alert');
+  else if (status === 'enviados')     entries = entries.filter(e => e.item.whats.sent);
+  else if (status === 'nao-enviados') entries = entries.filter(e => !e.item.whats.sent);
+
+  sortMovEntries(entries, sort);
+
+  // agrupa por data preservando a ordem final
+  const groupMap = new Map<string, MovimentacaoGroup>();
+  for (const { item, ocorrido } of entries) {
+    const { dateLabel, dayLabel, dateKey } = formatDateGroup(ocorrido);
+    if (!groupMap.has(dateKey)) {
+      groupMap.set(dateKey, { date: dateLabel, day: dayLabel, items: [] });
+    }
+    groupMap.get(dateKey)!.items.push(item);
   }
 
   return {
     groups: Array.from(groupMap.values()),
-    total: movBody.total,
-    totalPages: movBody.totalPages,
-    page: movBody.page,
+    total: hasFilter ? entries.length : movBody.total,
+    totalPages: hasFilter ? 1 : movBody.totalPages,
+    page: hasFilter ? 1 : movBody.page,
     newToday,
   };
 }
@@ -410,12 +505,51 @@ function toPrazo(d: BackendDeadline): Prazo {
   };
 }
 
-/** Prazos pendentes (não fechados), ordenados do mais urgente ao menos urgente. */
-export async function getPrazos(page = 1, limit = 100): Promise<Prazo[]> {
+export type PrazoFilters = {
+  q?: string;
+  /** nome do tribunal — "" = todos */
+  tribunal?: string;
+  /** "critico" (≤3d) | "urgente" (≤7d) — "" = todos */
+  urgencia?: string;
+  /** "menos-urgente" (dias desc) | "tribunal" — "" = mais urgente (dias asc) */
+  sort?: string;
+};
+
+function sortPrazos(list: Prazo[], sort?: string): void {
+  switch (sort) {
+    case 'menos-urgente':
+      list.sort((a, b) => b.diasRestantes - a.diasRestantes);
+      break;
+    case 'tribunal':
+      list.sort((a, b) => a.tribunal.localeCompare(b.tribunal) || a.diasRestantes - b.diasRestantes);
+      break;
+    default: // mais urgente — dias asc (ordem do backend)
+      list.sort((a, b) => a.diasRestantes - b.diasRestantes);
+  }
+}
+
+/** Prazos pendentes (não fechados), filtrados/ordenados no servidor. */
+export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<Prazo[]> {
   const body = await backendGet(`/deadlines?fechado=false&sort=asc&page=${page}&limit=${limit}`) as {
     data: BackendDeadline[];
   };
-  return body.data.map(toPrazo);
+  let list = body.data.map(toPrazo);
+
+  const term = filters.q?.trim().toLowerCase();
+  if (term) {
+    list = list.filter(p =>
+      p.parte.toLowerCase().includes(term) ||
+      p.cnj.toLowerCase().includes(term) ||
+      p.tipo.toLowerCase().includes(term) ||
+      p.tribunal.toLowerCase().includes(term),
+    );
+  }
+  if (filters.tribunal) list = list.filter(p => p.tribunal === filters.tribunal);
+  if (filters.urgencia === 'critico') list = list.filter(p => p.diasRestantes <= 3);
+  else if (filters.urgencia === 'urgente') list = list.filter(p => p.diasRestantes <= 7);
+
+  sortPrazos(list, filters.sort);
+  return list;
 }
 
 export async function getProcessoMovements(processId: string): Promise<TimelineEvent[]> {
