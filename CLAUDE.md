@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Subagentes** (`.claude/agents/`) — delegue via Task, sem colar prompt:
+> - `ui-page` — rotas, páginas, componentes e design system (App Router + shadcn base-nova + tokens).
+> - `api-bridge` — `api.server.ts`, route handlers `/api/*`, auth por cookie JWT e middleware.
+
 # Ponto Processual — Frontend
 
 Sistema de monitoramento de processos judiciais com alertas via WhatsApp.
@@ -24,10 +28,10 @@ Sistema de monitoramento de processos judiciais com alertas via WhatsApp.
 ## Comandos
 
 ```bash
-npm run dev       # desenvolvimento
-npm run build     # build produção
-npm run lint      # eslint
-npx tsc --noEmit  # typecheck (não há script dedicado no package.json)
+npm run dev        # desenvolvimento
+npm run build      # build produção
+npm run lint       # eslint
+npm run typecheck  # tsc --noEmit (roda também no hook Stop do Claude Code)
 ```
 
 ---
@@ -39,7 +43,7 @@ npx tsc --noEmit  # typecheck (não há script dedicado no package.json)
 ```
 src/app/<rota>/page.tsx          ← Server Component: busca dados, monta metadados, compõe a página
   └─ <AppLayout active="...">    ← 'use client': shell (sidebar fixa + drawer mobile)
-       ├─ <PageHeader .../>      ← Server Component: barra topo com título, busca, filtros, ordenação       ← Server Component: faixa animada de alertas
+       ├─ <PageHeader .../>      ← Server Component: barra topo com título, busca, filtros, ordenação
        ├─ <PageContent           ← Server Component: conteúdo principal da rota
              data={...}          ←   recebe os dados buscados no page
              pageInfo={          ←   recebe <PageInfo> já instanciado como ReactNode
@@ -51,7 +55,7 @@ src/app/<rota>/page.tsx          ← Server Component: busca dados, monta metada
 
 ### `page.tsx` — orquestrador
 
-O `page.tsx` é o único lugar onde dados são buscados (hoje via `src/lib/mock-data.ts`, futuramente via route handlers `/api/*`). Ele:
+O `page.tsx` é o único lugar onde dados são buscados (via `src/lib/api.server.ts`, que chama o backend com o JWT do cookie). Ele:
 
 1. Define `metadata` / `generateMetadata` (SEO, OpenGraph)
 2. Declara constantes de configuração de UI (listas de filtros, ordenação, `pageInfoContent`)
@@ -100,10 +104,6 @@ Os controles em si (busca/filtro/ordenação/abas) vivem em `HeaderControls` (me
 
 Filtragem/ordenação real acontece no servidor em `api.server.ts` (`getProcessos`/`getMovimentacoes`/`getPrazos` recebem um objeto de filtros): como o backend filtra pouco, busca-se um conjunto amplo (`limit=100`) e filtra-se/ordena-se no servidor, colapsando em 1 página quando há filtro/busca ativos.
 
-### `<Ticker>` — faixa de alertas
-
-Server Component. Busca `tickerItems` direto de `mock-data` internamente — não recebe props de dados. Duplica o array para criar loop contínuo via CSS animation.
-
 ### `<PageInfo pageInfoContent={...}>` — painel de resumo
 
 `'use client'` — gerencia scroll/carousel entre seções via `useState` + `useRef`.
@@ -142,7 +142,6 @@ Não seguem o padrão `PageHeader + PageContent`. O layout é montado diretament
 | `page.tsx` | Server | Busca de dados, metadata |
 | `AppLayout` | Client | `useState` do drawer mobile |
 | `PageHeader` | Server | Filtros/busca/abas via URL params (Links), sem state de cliente |
-| `Ticker` | Server | Sem estado |
 | `PageInfo` | Client | `useState` + `useRef` do carousel |
 | `PageContent` | Server | Renderização de lista pura |
 | `ProcessoRow` | Server | Sem estado |
@@ -185,18 +184,19 @@ Paleta "creme + verde-floresta" — tokens em `src/app/globals.css`.
 
 ---
 
-## Dados
+## Dados e autenticação
 
-Tudo vem de `src/lib/mock-data.ts`. A timeline em `/processos/[id]` usa `timelineCarlosRibeiro` hardcoded para qualquer processo — precisa ser conectado à API.
-
-**Regra:** nunca chamar a API do backend diretamente do client — usar route handlers `/api/*`.
+- **Server Components** buscam dados via `src/lib/api.server.ts` (`getProcessos`/`getMovimentacoes`/`getPrazos` + `backendGet*`): lê o JWT do cookie `access_token`, chama o backend (`BACKEND_URL`, default `http://localhost:3000`) com `Authorization: Bearer`, e faz `redirect('/login')` em 401. Os tipos `Backend*` desse arquivo espelham os contratos da API — mudança de contrato no back exige atualizar lá.
+- **Client-side** nunca chama o backend direto — usa os route handlers `/api/*` (`src/app/api/auth/{login,register,logout}`, `/api/processes`), que fazem proxy repassando o cookie.
+- **Proteção de rotas**: `src/middleware.ts` — sem `access_token`, tudo exceto `/login` e `/cadastro` redireciona para `/login?next=...`; logado, as rotas públicas redirecionam para `/`.
+- `mock-data.ts` não existe mais; nenhum componente deve importá-lo.
 
 ---
 
 ## Próximos passos
 
-- [ ] Conectar `/api/movimentacoes` e `/api/processos` ao backend (substituir mock-data)
-- [ ] Autenticação JWT + middleware de proteção de rotas
+- [x] Conectar `/api/movimentacoes` e `/api/processos` ao backend (mock-data removido)
+- [x] Autenticação JWT + middleware de proteção de rotas (`src/middleware.ts`)
 - [x] Filtros/busca/ordenação interativos via URL search params (feito em `PageHeader` + `api.server`)
 - [ ] Telas: `/credenciais`, `/configuracoes/whatsapp`
 - [ ] Onboarding (primeira vez sem processos)

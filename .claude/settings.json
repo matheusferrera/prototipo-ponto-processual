@@ -11,6 +11,28 @@
             "statusMessage": "Verificando acesso a .env"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-env.sh\"",
+            "statusMessage": "Verificando acesso a .env via shell"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/typecheck-on-stop.sh\"",
+            "timeout": 120,
+            "statusMessage": "Rodando typecheck antes de encerrar"
+          }
+        ]
       }
     ]
   }
