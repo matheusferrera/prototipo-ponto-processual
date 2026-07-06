@@ -44,9 +44,18 @@
 .statusDotAlert  { background: var(--alert); }
 .statusDotQuiet  { background: var(--quiet); }
 
-.cnj   { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.processCell {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cnj   { font-family: var(--mono); font-size: 12px; font-weight: 500; flex: 0 0 auto; }
+.processOrgao { font-size: 11px; color: var(--ink-3); }
 .parte { font-size: 13px; font-weight: 500; }
 .meta  { font-size: 11px; color: var(--ink-3); }
+.metaStrong { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 
 .ellipsis {
   min-width: 0;
@@ -68,6 +77,13 @@
   letter-spacing: -0.01em;
 }
 
+.cardProcessLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .cardTribLine {
   display: flex;
   align-items: center;
@@ -82,6 +98,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+.cardOrgao {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .cardParte {

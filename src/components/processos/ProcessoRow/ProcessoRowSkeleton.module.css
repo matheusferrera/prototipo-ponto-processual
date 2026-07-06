@@ -1,4 +1,4 @@
-.list { min-width: 860px; }
+.list { min-width: 1040px; }
 
 .row {
   padding: 14px 32px;
@@ -48,6 +48,7 @@
 .cnj   { width: 160px; }
 .md    { width: 70%; }
 .lg    { width: 85%; }
+.orgao { width: 72%; }
 .parte { width: 65%; height: 14px; }
 .mov   { width: 90%; }
 
@@ -59,6 +60,7 @@
 
   .cnj   { width: 62%; }
   .trib  { width: 90px; }
+  .orgao { width: 88%; }
   .parte { width: 78%; height: 16px; }
   .mov   { width: 55%; }
 }

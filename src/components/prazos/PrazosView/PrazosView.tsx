@@ -73,8 +73,16 @@ function ListView({ prazos }: { prazos: Prazo[] }) {
             </div>
 
             <div className={styles.prazoBody}>
-              <div className={styles.prazoParteName}>{pz.parte}</div>
-              <div className={styles.prazoCnj}>{pz.cnj}</div>
+              <div className={styles.prazoParteName}>{pz.assunto}</div>
+              <div className={styles.prazoProcessMeta}>
+                <span className={styles.prazoCnj}>{pz.cnj}</span>
+                {pz.orgaoJulgador !== '—' && (
+                  <>
+                    <span className={styles.metaSep} aria-hidden="true">·</span>
+                    <span className={styles.prazoOrgao}>{pz.orgaoJulgador}</span>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className={styles.prazoMetaMobile}>
@@ -134,8 +142,13 @@ function KanbanView({ prazos }: { prazos: Prazo[] }) {
                   <TribTag label={pz.tribunal} />
                   <span className={styles.kanbanCardTipo}>{pz.tipo}</span>
                 </div>
-                <div className={styles.kanbanCardParte}>{pz.parte}</div>
-                <div className={styles.kanbanCardCnj}>{pz.cnj}</div>
+                <div className={styles.kanbanCardParte}>{pz.assunto}</div>
+                <div className={styles.kanbanCardProcess}>
+                  <span className={styles.kanbanCardCnj}>{pz.cnj}</span>
+                  {pz.orgaoJulgador !== '—' && (
+                    <span className={styles.kanbanCardOrgao}>{pz.orgaoJulgador}</span>
+                  )}
+                </div>
                 <div className={styles.kanbanCardFoot}>
                   <span className={styles.kanbanDias} style={{ color: col.accent }}>{pz.diasRestantes}d</span>
                   <span className={styles.kanbanVence}>{pz.vencimento}</span>
@@ -214,7 +227,7 @@ function CalendarioView({ prazos, year, month }: { prazos: Prazo[]; year: number
                         }}
                       >
                         <div className={styles.calEventTitle} style={{ color: accentColor(pz.state) }}>{pz.tipo}</div>
-                        <div className={styles.calEventParte}>{pz.parte}</div>
+                        <div className={styles.calEventParte}>{pz.assunto}</div>
                       </div>
                     ))}
                   </div>
@@ -268,7 +281,7 @@ export function PrazosView({ prazos, view }: { prazos: Prazo[]; view: PrazoView 
             </AlertTitle>
             {firstCritical && (
               <AlertDescription className={styles.alertDesc}>
-                — {firstCritical.parte} vence em {firstCritical.diasRestantes} dia{firstCritical.diasRestantes !== 1 ? 's' : ''}
+                — {firstCritical.assunto} vence em {firstCritical.diasRestantes} dia{firstCritical.diasRestantes !== 1 ? 's' : ''}
               </AlertDescription>
             )}
           </Alert>

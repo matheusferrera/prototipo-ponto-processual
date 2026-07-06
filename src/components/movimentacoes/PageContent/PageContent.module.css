@@ -81,7 +81,25 @@
 
 .parte  { font-size: 14px; font-weight: 600; }
 .detail { font-size: 13px; margin-top: 2px; color: var(--ink-2); }
-.cnj    { font-family: var(--mono); font-size: 11px; margin-top: 6px; color: var(--ink-3); }
+
+.processMeta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 6px;
+  color: var(--ink-3);
+}
+
+.cnj { font-family: var(--mono); font-size: 11px; }
+.metaSep { font-size: 11px; color: var(--ink-4); }
+.orgaoJulgador {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
 
 .whatsCol {
   padding: 18px 20px;

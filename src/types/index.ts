@@ -10,7 +10,9 @@ export interface Movimentacao {
   id: string;
   tribunal: string;
   cnj: string;
+  orgaoJulgador: string;
   parte: string;
+  assunto: string;
   tipo: string;
   detail: string;
   time: string;
@@ -28,8 +30,10 @@ export interface Processo {
   id: string;
   tribunal: string;
   cnj: string;
+  orgaoJulgador: string;
   parte: string;
   materia: string;
+  assunto?: string;
   classeJudicial?: string;
   grau: string;
   ultimaMov: string;
@@ -54,7 +58,9 @@ export interface Prazo {
   id: string;
   tribunal: string;
   cnj: string;
+  orgaoJulgador: string;
   parte: string;
+  assunto: string;
   tipo: string;
   vencimento: string;
   diasRestantes: number;

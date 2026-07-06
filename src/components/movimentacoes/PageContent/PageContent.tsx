@@ -102,9 +102,17 @@ function MovItem({ m }: { m: Movimentacao }) {
             {m.state === 'signal' && <Seal variant="nova" />}
             {m.state === 'alert'  && <Seal variant="erro" />}
           </div>
-          <div className={styles.parte}>{m.parte}</div>
+          <div className={styles.parte}>{m.assunto}</div>
           <div className={styles.detail}>{m.detail}</div>
-          <div className={styles.cnj}>{m.cnj}</div>
+          <div className={styles.processMeta}>
+            <span className={styles.cnj}>{m.cnj}</span>
+            {m.orgaoJulgador !== '—' && (
+              <>
+                <span className={styles.metaSep} aria-hidden="true">·</span>
+                <span className={styles.orgaoJulgador}>{m.orgaoJulgador}</span>
+              </>
+            )}
+          </div>
         </div>
 
         <div className={styles.whatsCol}>

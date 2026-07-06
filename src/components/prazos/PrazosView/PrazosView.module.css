@@ -146,14 +146,33 @@
   white-space: nowrap;
 }
 
+.prazoProcessMeta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 3px;
+  color: var(--ink-3);
+}
+
 .prazoCnj {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.metaSep {
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.prazoOrgao {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 /* .prazos-meta-mobile visible on mobile via globals.css */
@@ -222,7 +241,20 @@
 .kanbanCardHead { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .kanbanCardTipo { font-size: 10px; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
 .kanbanCardParte { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-.kanbanCardCnj  { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-bottom: 10px; }
+.kanbanCardProcess {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+  color: var(--ink-3);
+}
+
+.kanbanCardCnj  { font-family: var(--mono); font-size: 10px; }
+.kanbanCardOrgao {
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 
 .kanbanCardFoot { display: flex; align-items: baseline; justify-content: space-between; }
 .kanbanDias     { font-family: var(--mono); font-weight: 700; font-size: 22px; line-height: 1; }

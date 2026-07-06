@@ -19,6 +19,7 @@ export function ProcessoRowSkeleton() {
       <div className={styles.card}>
         <span className={`${styles.bar} ${styles.cnj}`} />
         <span className={`${styles.bar} ${styles.trib}`} />
+        <span className={`${styles.bar} ${styles.orgao}`} />
         <span className={`${styles.bar} ${styles.parte}`} />
         <span className={`${styles.bar} ${styles.mov}`} />
       </div>

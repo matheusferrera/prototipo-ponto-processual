@@ -206,8 +206,8 @@ export default async function ProcessoDetailPage({ params }: Props) {
           </h1>
           <dl className={styles.infoGrid}>
             <div className={styles.infoItem}>
-              <dt>Vara</dt>
-              <dd>{processo.materia}</dd>
+              <dt>Órgão julgador</dt>
+              <dd>{processo.orgaoJulgador}</dd>
             </div>
             <div className={styles.infoItem}>
               <dt>Grau</dt>

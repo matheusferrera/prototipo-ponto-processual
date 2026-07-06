@@ -48,6 +48,7 @@ type BackendProcess = {
   lastMovAt: string | null;
   link?: string | null;
   classeJudicial: string | null;
+  assunto: string | null;
   orgaoJulgador: string | null;
   ultimaMovimentacao: string | null;
   autuadoEm?: string | null;
@@ -87,14 +88,19 @@ function toProcesso(p: BackendProcess): Processo {
     p.summary?.partes?.split(';')[0]?.trim() ||
     p.poloAtivo?.[0]?.nome?.trim() ||
     '—';
+  const orgaoJulgador = p.orgaoJulgador?.trim() || p.summary?.vara?.trim() || '—';
+  const classeJudicial = p.classeJudicial?.trim() || '—';
+  const assunto = p.assunto?.trim() || classeJudicial;
 
   return {
     id: p.id,
     tribunal: p.tribunal.replace(/G[12]$/, ''),
     cnj: p.numero,
+    orgaoJulgador,
     parte,
     materia: p.summary?.vara ?? p.orgaoJulgador ?? '—',
-    classeJudicial: p.classeJudicial ?? '—',
+    assunto,
+    classeJudicial,
     grau,
     ultimaMov,
     state,
@@ -155,7 +161,9 @@ export async function getProcessos(page = 1, limit = 20, filters: ProcessoFilter
       list = list.filter(p =>
         p.cnj.toLowerCase().includes(term) ||
         p.tribunal.toLowerCase().includes(term) ||
+        p.orgaoJulgador.toLowerCase().includes(term) ||
         p.parte.toLowerCase().includes(term) ||
+        (p.assunto ?? '').toLowerCase().includes(term) ||
         (p.classeJudicial ?? '').toLowerCase().includes(term),
       );
     }
@@ -349,7 +357,9 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       id: m.id,
       tribunal: proc ? proc.tribunal.replace(/G[12]$/, '') : '—',
       cnj: proc ? proc.numero : '—',
+      orgaoJulgador: proc?.orgaoJulgador?.trim() || '—',
       parte: processParte(proc),
+      assunto: proc?.assunto?.trim() || processParte(proc),
       tipo: extractTipo(m.descricao),
       detail: m.descricao,
       time: timeStr,
@@ -365,7 +375,9 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
   if (term) {
     entries = entries.filter(({ item }) =>
       item.parte.toLowerCase().includes(term) ||
+      item.assunto.toLowerCase().includes(term) ||
       item.cnj.toLowerCase().includes(term) ||
+      item.orgaoJulgador.toLowerCase().includes(term) ||
       item.tipo.toLowerCase().includes(term) ||
       item.detail.toLowerCase().includes(term) ||
       item.tribunal.toLowerCase().includes(term),
@@ -469,6 +481,8 @@ type BackendDeadline = {
   process?: {
     numero: string;
     tribunal: string;
+    orgaoJulgador: string | null;
+    assunto?: string | null;
     poloAtivo: BackendParte[] | null;
   } | null;
 };
@@ -497,7 +511,9 @@ function toPrazo(d: BackendDeadline): Prazo {
     id: d.id,
     tribunal: d.process ? d.process.tribunal.replace(/G[12]$/, '') : '—',
     cnj: d.process?.numero ?? '—',
+    orgaoJulgador: d.process?.orgaoJulgador?.trim() || '—',
     parte,
+    assunto: d.process?.assunto?.trim() || parte,
     tipo: d.tipoDocumento,
     vencimento,
     diasRestantes: dias,
@@ -539,7 +555,9 @@ export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {
   if (term) {
     list = list.filter(p =>
       p.parte.toLowerCase().includes(term) ||
+      p.assunto.toLowerCase().includes(term) ||
       p.cnj.toLowerCase().includes(term) ||
+      p.orgaoJulgador.toLowerCase().includes(term) ||
       p.tipo.toLowerCase().includes(term) ||
       p.tribunal.toLowerCase().includes(term),
     );

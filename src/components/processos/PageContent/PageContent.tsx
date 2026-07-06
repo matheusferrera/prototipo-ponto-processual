@@ -43,7 +43,7 @@ export function PageContent({ processos, total, totalPages, currentPage, listPar
               className={styles.tableHeader}
               style={{ gridTemplateColumns: COLS }}
             >
-              <div /><div>Tribunal</div><div>Nº CNJ</div><div>Classe judicial</div>
+              <div /><div>Tribunal</div><div>Nº CNJ / Órgão julgador</div><div>Assunto</div>
               <div>Polo ativo</div><div>Última movimentação</div>
             </div>
 
