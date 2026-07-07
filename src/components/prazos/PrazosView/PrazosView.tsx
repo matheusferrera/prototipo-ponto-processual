@@ -13,6 +13,7 @@ export type PrazoView = 'lista' | 'kanban' | 'calendario';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAY_NAMES   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const WEEKDAY_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 
 function accentColor(state: Prazo['state']) {
   if (state === 'alert')  return 'var(--alert)';
@@ -20,9 +21,9 @@ function accentColor(state: Prazo['state']) {
   return 'var(--quiet)';
 }
 
-function parseVenc(v: string): { day: number; month: number } {
-  const [d, m] = v.split('/').map(Number);
-  return { day: d, month: m };
+function parseVencISO(v: string): { year: number; month: number; day: number } {
+  const [y, m, d] = v.split('-').map(Number);
+  return { year: y, month: m, day: d };
 }
 
 function diasColorClass(dias: number, s: typeof styles) {
@@ -164,23 +165,58 @@ function KanbanView({ prazos }: { prazos: Prazo[] }) {
 
 // ─── Calendário ──────────────────────────────────────────────────────────────
 
-function CalendarioView({ prazos, year, month }: { prazos: Prazo[]; year: number; month: number }) {
+function AgendaItem({ pz, showDay }: { pz: Prazo; showDay?: number }) {
+  return (
+    <Link
+      href={`/processos/${encodeURIComponent(pz.cnj)}`}
+      className={styles.agendaItem}
+      style={{ borderLeftColor: accentColor(pz.state) }}
+    >
+      <div className={styles.agendaItemHead}>
+        {showDay != null && <span className={styles.agendaDayBadge}>dia {String(showDay).padStart(2, '0')}</span>}
+        <TribTag label={pz.tribunal} />
+        <span className={styles.prazoTipo}>{pz.tipo}</span>
+        <span className={`${styles.agendaDias} ${diasColorClass(pz.diasRestantes, styles)}`}>{pz.diasRestantes}d</span>
+      </div>
+      <div className={styles.agendaParte}>{pz.assunto}</div>
+      <div className={styles.agendaCnj}>{pz.cnj}</div>
+    </Link>
+  );
+}
+
+function CalendarioView({
+  prazos, year, month, selectedDay, onSelectDay,
+}: {
+  prazos: Prazo[];
+  year: number;
+  month: number;
+  selectedDay: number | null;
+  onSelectDay: (day: number | null) => void;
+}) {
   const firstWeekday = new Date(year, month - 1, 1).getDay();
   const daysInMonth  = new Date(year, month, 0).getDate();
   const today        = new Date();
   const todayDay     = today.getFullYear() === year && today.getMonth() + 1 === month ? today.getDate() : -1;
 
-  const byDay: Record<number, Prazo[]> = {};
+  // Só prazos do ano+mês exibidos, ordenados por dia
+  const inMonth: { day: number; pz: Prazo }[] = [];
   for (const pz of prazos) {
-    const { day, month: m } = parseVenc(pz.vencimento);
-    if (m === month) byDay[day] = [...(byDay[day] ?? []), pz];
+    const v = parseVencISO(pz.vencimentoISO);
+    if (v.year === year && v.month === month) inMonth.push({ day: v.day, pz });
   }
+  inMonth.sort((a, b) => a.day - b.day);
+
+  const byDay: Record<number, Prazo[]> = {};
+  for (const { day, pz } of inMonth) byDay[day] = [...(byDay[day] ?? []), pz];
 
   const cells: (number | null)[] = [
     ...Array<null>(firstWeekday).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   while (cells.length % 7 !== 0) cells.push(null);
+
+  const dayItems = selectedDay ? (byDay[selectedDay] ?? []) : [];
+  const selectedWeekday = selectedDay ? WEEKDAY_FULL[new Date(year, month - 1, selectedDay).getDay()] : '';
 
   return (
     <div className={`px-page ${styles.calView}`}>
@@ -192,51 +228,62 @@ function CalendarioView({ prazos, year, month }: { prazos: Prazo[]; year: number
 
       <div className={styles.calGrid}>
         {cells.map((day, i) => {
-          const items   = day ? (byDay[day] ?? []) : [];
-          const isToday = day === todayDay;
+          if (!day) return <div key={i} className={`${styles.calCell} ${styles.calCellEmpty}`} aria-hidden="true" />;
+
+          const items      = byDay[day] ?? [];
+          const isToday    = day === todayDay;
+          const isSelected = day === selectedDay;
           return (
-            <div
+            <button
               key={i}
-              className={`${styles.calCell} ${day ? styles.calCellFilled : styles.calCellEmpty}`}
+              type="button"
+              className={`${styles.calCell} ${styles.calCellFilled} ${isSelected ? styles.calCellSelected : ''}`}
+              aria-pressed={isSelected}
+              aria-current={isToday ? 'date' : undefined}
+              aria-label={`${day} de ${MONTH_NAMES[month - 1]}, ${items.length === 0 ? 'sem prazos' : `${items.length} prazo${items.length > 1 ? 's' : ''}`}`}
+              onClick={() => onSelectDay(isSelected ? null : day)}
             >
-              {day && (
-                <>
-                  <div className={`${styles.calDayNum} ${isToday ? styles.calDayNumToday : styles.calDayNumNormal}`}>
-                    {day}
-                  </div>
+              <span className={`${styles.calDayNum} ${isToday ? styles.calDayNumToday : styles.calDayNumNormal}`}>
+                {day}
+              </span>
 
-                  {items.length > 0 && (
-                    <div className={styles.calDots}>
-                      {items.slice(0, 3).map(pz => (
-                        <span key={pz.id} style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor(pz.state), display: 'block', flexShrink: 0 }} />
-                      ))}
-                      {items.length > 3 && (
-                        <span style={{ fontSize: 8, color: 'var(--ink-4)', lineHeight: 1, alignSelf: 'center' }}>+{items.length - 3}</span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className={styles.calEvents}>
-                    {items.map(pz => (
-                      <div
-                        key={pz.id}
-                        className={styles.calEvent}
-                        style={{
-                          background: pz.state === 'alert' ? 'var(--alert-soft)' : pz.state === 'signal' ? 'var(--brick-soft)' : 'var(--quiet-soft)',
-                          borderLeft: `2px solid ${accentColor(pz.state)}`,
-                        }}
-                      >
-                        <div className={styles.calEventTitle} style={{ color: accentColor(pz.state) }}>{pz.tipo}</div>
-                        <div className={styles.calEventParte}>{pz.assunto}</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+              <span className={styles.calDots} aria-hidden="true">
+                {items.slice(0, 3).map(pz => (
+                  <span key={pz.id} className={styles.calDot} style={{ background: accentColor(pz.state) }} />
+                ))}
+                {items.length > 3 && <span className={styles.calMore}>+{items.length - 3}</span>}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      <section className={styles.agenda} aria-label="Prazos do período selecionado">
+        {selectedDay ? (
+          <>
+            <div className={styles.agendaHead}>
+              <span className={styles.agendaHeadLabel}>§ {selectedWeekday}, {selectedDay} de {MONTH_NAMES[month - 1]}</span>
+              <div className={styles.listDivider} />
+              <button type="button" className={styles.agendaClear} onClick={() => onSelectDay(null)}>
+                Ver mês inteiro
+              </button>
+            </div>
+            {dayItems.length === 0 ? (
+              <div className={styles.agendaEmpty}>Nenhum prazo neste dia.</div>
+            ) : dayItems.map(pz => <AgendaItem key={pz.id} pz={pz} />)}
+          </>
+        ) : (
+          <>
+            <div className={styles.agendaHead}>
+              <span className={styles.agendaHeadLabel}>§ PRAZOS DE {MONTH_NAMES[month - 1].toUpperCase()}</span>
+              <div className={styles.listDivider} />
+            </div>
+            {inMonth.length === 0 ? (
+              <div className={styles.agendaEmpty}>Nenhum prazo em {MONTH_NAMES[month - 1]} de {year}.</div>
+            ) : inMonth.map(({ day, pz }) => <AgendaItem key={pz.id} pz={pz} showDay={day} />)}
+          </>
+        )}
+      </section>
     </div>
   );
 }
@@ -247,29 +294,45 @@ export function PrazosView({ prazos, view }: { prazos: Prazo[]; view: PrazoView 
   const now                     = new Date();
   const [calYear, setCalYear]   = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
+  const [calDay, setCalDay]     = useState<number | null>(now.getDate());
 
   const criticalCount = prazos.filter(p => p.diasRestantes <= 3).length;
   const firstCritical = prazos.find(p => p.diasRestantes <= 3);
+
+  const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth() + 1;
 
   function prevMonth() {
     const d = new Date(calYear, calMonth - 2);
     setCalYear(d.getFullYear());
     setCalMonth(d.getMonth() + 1);
+    setCalDay(null);
   }
 
   function nextMonth() {
     const d = new Date(calYear, calMonth);
     setCalYear(d.getFullYear());
     setCalMonth(d.getMonth() + 1);
+    setCalDay(null);
+  }
+
+  function goToday() {
+    setCalYear(now.getFullYear());
+    setCalMonth(now.getMonth() + 1);
+    setCalDay(now.getDate());
   }
 
   return (
     <div className={styles.root}>
       {view === 'calendario' && (
         <div className={styles.calNavBar}>
-          <Button onClick={prevMonth} variant="outline" size="icon-sm" className="border-[var(--line)] text-[var(--ink-2)]">←</Button>
-          <span className={styles.calNavLabel}>{MONTH_NAMES[calMonth - 1]} {calYear}</span>
-          <Button onClick={nextMonth} variant="outline" size="icon-sm" className="border-[var(--line)] text-[var(--ink-2)]">→</Button>
+          <div className={styles.calNavGroup}>
+            <Button onClick={prevMonth} variant="outline" size="icon" aria-label="Mês anterior" className="border-[var(--line)] text-[var(--ink-2)] max-md:size-11">←</Button>
+            <span className={styles.calNavLabel} aria-live="polite">{MONTH_NAMES[calMonth - 1]} {calYear}</span>
+            <Button onClick={nextMonth} variant="outline" size="icon" aria-label="Próximo mês" className="border-[var(--line)] text-[var(--ink-2)] max-md:size-11">→</Button>
+          </div>
+          <Button onClick={goToday} variant="outline" size="sm" disabled={isCurrentMonth && calDay === now.getDate()} className="border-[var(--line)] text-[var(--ink-2)] max-md:h-11 max-md:px-4">
+            Hoje
+          </Button>
         </div>
       )}
 
@@ -289,7 +352,9 @@ export function PrazosView({ prazos, view }: { prazos: Prazo[]; view: PrazoView 
 
         {view === 'lista'      && <ListView      prazos={prazos} />}
         {view === 'kanban'     && <KanbanView     prazos={prazos} />}
-        {view === 'calendario' && <CalendarioView prazos={prazos} year={calYear} month={calMonth} />}
+        {view === 'calendario' && (
+          <CalendarioView prazos={prazos} year={calYear} month={calMonth} selectedDay={calDay} onSelectDay={setCalDay} />
+        )}
       </div>
     </div>
   );

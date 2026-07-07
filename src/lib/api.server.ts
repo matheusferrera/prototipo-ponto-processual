@@ -501,6 +501,7 @@ function toPrazo(d: BackendDeadline): Prazo {
 
   const venc = new Date(d.dataLimite);
   const vencimento = `${String(venc.getDate()).padStart(2, '0')}/${String(venc.getMonth() + 1).padStart(2, '0')}`;
+  const vencimentoISO = `${venc.getFullYear()}-${String(venc.getMonth() + 1).padStart(2, '0')}-${String(venc.getDate()).padStart(2, '0')}`;
 
   const parte =
     d.process?.poloAtivo?.[0]?.nome?.trim() ||
@@ -516,6 +517,7 @@ function toPrazo(d: BackendDeadline): Prazo {
     assunto: d.process?.assunto?.trim() || parte,
     tipo: d.tipoDocumento,
     vencimento,
+    vencimentoISO,
     diasRestantes: dias,
     state,
   };

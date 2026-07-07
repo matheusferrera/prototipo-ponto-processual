@@ -63,6 +63,8 @@ export interface Prazo {
   assunto: string;
   tipo: string;
   vencimento: string;
+  /** Data completa do vencimento (yyyy-mm-dd) — usada pelo calendário para casar ano+mês */
+  vencimentoISO: string;
   diasRestantes: number;
   state: StatusType;
 }
