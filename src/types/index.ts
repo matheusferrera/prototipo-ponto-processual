@@ -26,6 +26,12 @@ export interface MovimentacaoGroup {
   items: Movimentacao[];
 }
 
+export interface ProcessoParte {
+  nome: string;
+  documento?: string | null;
+  tipo?: string | null;
+}
+
 export interface Processo {
   id: string;
   tribunal: string;
@@ -38,7 +44,16 @@ export interface Processo {
   grau: string;
   ultimaMov: string;
   state: StatusType;
+  status: string;
   whatsEnabled: boolean;
+  poloAtivo: ProcessoParte[];
+  poloPassivo: ProcessoParte[];
+  valorCausa: number | null;
+  autuadoEm: string | null;
+  lastMovAt: string | null;
+  lastScrapedAt: string | null;
+  syncStatus: string | null;
+  syncError: string | null;
   link?: string | null;
 }
 
@@ -67,4 +82,25 @@ export interface Prazo {
   vencimentoISO: string;
   diasRestantes: number;
   state: StatusType;
+}
+
+export type TribunalHealthStatus = 'operacional' | 'sincronizando' | 'atencao' | 'erro';
+
+export interface TribunalStatusItem {
+  id: string;
+  codigo: string;
+  nome: string;
+  esfera: 'Estadual' | 'Federal';
+  uf: string;
+  sistema: string;
+  status: TribunalHealthStatus;
+  lastSyncAt: string | null;
+  latencyMs: number;
+  successRate: number;
+  activeProcessesCount: number;
+  activeCredentialsCount: number;
+  lastError?: string | null;
+  totalJobsLast24h?: number;
+  successJobsLast24h?: number;
+  failedJobsLast24h?: number;
 }

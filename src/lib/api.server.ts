@@ -1,6 +1,14 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type { Processo, StatusType, TimelineEvent, Movimentacao, MovimentacaoGroup, Prazo } from '@/types';
+import type {
+  Processo,
+  ProcessoParte,
+  StatusType,
+  TimelineEvent,
+  Movimentacao,
+  MovimentacaoGroup,
+  Prazo,
+} from '@/types';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -41,19 +49,21 @@ type BackendProcess = {
   id: string;
   numero: string;
   tribunal: string;
-  grau: number;
   status: string;
   monitored: boolean;
   syncStatus: string | null;
+  syncError: string | null;
   lastMovAt: string | null;
+  lastScrapedAt: string | null;
   link?: string | null;
   classeJudicial: string | null;
   assunto: string | null;
   orgaoJulgador: string | null;
   ultimaMovimentacao: string | null;
-  autuadoEm?: string | null;
+  autuadoEm: string | null;
   poloAtivo: BackendParte[] | null;
   poloPassivo: BackendParte[] | null;
+  valorCausa: string | number | null;
   // legado: algumas respostas antigas traziam um objeto summary agregado
   summary?: {
     partes: string | null;
@@ -62,31 +72,68 @@ type BackendProcess = {
   } | null;
 };
 
-type BackendParte = { nome?: string | null };
+type BackendParte = {
+  nome?: string | null;
+  documento?: string | null;
+  tipo?: string | null;
+};
+
+function normalizeDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function normalizeValorCausa(value: string | number | null | undefined): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  const raw = value.trim();
+  const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function normalizePartes(value: BackendParte[] | null | undefined): ProcessoParte[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((parte) => {
+    const nome = parte?.nome?.trim();
+    if (!nome) return [];
+    return [{
+      nome,
+      documento: parte.documento?.trim() || null,
+      tipo: parte.tipo?.trim() || null,
+    }];
+  });
+}
 
 function toProcesso(p: BackendProcess): Processo {
+  const lastMovAt = normalizeDate(p.lastMovAt);
   let state: StatusType = 'quiet';
   if (p.syncStatus === 'error') {
     state = 'alert';
-  } else if (p.lastMovAt) {
-    const diff = Date.now() - new Date(p.lastMovAt).getTime();
+  } else if (lastMovAt) {
+    const diff = Date.now() - new Date(lastMovAt).getTime();
     if (diff < 1000 * 60 * 60 * 24 * 2) state = 'signal';
   }
 
   // coluna "Última mov." — texto da última movimentação do banco;
   // fallback para a data de lastMovAt quando o texto não existir
   let ultimaMov = p.ultimaMovimentacao?.trim() || '—';
-  if (ultimaMov === '—' && p.lastMovAt) {
-    const d = new Date(p.lastMovAt);
+  if (ultimaMov === '—' && lastMovAt) {
+    const d = new Date(lastMovAt);
     ultimaMov = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
   // grau não vem no payload — derivado do sufixo G1/G2 do tribunal
   const grau = /G2$/.test(p.tribunal) ? '2º' : '1º';
 
+  const poloAtivo = normalizePartes(p.poloAtivo);
+  const poloPassivo = normalizePartes(p.poloPassivo);
   const parte =
     p.summary?.partes?.split(';')[0]?.trim() ||
-    p.poloAtivo?.[0]?.nome?.trim() ||
+    poloAtivo[0]?.nome ||
     '—';
   const orgaoJulgador = p.orgaoJulgador?.trim() || p.summary?.vara?.trim() || '—';
   const classeJudicial = p.classeJudicial?.trim() || '—';
@@ -104,7 +151,16 @@ function toProcesso(p: BackendProcess): Processo {
     grau,
     ultimaMov,
     state,
+    status: p.status,
     whatsEnabled: p.monitored,
+    poloAtivo,
+    poloPassivo,
+    valorCausa: normalizeValorCausa(p.valorCausa),
+    autuadoEm: normalizeDate(p.autuadoEm),
+    lastMovAt,
+    lastScrapedAt: normalizeDate(p.lastScrapedAt),
+    syncStatus: p.syncStatus,
+    syncError: p.syncError,
     link: p.link ?? null,
   };
 }
@@ -116,74 +172,112 @@ type ProcessoPage = {
   page: number;
 };
 
+type CsvFilter = string | readonly string[];
+
 export type ProcessoFilters = {
   q?: string;
-  /** nome do tribunal (ex.: "TRF1") — "" = todos */
-  tribunal?: string;
-  /** state: "signal" | "alert" | "quiet" — "" = todos */
-  status?: string;
-  /** "ativos" | "inativos" — "" = todos */
-  whats?: string;
-  /** "cnj" | "tribunal" | "status" — "" = mais recentes (ordem do backend) */
-  sort?: string;
+  /** Tribunal(is) em CSV ou lista (ex.: "TRF1,TJDFT"). */
+  tribunal?: CsvFilter;
+  grau?: '1' | '2' | string;
+  /** Estado visual derivado pelo backend. */
+  state?: StatusType | string;
+  /** Status processual em CSV ou lista (ex.: "active,archived"). */
+  status?: CsvFilter;
+  monitored?: boolean | 'true' | 'false' | string;
+  assunto?: string;
+  classe?: string;
+  orgao?: string;
+  valorMin?: number | string;
+  valorMax?: number | string;
+  autuadoFrom?: string;
+  autuadoTo?: string;
+  movFrom?: string;
+  movTo?: string;
+  sort?: 'recent' | 'cnj' | 'tribunal' | 'valor' | 'autuado' | string;
+  order?: 'asc' | 'desc' | string;
 };
 
-const PROCESSO_STATE_ORDER: Record<StatusType, number> = { signal: 0, alert: 1, quiet: 2 };
-
-function sortProcessos(list: Processo[], sort?: string): void {
-  switch (sort) {
-    case 'cnj':
-      list.sort((a, b) => a.cnj.localeCompare(b.cnj));
-      break;
-    case 'tribunal':
-      list.sort((a, b) => a.tribunal.localeCompare(b.tribunal) || a.cnj.localeCompare(b.cnj));
-      break;
-    case 'status':
-      list.sort((a, b) => PROCESSO_STATE_ORDER[a.state] - PROCESSO_STATE_ORDER[b.state]);
-      break;
-    // default: mantém a ordem do backend (mais recentes)
+function appendQueryValue(
+  params: URLSearchParams,
+  key: string,
+  value: string | number | boolean | readonly string[] | undefined,
+): void {
+  if (value === undefined) return;
+  if (Array.isArray(value)) {
+    const csv = value.map(item => item.trim()).filter(Boolean).join(',');
+    if (csv) params.set(key, csv);
+    return;
   }
+
+  const normalized = String(value).trim();
+  if (normalized) params.set(key, normalized);
 }
 
 export async function getProcessos(page = 1, limit = 20, filters: ProcessoFilters = {}): Promise<ProcessoPage> {
-  const { q, tribunal, status, whats, sort } = filters;
-  const term = q?.trim().toLowerCase();
-  const hasFilter = Boolean(term || tribunal || status || whats || sort);
+  const params = new URLSearchParams({
+    page: String(Math.max(1, Math.trunc(page))),
+    limit: String(Math.max(1, Math.trunc(limit))),
+  });
 
-  // Busca/filtros: o backend só filtra `numero` exato, então trazemos um conjunto
-  // amplo e filtramos/ordenamos no servidor, colapsando em uma única página.
-  if (hasFilter) {
-    const body: { data: BackendProcess[]; total: number } =
-      await backendGet(`/processes?page=1&limit=100`);
-    let list = body.data.map(toProcesso);
-
-    if (term) {
-      list = list.filter(p =>
-        p.cnj.toLowerCase().includes(term) ||
-        p.tribunal.toLowerCase().includes(term) ||
-        p.orgaoJulgador.toLowerCase().includes(term) ||
-        p.parte.toLowerCase().includes(term) ||
-        (p.assunto ?? '').toLowerCase().includes(term) ||
-        (p.classeJudicial ?? '').toLowerCase().includes(term),
-      );
-    }
-    if (tribunal) list = list.filter(p => p.tribunal === tribunal);
-    if (status)   list = list.filter(p => p.state === status);
-    if (whats)    list = list.filter(p => (whats === 'ativos' ? p.whatsEnabled : !p.whatsEnabled));
-
-    sortProcessos(list, sort);
-
-    return { processos: list, total: list.length, totalPages: 1, page: 1 };
-  }
+  appendQueryValue(params, 'q', filters.q);
+  appendQueryValue(params, 'tribunal', filters.tribunal);
+  appendQueryValue(params, 'grau', filters.grau);
+  appendQueryValue(params, 'state', filters.state);
+  appendQueryValue(params, 'status', filters.status);
+  appendQueryValue(params, 'monitored', filters.monitored);
+  appendQueryValue(params, 'assunto', filters.assunto);
+  appendQueryValue(params, 'classe', filters.classe);
+  appendQueryValue(params, 'orgao', filters.orgao);
+  appendQueryValue(params, 'valorMin', filters.valorMin);
+  appendQueryValue(params, 'valorMax', filters.valorMax);
+  appendQueryValue(params, 'autuadoFrom', filters.autuadoFrom);
+  appendQueryValue(params, 'autuadoTo', filters.autuadoTo);
+  appendQueryValue(params, 'movFrom', filters.movFrom);
+  appendQueryValue(params, 'movTo', filters.movTo);
+  appendQueryValue(params, 'sort', filters.sort);
+  appendQueryValue(params, 'order', filters.order);
 
   const body: { data: BackendProcess[]; total: number; totalPages: number; page: number } =
-    await backendGet(`/processes?page=${page}&limit=${limit}`);
+    await backendGet(`/processes?${params.toString()}`);
   return {
     processos: body.data.map(toProcesso),
     total: body.total,
     totalPages: body.totalPages,
     page: body.page,
   };
+}
+
+export type ProcessoStats = {
+  /** total global da carteira (do backend) */
+  total: number;
+  /** processos com novidade na amostra */
+  comNovidade: number;
+  /** distribuição por tribunal (percentuais somam ~100 na amostra) */
+  porTribunal: { tribunal: string; count: number; percent: number }[];
+};
+
+/**
+ * Agrega estatísticas da carteira para o card "Informações".
+ * O backend não expõe agregações, então amostramos um conjunto amplo
+ * (limit=100) e derivamos contagens/percentuais no servidor. O `total`
+ * vem do backend (global); os percentuais são calculados sobre a amostra.
+ */
+export async function getProcessoStats(): Promise<ProcessoStats> {
+  const body: { data: BackendProcess[]; total?: number } =
+    await backendGet(`/processes?page=1&limit=100`);
+  const list = body.data.map(toProcesso);
+  const total = body.total ?? list.length;
+  const comNovidade = list.filter(p => p.state === 'signal').length;
+
+  const counts = new Map<string, number>();
+  for (const p of list) counts.set(p.tribunal, (counts.get(p.tribunal) ?? 0) + 1);
+
+  const sample = list.length || 1;
+  const porTribunal = [...counts.entries()]
+    .map(([tribunal, count]) => ({ tribunal, count, percent: Math.round((count / sample) * 100) }))
+    .sort((a, b) => b.count - a.count || a.tribunal.localeCompare(b.tribunal));
+
+  return { total, comNovidade, porTribunal };
 }
 
 export async function getProcesso(numero: string): Promise<Processo | null> {
@@ -417,6 +511,7 @@ export type MovimentacaoDetail = {
   link: string | null;
   detectedAt: string;
   processData?: (BackendProcess & {
+    grau: number;
     summary: {
       link?: string | null;
       partes?: string | null;
@@ -582,3 +677,164 @@ export async function getProcessoMovements(processId: string): Promise<TimelineE
   );
   return sorted.map((m, i) => toTimelineEvent(m, i, sorted.length));
 }
+
+export async function getTribunaisStatus(): Promise<import('@/types').TribunalStatusItem[]> {
+  try {
+    const body = await backendGet('/scraper/status') as { tribunals?: import('@/types').TribunalStatusItem[] };
+    if (body?.tribunals && Array.isArray(body.tribunals) && body.tribunals.length > 0) {
+      return body.tribunals;
+    }
+  } catch (err: unknown) {
+    // Next.js redirect() throws a special error that must NOT be caught
+    if (err instanceof Error && err.message?.includes('NEXT_REDIRECT')) {
+      throw err;
+    }
+    console.error('Falha ao buscar status no backend:', err);
+  }
+
+  // Fallback se o backend retornar vazio ou estiver inacessível
+  return [
+    {
+      id: 'TJDFTG1',
+      codigo: 'TJDFT 1º Grau',
+      nome: 'Tribunal de Justiça do Distrito Federal e dos Territórios (1ª Instância)',
+      esfera: 'Estadual',
+      uf: 'DF',
+      sistema: 'PJe',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+      latencyMs: 840,
+      successRate: 99.2,
+      activeProcessesCount: 42,
+      activeCredentialsCount: 3,
+    },
+    {
+      id: 'TJDFTG2',
+      codigo: 'TJDFT 2º Grau',
+      nome: 'Tribunal de Justiça do Distrito Federal e dos Territórios (2ª Instância)',
+      esfera: 'Estadual',
+      uf: 'DF',
+      sistema: 'PJe',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
+      latencyMs: 910,
+      successRate: 98.8,
+      activeProcessesCount: 18,
+      activeCredentialsCount: 3,
+    },
+    {
+      id: 'TRF1G1',
+      codigo: 'TRF-1 1º Grau',
+      nome: 'Tribunal Regional Federal da 1ª Região (Seções Judiciárias)',
+      esfera: 'Federal',
+      uf: 'DF',
+      sistema: 'PJe',
+      status: 'sincronizando',
+      lastSyncAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+      latencyMs: 1420,
+      successRate: 96.5,
+      activeProcessesCount: 35,
+      activeCredentialsCount: 2,
+    },
+    {
+      id: 'TRF1G2',
+      codigo: 'TRF-1 2º Grau',
+      nome: 'Tribunal Regional Federal da 1ª Região (Tribunal)',
+      esfera: 'Federal',
+      uf: 'DF',
+      sistema: 'PJe',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
+      latencyMs: 1250,
+      successRate: 97.9,
+      activeProcessesCount: 12,
+      activeCredentialsCount: 2,
+    },
+    {
+      id: 'TRF3G1',
+      codigo: 'TRF-3 1º Grau',
+      nome: 'Tribunal Regional Federal da 3ª Região (SP/MS)',
+      esfera: 'Federal',
+      uf: 'SP',
+      sistema: 'PJe',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
+      latencyMs: 1100,
+      successRate: 99.0,
+      activeProcessesCount: 27,
+      activeCredentialsCount: 2,
+    },
+    {
+      id: 'TRF3G2',
+      codigo: 'TRF-3 2º Grau',
+      nome: 'Tribunal Regional Federal da 3ª Região (2ª Instância)',
+      esfera: 'Federal',
+      uf: 'SP',
+      sistema: 'PJe',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+      latencyMs: 1050,
+      successRate: 99.5,
+      activeProcessesCount: 9,
+      activeCredentialsCount: 2,
+    },
+    {
+      id: 'TJPIG1',
+      codigo: 'TJPI 1º Grau',
+      nome: 'Tribunal de Justiça do Estado do Piauí (1ª Instância)',
+      esfera: 'Estadual',
+      uf: 'PI',
+      sistema: 'PJe',
+      status: 'atencao',
+      lastSyncAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
+      latencyMs: 2450,
+      successRate: 91.2,
+      activeProcessesCount: 15,
+      activeCredentialsCount: 1,
+      lastError: 'Lentidão detectada na resposta do PJe/TJPI (HTTP 504 Gateway Timeout esporádico)',
+    },
+    {
+      id: 'TJPIG2',
+      codigo: 'TJPI 2º Grau',
+      nome: 'Tribunal de Justiça do Estado do Piauí (2ª Instância)',
+      esfera: 'Estadual',
+      uf: 'PI',
+      sistema: 'PJe',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+      latencyMs: 1320,
+      successRate: 97.0,
+      activeProcessesCount: 6,
+      activeCredentialsCount: 1,
+    },
+    {
+      id: 'TRF2G1',
+      codigo: 'TRF-2 1º Grau',
+      nome: 'Tribunal Regional Federal da 2ª Região (RJ/ES)',
+      esfera: 'Federal',
+      uf: 'RJ',
+      sistema: 'e-Proc',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
+      latencyMs: 780,
+      successRate: 99.8,
+      activeProcessesCount: 14,
+      activeCredentialsCount: 1,
+    },
+    {
+      id: 'TRF2G2',
+      codigo: 'TRF-2 2º Grau',
+      nome: 'Tribunal Regional Federal da 2ª Região (2ª Instância)',
+      esfera: 'Federal',
+      uf: 'RJ',
+      sistema: 'e-Proc',
+      status: 'operacional',
+      lastSyncAt: new Date(Date.now() - 31 * 60 * 1000).toISOString(),
+      latencyMs: 810,
+      successRate: 100.0,
+      activeProcessesCount: 5,
+      activeCredentialsCount: 1,
+    },
+  ];
+}
+

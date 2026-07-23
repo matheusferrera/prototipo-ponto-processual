@@ -1,0 +1,373 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.controlsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 16px 20px;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterBtn {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 0;
+}
+
+.filterBtn:hover {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+
+.filterBtnActive {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.autoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick);
+  background: var(--brick-soft);
+  padding: 6px 12px;
+  border: 1px solid var(--brick);
+  border-radius: 0;
+}
+
+.pulseIcon {
+  color: var(--brick);
+  animation: pulse 2s infinite;
+}
+
+.searchBox {
+  position: relative;
+  min-width: 260px;
+}
+
+.searchInput {
+  width: 100%;
+  font-family: var(--ui);
+  font-size: 13px;
+  padding: 7px 12px 7px 34px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  outline: none;
+  border-radius: 0;
+}
+
+.searchInput:focus {
+  border-color: var(--brick);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+/* Grid & Cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: border-color 0.15s ease;
+  position: relative;
+  border-radius: 0;
+}
+
+.card:hover {
+  border-color: var(--ink-3);
+}
+
+.cardOperacional {
+  border-left: 4px solid var(--brick);
+}
+
+.cardSincronizando {
+  border-left: 4px solid var(--signal);
+}
+
+.cardAtencao {
+  border-left: 4px solid var(--signal);
+}
+
+.cardErro {
+  border-left: 4px solid var(--alert);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.courtIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.codeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.courtCode {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.esferaTag {
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  background: var(--paper-2);
+  color: var(--ink-3);
+  border: 1px solid var(--line-soft);
+}
+
+.courtName {
+  font-family: var(--ui);
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.statusPillOperacional {
+  background: var(--brick-soft);
+  color: var(--brick-deep);
+  border: 1px solid var(--brick);
+}
+
+.statusPillSincronizando {
+  background: var(--signal-soft);
+  color: var(--signal);
+  border: 1px solid var(--signal);
+}
+
+.statusPillAtencao {
+  background: var(--signal-soft);
+  color: var(--signal);
+  border: 1px solid var(--signal);
+}
+
+.statusPillErro {
+  background: var(--alert-soft);
+  color: var(--alert);
+  border: 1px solid var(--alert);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dotOperacional { background: var(--brick); }
+.dotSincronizando { background: var(--signal); animation: pulse 1.5s infinite; }
+.dotAtencao { background: var(--signal); }
+.dotErro { background: var(--alert); }
+
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+.cardMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+}
+
+.metricCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metricLabel {
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.metricValue {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.timeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+}
+
+.timeLabel {
+  font-family: var(--ui);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.timeValue {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timeRelative {
+  font-weight: 700;
+  color: var(--brick);
+}
+
+.errorBanner {
+  background: var(--alert-soft);
+  border: 1px solid var(--alert);
+  color: var(--alert);
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  font-family: var(--ui);
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.sistemaTag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--paper-2);
+  padding: 2px 8px;
+  border: 1px solid var(--line-soft);
+}
+
+.autoTag {
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Empty state */
+.emptyState {
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  padding: 48px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 768px) {
+  .controlsBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .actionGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .searchBox {
+    min-width: 100%;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

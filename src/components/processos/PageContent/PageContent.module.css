@@ -4,20 +4,6 @@
   min-height: 0;
 }
 
-.tableMinWidth { min-width: 1040px; }
-
-.tableHeader {
-  padding: 10px 32px;
-  border-bottom: 1px solid var(--line);
-  display: grid;
-  gap: 16px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-3);
-}
-
 .pagination {
   padding: 14px 32px;
   border-top: 1px solid var(--line);
@@ -73,10 +59,6 @@
     overflow: visible;
     min-height: auto;
   }
-
-  /* remove o scroll horizontal: cards ocupam a largura da tela */
-  .tableMinWidth { min-width: 0; }
-  .tableHeader { display: none; }
 
   .pagination { padding: 12px 16px; }
 

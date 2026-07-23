@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { Processo } from '@/types';
-import { COLS, ProcessoRow } from '../ProcessoRow/ProcessoRow';
+import { ProcessTable } from '../ProcessTable/ProcessTable';
 import { buttonVariants } from '@/components/ui/button';
 import { cn, buildQuery } from '@/lib/utils';
 import styles from './PageContent.module.css';
@@ -16,15 +16,19 @@ interface PageContentProps {
   /** params de filtro/busca a preservar nos links de paginação */
   listParams?: Record<string, string | undefined>;
   pageInfo?: ReactNode;
+  tableControls?: ReactNode;
 }
 
-export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo }: PageContentProps) {
+export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo, tableControls }: PageContentProps) {
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, total);
   const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
 
   // filtros que efetivamente reduzem a lista (ordenação não conta)
-  const hasFilters = Boolean(listParams.q || listParams.tribunal || listParams.status || listParams.whats);
+  const hasFilters = [
+    'q', 'tribunal', 'grau', 'state', 'status', 'monitored', 'assunto', 'classe', 'orgao',
+    'valorMin', 'valorMax', 'autuadoFrom', 'autuadoTo', 'movFrom', 'movTo',
+  ].some(key => Boolean(listParams[key]));
   const isEmpty = processos.length === 0;
 
   const btnBase = cn(buttonVariants({ variant: 'outline', size: 'icon-sm' }), styles.pageBtn, 'border-[var(--line)] text-[var(--ink-2)] hover:bg-[var(--paper-2)]');
@@ -34,23 +38,12 @@ export function PageContent({ processos, total, totalPages, currentPage, listPar
     <>
       <div className={styles.scrollArea}>
         {pageInfo}
+        {tableControls}
 
         {isEmpty ? (
           <EmptyState hasFilters={hasFilters} />
         ) : (
-          <div className={styles.tableMinWidth}>
-            <div
-              className={styles.tableHeader}
-              style={{ gridTemplateColumns: COLS }}
-            >
-              <div /><div>Tribunal</div><div>Nº CNJ / Órgão julgador</div><div>Assunto</div>
-              <div>Polo ativo</div><div>Última movimentação</div>
-            </div>
-
-            {processos.map(processo => (
-              <ProcessoRow key={processo.id} p={processo} />
-            ))}
-          </div>
+          <ProcessTable processos={processos} listParams={listParams} />
         )}
       </div>
 

@@ -3,19 +3,26 @@
 import { useRef, useState } from 'react';
 import styles from './PageInfo.module.css';
 
-export type PageInfoContent = {
-  title: string;
-  variant: 'compact' | 'bars';
-  items: {
-    label: string;
-    value: string;
-    tone?: 'signal' | 'alert';
-    percent?: number;
-  }[];
-}[];
+export type PageInfoItem = {
+  label: string;
+  value: string;
+  tone?: 'signal' | 'alert' | 'positive';
+  percent?: number;
+};
 
-type PageInfoSection = PageInfoContent[number];
-type PageInfoItem = PageInfoSection['items'][number];
+/** Uma fatia da distribuição (variant 'summary'): rótulo, percentual e cor. */
+export type PageInfoSegment = {
+  label: string;
+  percent: number;
+  /** cor CSS da fatia/legenda (ex.: 'var(--brick)') */
+  color?: string;
+};
+
+export type PageInfoSection =
+  | { title: string; variant: 'compact' | 'bars'; items: PageInfoItem[] }
+  | { title: string; variant: 'summary'; stats: PageInfoItem[]; segments: PageInfoSegment[] };
+
+export type PageInfoContent = PageInfoSection[];
 
 interface PageInfoProps {
   pageInfoContent: PageInfoContent;
@@ -111,7 +118,60 @@ function PageInfoSectionContent({ section }: { section: PageInfoSection }) {
   switch (section.variant) {
     case 'bars':    return <PageInfoBars items={section.items} />;
     case 'compact': return <PageInfoCards items={section.items} />;
+    case 'summary': return <PageInfoSummary stats={section.stats} segments={section.segments} />;
   }
+}
+
+function PageInfoSummary({ stats, segments }: { stats: PageInfoItem[]; segments: PageInfoSegment[] }) {
+  const chartLabel = segments.length
+    ? `Distribuição por tribunal: ${segments.map(s => `${s.label} ${s.percent}%`).join(', ')}`
+    : undefined;
+
+  return (
+    <div className={styles.summary}>
+      <div className={styles.summaryStats}>
+        {stats.map(item => (
+          <div className={styles.summaryStat} key={item.label}>
+            <span className={styles.summaryStatLabel}>{item.label}</span>
+            <strong className={`${styles.summaryStatValue} ${getColorClass(item.tone, styles)}`}>
+              {item.value}
+            </strong>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.summaryChart} role="group" aria-label={chartLabel}>
+        {segments.length > 0 ? (
+          <>
+            <div className={styles.stackBar} aria-hidden="true">
+              {segments.map(seg => (
+                <span
+                  key={seg.label}
+                  className={styles.stackSeg}
+                  style={{ width: `${seg.percent}%`, background: seg.color ?? 'var(--ink-3)' }}
+                />
+              ))}
+            </div>
+            <div className={styles.legend}>
+              {segments.map(seg => (
+                <span className={styles.legendItem} key={seg.label}>
+                  <span
+                    className={styles.legendSwatch}
+                    style={{ background: seg.color ?? 'var(--ink-3)' }}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.legendLabel}>{seg.label}</span>
+                  <span className={styles.legendPercent}>{seg.percent}%</span>
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <span className={styles.summaryEmpty}>Sem processos na carteira</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function PageInfoBars({ items }: { items: PageInfoItem[] }) {

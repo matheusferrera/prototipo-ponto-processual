@@ -3,7 +3,7 @@ import styles from './Sidebar.module.css';
 import { LogoutButton } from './LogoutButton';
 
 export interface SidebarProps {
-  active: 'Dashboard' | 'Processos' | 'Movimentações' | 'Prazos' | 'WhatsApp' | 'E-mail' | 'Credenciais' | 'Configurações' | 'Design System';
+  active: 'Dashboard' | 'Processos' | 'Movimentações' | 'Prazos' | 'Status' | 'WhatsApp' | 'E-mail' | 'Credenciais' | 'Configurações' | 'Design System';
   onClose?: () => void;
 }
 
@@ -52,6 +52,11 @@ export function Sidebar({ active, onClose }: SidebarProps) {
       {navMain.map(item => (
         <NavItem key={item.label} label={item.label} href={item.href} badge={item.badge} active={active === item.label} />
       ))}
+
+      <div className={styles.spacer} />
+
+      <SectionLabel>Monitoramento</SectionLabel>
+      <NavItem label="Status dos Tribunais" href="/design-system" badge="LIVE" active={active === 'Status'} />
 
       <div className={styles.spacer} />
 
