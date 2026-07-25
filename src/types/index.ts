@@ -28,8 +28,21 @@ export interface MovimentacaoGroup {
 
 export interface ProcessoParte {
   nome: string;
+  /** advogados/representantes da parte (o que o scraper persiste em `Parte.representantes`) */
+  representantes: string[];
   documento?: string | null;
   tipo?: string | null;
+}
+
+/** Prazo aberto mais próximo do vencimento, resumido para a carteira. */
+export interface ProximoPrazo {
+  id: string;
+  tipo: string;
+  parte: string | null;
+  /** vencimento em ISO */
+  dataLimite: string;
+  /** dias corridos até o vencimento — 0 = vence hoje, negativo = vencido */
+  diasRestantes: number;
 }
 
 export interface Processo {
@@ -55,6 +68,17 @@ export interface Processo {
   syncStatus: string | null;
   syncError: string | null;
   link?: string | null;
+  /** total de movimentações persistidas */
+  movimentacoesCount: number;
+  /** prazos não fechados e não vencidos */
+  prazosAbertos: number;
+  proximoPrazo: ProximoPrazo | null;
+}
+
+/** Documento anexado a uma movimentação. */
+export interface DocumentoMovimentacao {
+  nome: string;
+  url: string;
 }
 
 export interface TimelineEvent {
@@ -65,8 +89,10 @@ export interface TimelineEvent {
   title: string;
   body?: string;
   state: StatusType;
+  /** número do movimento no tribunal; sem ele, a posição na timeline */
   n: string;
   rawDate?: string;
+  documentos: DocumentoMovimentacao[];
 }
 
 export interface Prazo {

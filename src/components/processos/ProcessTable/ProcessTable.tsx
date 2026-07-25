@@ -1,6 +1,13 @@
 'use client';
 
-import { type CSSProperties, type KeyboardEvent, type PointerEvent, useMemo } from 'react';
+import {
+  type CSSProperties,
+  Fragment,
+  type KeyboardEvent,
+  type PointerEvent,
+  useMemo,
+  useState,
+} from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,8 +20,18 @@ import {
   type Header,
   useReactTable,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpDown, BellRing, CircleAlert, CircleCheck, GripVertical } from 'lucide-react';
-import type { Processo, ProcessoParte } from '@/types';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  BellRing,
+  ChevronDown,
+  CircleAlert,
+  CircleCheck,
+  ExternalLink,
+  GripVertical,
+} from 'lucide-react';
+import type { Processo, ProcessoParte, ProximoPrazo } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { buildQuery } from '@/lib/utils';
 import {
@@ -72,6 +89,58 @@ function displayPartes(partes: ProcessoParte[]): string {
   const names = partes.map(parte => parte.nome).filter(Boolean);
   if (names.length <= 2) return names.join('; ');
   return `${names.slice(0, 2).join('; ')} +${names.length - 2}`;
+}
+
+/** Distância humana até agora — "há 2h", "há 3d". */
+function timeAgo(value: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (minutes < 1) return 'agora';
+  if (minutes < 60) return `há ${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `há ${days}d`;
+  return `há ${Math.floor(days / 30)}mes`;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Ativo',
+  archived: 'Arquivado',
+  suspended: 'Suspenso',
+};
+
+function displayStatus(status: string): string {
+  return STATUS_LABELS[status?.toLowerCase()] ?? status ?? '—';
+}
+
+/** Rótulo curto do prazo mais próximo, já com o senso de urgência. */
+function prazoLabel(prazo: ProximoPrazo): string {
+  const dias = prazo.diasRestantes;
+  if (dias < 0) return `vencido ${displayDate(prazo.dataLimite)}`;
+  if (dias === 0) return 'vence hoje';
+  if (dias === 1) return 'vence amanhã';
+  return `${dias}d · ${displayDate(prazo.dataLimite)}`;
+}
+
+function PrazoCell({ processo }: { processo: Processo }) {
+  const prazo = processo.proximoPrazo;
+  if (!prazo) return <span className={styles.prazoEmpty}>—</span>;
+
+  const dias = prazo.diasRestantes;
+  const tone = dias <= 2 ? 'urgente' : dias <= 7 ? 'proximo' : 'calmo';
+  const extras = processo.prazosAbertos > 1 ? ` +${processo.prazosAbertos - 1}` : '';
+
+  return (
+    <span
+      className={`${styles.prazoChip} ${styles[`prazo_${tone}`]}`}
+      title={`${prazo.tipo}${prazo.parte ? ` — ${prazo.parte}` : ''} · vence em ${displayDate(prazo.dataLimite)}`}
+    >
+      {prazoLabel(prazo)}{extras}
+    </span>
+  );
 }
 
 function displaySync(status: string | null): string {
@@ -175,6 +244,15 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
       maxSize: 360,
     },
     {
+      id: 'prazo',
+      accessorFn: row => row.proximoPrazo ? prazoLabel(row.proximoPrazo) : '—',
+      header: 'Próximo prazo',
+      cell: ({ row }) => <PrazoCell processo={row.original} />,
+      size: 150,
+      minSize: MIN_COLUMN_SIZE,
+      maxSize: 240,
+    },
+    {
       id: 'orgaoJulgador',
       accessorKey: 'orgaoJulgador',
       header: 'Órgão julgador',
@@ -256,13 +334,53 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
       maxSize: 260,
     },
     {
+      id: 'movimentacoes',
+      accessorFn: row => String(row.movimentacoesCount),
+      header: 'Movimentações',
+      cell: ({ getValue }) => <span className={styles.numeric}>{String(getValue())}</span>,
+      size: 130,
+      minSize: MIN_COLUMN_SIZE,
+      maxSize: 200,
+    },
+    {
+      id: 'lastScrapedAt',
+      accessorFn: row => timeAgo(row.lastScrapedAt),
+      header: 'Última verificação',
+      cell: DateCell,
+      size: 160,
+      minSize: MIN_COLUMN_SIZE,
+      maxSize: 240,
+    },
+    {
       id: 'syncStatus',
       accessorFn: row => displaySync(row.syncStatus),
       header: 'Sincronização',
-      cell: TextCell,
+      cell: ({ getValue, row }) => (
+        <span className={styles.ellipsis} title={row.original.syncError ?? String(getValue())}>
+          {String(getValue())}
+        </span>
+      ),
       size: 150,
       minSize: MIN_COLUMN_SIZE,
       maxSize: 260,
+    },
+    {
+      id: 'grau',
+      accessorKey: 'grau',
+      header: 'Grau',
+      cell: TextCell,
+      size: 80,
+      minSize: MIN_COLUMN_SIZE,
+      maxSize: 140,
+    },
+    {
+      id: 'statusProcesso',
+      accessorFn: row => displayStatus(row.status),
+      header: 'Situação',
+      cell: TextCell,
+      size: 130,
+      minSize: MIN_COLUMN_SIZE,
+      maxSize: 220,
     },
     {
       id: 'whatsEnabled',
@@ -285,15 +403,109 @@ function DateCell({ getValue }: { getValue: () => unknown }) {
   return <span className={styles.date}>{String(getValue() ?? '—')}</span>;
 }
 
+/** Largura da coluna de expandir — fica fora do TanStack, então desloca as colunas fixadas. */
+const EXPANDER_WIDTH = 36;
+
 function pinnedStyle(column: Column<Processo>): CSSProperties {
   const pinned = column.getIsPinned();
   if (!pinned) return {};
   return {
-    left: pinned === 'left' ? `${column.getStart('left')}px` : undefined,
+    left: pinned === 'left' ? `${column.getStart('left') + EXPANDER_WIDTH}px` : undefined,
     right: pinned === 'right' ? `${column.getAfter('right')}px` : undefined,
     position: 'sticky',
     zIndex: 2,
   };
+}
+
+/**
+ * Painel de detalhe da linha — mostra o que não cabe (ou não está visível) nas
+ * colunas: partes completas com representantes, erro de sincronização e a capa.
+ */
+function RowDetails({ processo }: { processo: Processo }) {
+  return (
+    <div className={styles.rowDetails}>
+      {processo.syncError && (
+        <p className={styles.rowDetailsError}>
+          Falha na última sincronização: {processo.syncError}
+        </p>
+      )}
+
+      <div className={styles.rowDetailsPolos}>
+        <PoloBlock titulo="Polo ativo" partes={processo.poloAtivo} />
+        <PoloBlock titulo="Polo passivo" partes={processo.poloPassivo} />
+      </div>
+
+      <dl className={styles.rowDetailsGrid}>
+        <DetailItem label="Classe judicial" value={processo.classeJudicial ?? '—'} />
+        <DetailItem label="Assunto" value={processo.assunto ?? '—'} />
+        <DetailItem label="Grau" value={processo.grau} />
+        <DetailItem label="Situação" value={displayStatus(processo.status)} />
+        <DetailItem
+          label="Valor da causa"
+          value={processo.valorCausa == null ? '—' : currencyFormatter.format(processo.valorCausa)}
+        />
+        <DetailItem label="Autuado em" value={displayDate(processo.autuadoEm)} />
+        <DetailItem label="Movimentações" value={String(processo.movimentacoesCount)} />
+        <DetailItem label="Prazos abertos" value={String(processo.prazosAbertos)} />
+        <DetailItem label="Última verificação" value={timeAgo(processo.lastScrapedAt)} />
+        <DetailItem label="Monitoramento" value={processo.whatsEnabled ? 'Ativo' : 'Inativo'} />
+      </dl>
+
+      <div className={styles.rowDetailsActions}>
+        <Link
+          href={`/processos/${encodeURIComponent(processo.cnj)}`}
+          className={styles.rowDetailsLink}
+          onClick={event => event.stopPropagation()}
+        >
+          Ver movimentações
+        </Link>
+        {processo.link && (
+          <a
+            href={processo.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.rowDetailsLink}
+            onClick={event => event.stopPropagation()}
+          >
+            <ExternalLink aria-hidden="true" />
+            Abrir no PJe
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PoloBlock({ titulo, partes }: { titulo: string; partes: ProcessoParte[] }) {
+  return (
+    <div>
+      <span className={styles.rowDetailsLabel}>{titulo}</span>
+      {partes.length === 0 ? (
+        <p className={styles.rowDetailsMuted}>Não extraído</p>
+      ) : (
+        <ul className={styles.poloList}>
+          {partes.map((parte, index) => (
+            <li key={`${parte.nome}-${index}`}>
+              <span className={styles.poloNome}>{parte.nome}</span>
+              {parte.documento && <span className={styles.poloDoc}>{parte.documento}</span>}
+              {parte.representantes.length > 0 && (
+                <span className={styles.poloRepresentantes}>{parte.representantes.join(' · ')}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className={styles.rowDetailsLabel}>{label}</dt>
+      <dd className={value === '—' ? styles.rowDetailsMuted : styles.rowDetailsValue}>{value}</dd>
+    </div>
+  );
 }
 
 function resizeColumn(
@@ -366,6 +578,13 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
   const router = useRouter();
   const { preferences, setPreferences } = useProcessTablePreferences();
   const columns = useMemo(() => makeColumns(listParams), [listParams]);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  const toggleExpanded = (id: string) => setExpanded(current => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const updateSizing = (value: ColumnSizingState | ((current: ColumnSizingState) => ColumnSizingState)) => {
     setPreferences(current => ({
@@ -413,7 +632,7 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
   const openRow = (processo: Processo) => router.push(rowHref(processo));
 
   const tableStyle = {
-    width: table.getTotalSize(),
+    width: table.getTotalSize() + EXPANDER_WIDTH,
     '--process-font-size': `${preferences.fontSize}px`,
   } as CSSProperties;
 
@@ -434,6 +653,13 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
+                <th
+                  scope="col"
+                  className={styles.expanderCell}
+                  style={{ width: EXPANDER_WIDTH, left: 0, position: 'sticky', zIndex: 2 }}
+                >
+                  <span className="sr-only">Detalhes</span>
+                </th>
                 {headerGroup.headers.map(header => {
                   const columnId = header.column.id as ProcessColumnId;
                   const sortKey = columnId === 'cnj' ? 'cnj'
@@ -462,23 +688,54 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr
-                key={row.id}
-                className={row.original.state === 'signal' ? styles.rowSignal : undefined}
-                onClick={() => openRow(row.original)}
-              >
-                {row.getVisibleCells().map(cell => (
-                  <td
-                    key={cell.id}
-                    style={{ width: cell.column.getSize(), ...pinnedStyle(cell.column) }}
-                    className={cell.column.getIsPinned() ? styles.pinnedCell : undefined}
+            {table.getRowModel().rows.map(row => {
+              const isExpanded = expanded.has(row.original.id);
+              return (
+                <Fragment key={row.id}>
+                  <tr
+                    className={row.original.state === 'signal' ? styles.rowSignal : undefined}
+                    onClick={() => openRow(row.original)}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
+                    <td
+                      className={styles.expanderCell}
+                      style={{ width: EXPANDER_WIDTH, left: 0, position: 'sticky', zIndex: 2 }}
+                    >
+                      <button
+                        type="button"
+                        className={styles.expanderButton}
+                        onClick={event => {
+                          event.stopPropagation();
+                          toggleExpanded(row.original.id);
+                        }}
+                        aria-expanded={isExpanded}
+                        aria-label={`${isExpanded ? 'Ocultar' : 'Mostrar'} detalhes do processo ${row.original.cnj}`}
+                      >
+                        <ChevronDown
+                          aria-hidden="true"
+                          className={isExpanded ? styles.expanderIconOpen : undefined}
+                        />
+                      </button>
+                    </td>
+                    {row.getVisibleCells().map(cell => (
+                      <td
+                        key={cell.id}
+                        style={{ width: cell.column.getSize(), ...pinnedStyle(cell.column) }}
+                        className={cell.column.getIsPinned() ? styles.pinnedCell : undefined}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                  {isExpanded && (
+                    <tr className={styles.detailsRow}>
+                      <td colSpan={row.getVisibleCells().length + 1}>
+                        <RowDetails processo={row.original} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

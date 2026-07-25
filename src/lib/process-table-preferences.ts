@@ -11,6 +11,7 @@ export const PROCESS_COLUMN_IDS = [
   'state',
   'tribunal',
   'cnj',
+  'prazo',
   'orgaoJulgador',
   'classeJudicial',
   'assunto',
@@ -20,7 +21,11 @@ export const PROCESS_COLUMN_IDS = [
   'autuadoEm',
   'ultimaMov',
   'lastMovAt',
+  'movimentacoes',
+  'lastScrapedAt',
   'syncStatus',
+  'grau',
+  'statusProcesso',
   'whatsEnabled',
 ] as const;
 
@@ -41,6 +46,7 @@ export const PROCESS_COLUMN_LABELS: Record<ProcessColumnId, string> = {
   state: 'Estado',
   tribunal: 'Tribunal',
   cnj: 'Número CNJ',
+  prazo: 'Próximo prazo',
   orgaoJulgador: 'Órgão julgador',
   classeJudicial: 'Classe judicial',
   assunto: 'Assunto',
@@ -50,7 +56,11 @@ export const PROCESS_COLUMN_LABELS: Record<ProcessColumnId, string> = {
   autuadoEm: 'Data de autuação',
   ultimaMov: 'Última movimentação',
   lastMovAt: 'Data da última movimentação',
+  movimentacoes: 'Movimentações',
+  lastScrapedAt: 'Última verificação',
   syncStatus: 'Sincronização',
+  grau: 'Grau',
+  statusProcesso: 'Situação',
   whatsEnabled: 'Monitoramento',
 };
 
@@ -58,6 +68,7 @@ const DEFAULT_VISIBILITY: VisibilityState = {
   state: true,
   tribunal: true,
   cnj: true,
+  prazo: true,
   orgaoJulgador: true,
   classeJudicial: false,
   assunto: true,
@@ -67,7 +78,11 @@ const DEFAULT_VISIBILITY: VisibilityState = {
   autuadoEm: false,
   ultimaMov: true,
   lastMovAt: false,
+  movimentacoes: false,
+  lastScrapedAt: false,
   syncStatus: false,
+  grau: false,
+  statusProcesso: false,
   whatsEnabled: false,
 };
 
@@ -75,6 +90,7 @@ const DEFAULT_SIZING: ColumnSizingState = {
   state: 72,
   tribunal: 96,
   cnj: 230,
+  prazo: 150,
   orgaoJulgador: 220,
   classeJudicial: 190,
   assunto: 240,
@@ -84,7 +100,11 @@ const DEFAULT_SIZING: ColumnSizingState = {
   autuadoEm: 150,
   ultimaMov: 260,
   lastMovAt: 180,
+  movimentacoes: 130,
+  lastScrapedAt: 160,
   syncStatus: 150,
+  grau: 80,
+  statusProcesso: 130,
   whatsEnabled: 150,
 };
 

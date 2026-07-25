@@ -36,10 +36,12 @@ export default async function ProcessosPage({
     total,
     totalPages,
     page: backendPage,
+    comNovidade,
+    comErro,
   } = await getProcessos(currentPage, 20, processFiltersToApi(filters));
 
-  const comNovidade = processos.filter(processo => processo.state === 'signal').length;
-  const comErro = processos.filter(processo => processo.state === 'alert').length;
+  // prazos abertos só são conhecidos na página carregada — o backend não agrega isso
+  const prazosNaPagina = processos.reduce((soma, processo) => soma + processo.prazosAbertos, 0);
 
   const pageInfoContent: PageInfoContent = [
     {
@@ -47,8 +49,9 @@ export default async function ProcessosPage({
       variant: 'compact',
       items: [
         { label: 'Total filtrado', value: String(total).padStart(2, '0') },
-        { label: 'Novidades nesta página', value: String(comNovidade).padStart(2, '0'), tone: 'signal' },
-        { label: 'Erros nesta página', value: String(comErro).padStart(2, '0'), tone: 'alert' },
+        { label: 'Com novidade', value: String(comNovidade).padStart(2, '0'), tone: 'signal' },
+        { label: 'Com erro', value: String(comErro).padStart(2, '0'), tone: 'alert' },
+        { label: 'Prazos abertos nesta página', value: String(prazosNaPagina).padStart(2, '0') },
       ],
     },
   ];

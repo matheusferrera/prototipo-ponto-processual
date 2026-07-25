@@ -8,6 +8,8 @@ import type {
   Movimentacao,
   MovimentacaoGroup,
   Prazo,
+  ProximoPrazo,
+  DocumentoMovimentacao,
 } from '@/types';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
@@ -64,6 +66,9 @@ type BackendProcess = {
   poloAtivo: BackendParte[] | null;
   poloPassivo: BackendParte[] | null;
   valorCausa: string | number | null;
+  movementsCount?: number;
+  openDeadlinesCount?: number;
+  nextDeadline?: BackendNextDeadline | null;
   // legado: algumas respostas antigas traziam um objeto summary agregado
   summary?: {
     partes: string | null;
@@ -74,8 +79,17 @@ type BackendProcess = {
 
 type BackendParte = {
   nome?: string | null;
+  representantes?: string[] | null;
   documento?: string | null;
   tipo?: string | null;
+};
+
+type BackendNextDeadline = {
+  id: string;
+  tipoDocumento: string;
+  parte: string | null;
+  prazo: number | null;
+  dataLimite: string;
 };
 
 function normalizeDate(value: string | null | undefined): string | null {
@@ -94,18 +108,98 @@ function normalizeValorCausa(value: string | number | null | undefined): number 
   return Number.isFinite(amount) ? amount : null;
 }
 
+/**
+ * O PJe entrega a parte como um texto só —
+ * "FULANO DE TAL - CNPJ: 00.000.000/0001-00 (AUTOR)".
+ * Separar nome, documento e papel deixa o nome utilizável como título e coluna.
+ */
+const PARTE_DOC_RE = /\s*[-–]\s*(CPF|CNPJ|OAB|RG)\s*:?\s*([\d.\-/]+[\dA-Za-z]*)/i;
+const PARTE_PAPEL_RE = /\s*\(([^()]+)\)\s*$/;
+
+function splitParteNome(raw: string): { nome: string; documento: string | null; tipo: string | null } {
+  let nome = raw;
+  let documento: string | null = null;
+  let tipo: string | null = null;
+
+  const papel = nome.match(PARTE_PAPEL_RE);
+  if (papel) {
+    const label = papel[1].trim();
+    tipo = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+    nome = nome.replace(PARTE_PAPEL_RE, '');
+  }
+
+  const doc = nome.match(PARTE_DOC_RE);
+  if (doc) {
+    documento = `${doc[1].toUpperCase()} ${doc[2]}`;
+    nome = nome.replace(PARTE_DOC_RE, '');
+  }
+
+  return { nome: nome.replace(/[\s\-–]+$/, '').trim() || raw, documento, tipo };
+}
+
+const PAPEIS_REPRESENTANTE = ['advogado', 'advogada', 'procurador', 'procuradora', 'defensor', 'defensora'];
+
+function ehRepresentante(tipo: string | null): boolean {
+  return tipo !== null && PAPEIS_REPRESENTANTE.includes(tipo.toLowerCase());
+}
+
+/**
+ * O PJe lista advogados como entradas do próprio polo, logo após a parte que
+ * representam. Aqui eles são dobrados para dentro de `representantes`, para a
+ * lista mostrar partes — e não uma mistura de parte e advogado no mesmo nível.
+ */
 function normalizePartes(value: BackendParte[] | null | undefined): ProcessoParte[] {
   if (!Array.isArray(value)) return [];
 
-  return value.flatMap((parte) => {
-    const nome = parte?.nome?.trim();
-    if (!nome) return [];
-    return [{
-      nome,
-      documento: parte.documento?.trim() || null,
-      tipo: parte.tipo?.trim() || null,
-    }];
-  });
+  const partes: ProcessoParte[] = [];
+
+  for (const item of value) {
+    const raw = item?.nome?.trim();
+    if (!raw) continue;
+
+    const parsed = splitParteNome(raw);
+    const documento = item.documento?.trim() || parsed.documento;
+    const tipo = item.tipo?.trim() || parsed.tipo;
+    const anterior = partes.at(-1);
+
+    if (ehRepresentante(tipo) && anterior) {
+      anterior.representantes.push([parsed.nome, documento].filter(Boolean).join(' · '));
+      continue;
+    }
+
+    partes.push({
+      nome: parsed.nome,
+      representantes: (item.representantes ?? [])
+        .map(representante => representante?.trim())
+        .filter((representante): representante is string => Boolean(representante)),
+      documento,
+      tipo,
+    });
+  }
+
+  return partes;
+}
+
+/** Dias corridos até a data — 0 = vence hoje, negativo = vencido. */
+function daysUntil(iso: string): number {
+  const target = new Date(iso);
+  target.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function toProximoPrazo(deadline: BackendNextDeadline | null | undefined): ProximoPrazo | null {
+  if (!deadline) return null;
+  const dataLimite = normalizeDate(deadline.dataLimite);
+  if (!dataLimite) return null;
+  return {
+    id: deadline.id,
+    tipo: deadline.tipoDocumento?.trim() || 'Prazo',
+    parte: deadline.parte?.trim() || null,
+    dataLimite,
+    diasRestantes: daysUntil(dataLimite),
+  };
 }
 
 function toProcesso(p: BackendProcess): Processo {
@@ -162,6 +256,9 @@ function toProcesso(p: BackendProcess): Processo {
     syncStatus: p.syncStatus,
     syncError: p.syncError,
     link: p.link ?? null,
+    movimentacoesCount: p.movementsCount ?? 0,
+    prazosAbertos: p.openDeadlinesCount ?? 0,
+    proximoPrazo: toProximoPrazo(p.nextDeadline),
   };
 }
 
@@ -170,6 +267,9 @@ type ProcessoPage = {
   total: number;
   totalPages: number;
   page: number;
+  /** contagens do conjunto filtrado inteiro (backend), não só da página */
+  comNovidade: number;
+  comErro: number;
 };
 
 type CsvFilter = string | readonly string[];
@@ -237,13 +337,18 @@ export async function getProcessos(page = 1, limit = 20, filters: ProcessoFilter
   appendQueryValue(params, 'sort', filters.sort);
   appendQueryValue(params, 'order', filters.order);
 
-  const body: { data: BackendProcess[]; total: number; totalPages: number; page: number } =
-    await backendGet(`/processes?${params.toString()}`);
+  const body: {
+    data: BackendProcess[]; total: number; totalPages: number; page: number;
+    counts?: { signal: number; alert: number };
+  } = await backendGet(`/processes?${params.toString()}`);
+
   return {
     processos: body.data.map(toProcesso),
     total: body.total,
     totalPages: body.totalPages,
     page: body.page,
+    comNovidade: body.counts?.signal ?? 0,
+    comErro: body.counts?.alert ?? 0,
   };
 }
 
@@ -339,11 +444,23 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
     time: displayTime,
     title: m.descricao,
     state: isNew ? 'signal' : 'quiet',
-    // index 0 = mais recente → número mais alto; índice final = mais antigo → § 01
-    n: String(total - index).padStart(2, '0'),
+    // número do movimento no tribunal; sem ele, a posição na timeline
+    // (index 0 = mais recente → número mais alto; índice final = mais antigo → § 01)
+    n: m.nMovimento?.trim() || String(total - index).padStart(2, '0'),
     label: isNew ? 'NOVA' : undefined,
     rawDate: m.ocorridoEm,
+    documentos: toDocumentos(m),
   };
+}
+
+/** Documentos (e subdocumentos) com URL, prontos para virar links. */
+function toDocumentos(m: BackendMovement): DocumentoMovimentacao[] {
+  return [...(m.documentos ?? []), ...(m.subDocumentos ?? [])]
+    .filter((d): d is BackendDocumento & { urlDocumento: string } => Boolean(d.urlDocumento))
+    .map(d => ({
+      nome: d.tipoDocumento?.trim() || d.nDocumento?.trim() || 'Documento',
+      url: d.urlDocumento,
+    }));
 }
 
 const TIPOS_KEYWORDS = [
@@ -598,10 +715,11 @@ function toPrazo(d: BackendDeadline): Prazo {
   const vencimento = `${String(venc.getDate()).padStart(2, '0')}/${String(venc.getMonth() + 1).padStart(2, '0')}`;
   const vencimentoISO = `${venc.getFullYear()}-${String(venc.getMonth() + 1).padStart(2, '0')}-${String(venc.getDate()).padStart(2, '0')}`;
 
-  const parte =
+  const parteRaw =
     d.process?.poloAtivo?.[0]?.nome?.trim() ||
     d.parte?.trim() ||
     '—';
+  const parte = parteRaw === '—' ? parteRaw : splitParteNome(parteRaw).nome;
 
   return {
     id: d.id,
@@ -641,9 +759,14 @@ function sortPrazos(list: Prazo[], sort?: string): void {
   }
 }
 
-/** Prazos pendentes (não fechados), filtrados/ordenados no servidor. */
+/**
+ * Prazos a vencer — `dataLimite` no futuro, fechados ou não.
+ * Prazos já vencidos ficam de fora: o front os exibiria como "0d"
+ * (`diasAteVencimento` satura em 0) e eles poluiriam o alerta de crítico.
+ */
 export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<Prazo[]> {
-  const body = await backendGet(`/deadlines?fechado=false&sort=asc&page=${page}&limit=${limit}`) as {
+  const from = encodeURIComponent(new Date().toISOString());
+  const body = await backendGet(`/deadlines?from=${from}&sort=asc&page=${page}&limit=${limit}`) as {
     data: BackendDeadline[];
   };
   let list = body.data.map(toPrazo);
@@ -667,15 +790,41 @@ export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {
   return list;
 }
 
-export async function getProcessoMovements(processId: string): Promise<TimelineEvent[]> {
-  const body = await backendGetOrNull<{ data: BackendMovement[] }>(
-    `/movements?processId=${processId}&sort=desc&page=1&limit=20`
+export type ProcessoMovements = {
+  events: TimelineEvent[];
+  /** total de movimentações do processo no banco, não só as carregadas */
+  total: number;
+};
+
+/**
+ * Movimentações do processo, da mais recente para a mais antiga.
+ * `limit` é controlado pela página (botão "carregar mais" via search param).
+ */
+export async function getProcessoMovements(processId: string, limit = 20): Promise<ProcessoMovements> {
+  const take = Math.min(Math.max(1, Math.trunc(limit)), 100);
+  const body = await backendGetOrNull<{ data: BackendMovement[]; total: number }>(
+    `/movements?processId=${processId}&sort=desc&page=1&limit=${take}`
   );
-  if (!body) return [];
+  if (!body) return { events: [], total: 0 };
   const sorted = [...body.data].sort(
     (a, b) => new Date(b.ocorridoEm).getTime() - new Date(a.ocorridoEm).getTime(),
   );
-  return sorted.map((m, i) => toTimelineEvent(m, i, sorted.length));
+  // a numeração de fallback usa o total do processo, não o que foi carregado:
+  // assim o § de uma movimentação não muda ao clicar em "carregar mais"
+  const total = body.total ?? sorted.length;
+  return {
+    events: sorted.map((m, i) => toTimelineEvent(m, i, total)),
+    total,
+  };
+}
+
+/** Prazos de um processo, do vencimento mais próximo ao mais distante. */
+export async function getProcessoPrazos(processId: string): Promise<Prazo[]> {
+  const body = await backendGetOrNull<{ data: BackendDeadline[] }>(
+    `/deadlines?processId=${processId}&sort=asc&page=1&limit=100`
+  );
+  if (!body) return [];
+  return body.data.map(toPrazo);
 }
 
 export async function getTribunaisStatus(): Promise<import('@/types').TribunalStatusItem[]> {
