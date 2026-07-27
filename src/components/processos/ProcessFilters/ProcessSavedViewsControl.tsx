@@ -22,7 +22,7 @@ import {
   updateSavedProcessView,
   type SavedProcessView,
 } from '@/lib/process-saved-views';
-import styles from './ProcessFilters.module.css';
+import styles from '@/components/filters/FilterPanel.module.css';
 
 export function ProcessSavedViewsControl({
   filters,

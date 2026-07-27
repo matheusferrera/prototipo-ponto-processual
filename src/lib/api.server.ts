@@ -705,6 +705,31 @@ function diasAteVencimento(dataLimite: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
+/** Antecedência da pauta interna em relação ao prazo fatal, em dias corridos. */
+const DIAS_ANTECEDENCIA_PAUTA = 3;
+
+/**
+ * Data da pauta interna: `DIAS_ANTECEDENCIA_PAUTA` dias antes do fatal.
+ * Se cair no fim de semana antecipa para a sexta — sábado/domingo não é dia de trabalho.
+ */
+function dataDaPauta(fatal: Date): Date {
+  const d = new Date(fatal.getFullYear(), fatal.getMonth(), fatal.getDate() - DIAS_ANTECEDENCIA_PAUTA);
+  if (d.getDay() === 0) d.setDate(d.getDate() - 2); // domingo → sexta
+  if (d.getDay() === 6) d.setDate(d.getDate() - 1); // sábado  → sexta
+  return d;
+}
+
+/** Dias corridos entre hoje (meia-noite local) e `alvo` — negativo quando já passou. */
+function diasCorridosAte(alvo: Date): number {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dia = new Date(alvo.getFullYear(), alvo.getMonth(), alvo.getDate());
+  return Math.round((dia.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+const toISODate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 function toPrazo(d: BackendDeadline): Prazo {
   const dias = diasAteVencimento(d.dataLimite);
   let state: StatusType = 'quiet';
@@ -713,24 +738,31 @@ function toPrazo(d: BackendDeadline): Prazo {
 
   const venc = new Date(d.dataLimite);
   const vencimento = `${String(venc.getDate()).padStart(2, '0')}/${String(venc.getMonth() + 1).padStart(2, '0')}`;
-  const vencimentoISO = `${venc.getFullYear()}-${String(venc.getMonth() + 1).padStart(2, '0')}-${String(venc.getDate()).padStart(2, '0')}`;
+  const vencimentoISO = toISODate(venc);
 
+  const pauta = dataDaPauta(venc);
+
+  // A parte do próprio expediente é a mais precisa para um prazo; o polo ativo
+  // do processo entra só como fallback quando o PJe não a informou.
   const parteRaw =
-    d.process?.poloAtivo?.[0]?.nome?.trim() ||
     d.parte?.trim() ||
-    '—';
-  const parte = parteRaw === '—' ? parteRaw : splitParteNome(parteRaw).nome;
+    d.process?.poloAtivo?.[0]?.nome?.trim() ||
+    '';
+  const parte = parteRaw ? splitParteNome(parteRaw).nome : '';
 
   return {
     id: d.id,
     tribunal: d.process ? d.process.tribunal.replace(/G[12]$/, '') : '—',
+    grau: d.process ? (d.process.tribunal.endsWith('G2') ? '2º' : '1º') : '',
     cnj: d.process?.numero ?? '—',
     orgaoJulgador: d.process?.orgaoJulgador?.trim() || '—',
     parte,
-    assunto: d.process?.assunto?.trim() || parte,
+    assunto: d.process?.assunto?.trim() || '',
     tipo: d.tipoDocumento,
     vencimento,
     vencimentoISO,
+    pautaISO: toISODate(pauta),
+    diasParaPauta: diasCorridosAte(pauta),
     diasRestantes: dias,
     state,
   };
@@ -738,24 +770,95 @@ function toPrazo(d: BackendDeadline): Prazo {
 
 export type PrazoFilters = {
   q?: string;
-  /** nome do tribunal — "" = todos */
-  tribunal?: string;
-  /** "critico" (≤3d) | "urgente" (≤7d) — "" = todos */
+  /** Tribunais em CSV ou lista (ex.: "TRF1,TJDFT"). */
+  tribunal?: CsvFilter;
+  grau?: '1' | '2' | string;
+  /** Faixa de dias até o fatal: crítico ≤3, urgente ≤7, atenção ≤14, normal >14. */
   urgencia?: string;
-  /** "menos-urgente" (dias desc) | "tribunal" — "" = mais urgente (dias asc) */
-  sort?: string;
+  /** Janela da data da pauta: "atrasada" | "hoje" | "semana". */
+  pauta?: string;
+  /** Expediente "pendente" (fechado=false) ou "fechado". */
+  situacao?: string;
+  /** Tipo do expediente (contém). */
+  tipo?: string;
+  assunto?: string;
+  orgao?: string;
+  /** Nome da parte/cliente (contém). */
+  cliente?: string;
+  /** Faixa do prazo fatal (yyyy-mm-dd). */
+  fatalFrom?: string;
+  fatalTo?: string;
+  /** Faixa da data da pauta (yyyy-mm-dd). */
+  pautaFrom?: string;
+  pautaTo?: string;
+  sort?: 'fatal' | 'pauta' | 'tribunal' | 'cliente' | 'expediente' | string;
+  order?: 'asc' | 'desc' | string;
 };
 
-function sortPrazos(list: Prazo[], sort?: string): void {
+export type PrazoPage = {
+  prazos: Prazo[];
+  /** Total após todos os filtros. */
+  total: number;
+  /** Quantos vencem em ≤3 dias — alimenta o alerta crítico. */
+  criticos: number;
+  /** Quantos já passaram da data da pauta sem terem sido trabalhados. */
+  pautaAtrasada: number;
+};
+
+const contem = (valor: string, termo?: string) =>
+  !termo || valor.toLowerCase().includes(termo.trim().toLowerCase());
+
+function filtraPrazos(list: Prazo[], f: PrazoFilters): Prazo[] {
+  const tribunais: readonly string[] = typeof f.tribunal === 'string'
+    ? f.tribunal.split(',').map(item => item.trim()).filter(Boolean)
+    : f.tribunal ?? [];
+
+  return list.filter(p => {
+    if (tribunais.length && !tribunais.includes(p.tribunal)) return false;
+    if (f.grau && p.grau !== `${f.grau}º`) return false;
+
+    if (f.urgencia === 'critico' && p.diasRestantes > 3)  return false;
+    if (f.urgencia === 'urgente' && p.diasRestantes > 7)  return false;
+    if (f.urgencia === 'atencao' && p.diasRestantes > 14) return false;
+    if (f.urgencia === 'normal'  && p.diasRestantes <= 14) return false;
+
+    if (f.pauta === 'atrasada' && p.diasParaPauta >= 0) return false;
+    if (f.pauta === 'hoje'     && p.diasParaPauta !== 0) return false;
+    if (f.pauta === 'semana'   && (p.diasParaPauta < 0 || p.diasParaPauta > 7)) return false;
+
+    if (f.fatalFrom && p.vencimentoISO < f.fatalFrom) return false;
+    if (f.fatalTo   && p.vencimentoISO > f.fatalTo)   return false;
+    if (f.pautaFrom && p.pautaISO      < f.pautaFrom) return false;
+    if (f.pautaTo   && p.pautaISO      > f.pautaTo)   return false;
+
+    if (!contem(p.tipo, f.tipo))              return false;
+    if (!contem(p.assunto, f.assunto))        return false;
+    if (!contem(p.orgaoJulgador, f.orgao))    return false;
+    if (!contem(p.parte, f.cliente))          return false;
+
+    return true;
+  });
+}
+
+function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
+  const dir = order === 'desc' ? -1 : 1;
+  const porFatal = (a: Prazo, b: Prazo) => a.vencimentoISO.localeCompare(b.vencimentoISO);
+
   switch (sort) {
-    case 'menos-urgente':
-      list.sort((a, b) => b.diasRestantes - a.diasRestantes);
+    case 'pauta':
+      list.sort((a, b) => dir * (a.pautaISO.localeCompare(b.pautaISO) || porFatal(a, b)));
       break;
     case 'tribunal':
-      list.sort((a, b) => a.tribunal.localeCompare(b.tribunal) || a.diasRestantes - b.diasRestantes);
+      list.sort((a, b) => dir * (a.tribunal.localeCompare(b.tribunal, 'pt-BR') || a.grau.localeCompare(b.grau)) || porFatal(a, b));
       break;
-    default: // mais urgente — dias asc (ordem do backend)
-      list.sort((a, b) => a.diasRestantes - b.diasRestantes);
+    case 'cliente':
+      list.sort((a, b) => dir * a.parte.localeCompare(b.parte, 'pt-BR') || porFatal(a, b));
+      break;
+    case 'expediente':
+      list.sort((a, b) => dir * a.tipo.localeCompare(b.tipo, 'pt-BR') || porFatal(a, b));
+      break;
+    default: // fatal
+      list.sort((a, b) => dir * porFatal(a, b));
   }
 }
 
@@ -763,31 +866,36 @@ function sortPrazos(list: Prazo[], sort?: string): void {
  * Prazos a vencer — `dataLimite` no futuro, fechados ou não.
  * Prazos já vencidos ficam de fora: o front os exibiria como "0d"
  * (`diasAteVencimento` satura em 0) e eles poluiriam o alerta de crítico.
+ *
+ * `/deadlines` filtra no banco o que sabe filtrar (busca livre, tipo de
+ * documento, expediente fechado e faixa de `dataLimite`); tribunal, grau,
+ * urgência, pauta e os "contém" restantes são aplicados aqui sobre a página.
  */
-export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<Prazo[]> {
-  const from = encodeURIComponent(new Date().toISOString());
-  const body = await backendGet(`/deadlines?from=${from}&sort=asc&page=${page}&limit=${limit}`) as {
-    data: BackendDeadline[];
+export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<PrazoPage> {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, Math.trunc(page))),
+    limit: String(Math.max(1, Math.trunc(limit))),
+    sort: 'asc',
+  });
+
+  // Sem faixa explícita, a lista começa em "agora" — prazos vencidos não entram.
+  params.set('from', filters.fatalFrom ? `${filters.fatalFrom}T00:00:00.000-03:00` : new Date().toISOString());
+  if (filters.fatalTo) params.set('to', `${filters.fatalTo}T23:59:59.999-03:00`);
+  appendQueryValue(params, 'q', filters.q);
+  appendQueryValue(params, 'tipoDocumento', filters.tipo);
+  if (filters.situacao) params.set('fechado', String(filters.situacao === 'fechado'));
+
+  const body = await backendGet(`/deadlines?${params.toString()}`) as { data: BackendDeadline[] };
+
+  const list = filtraPrazos(body.data.map(toPrazo), filters);
+  sortPrazos(list, filters.sort, filters.order);
+
+  return {
+    prazos: list,
+    total: list.length,
+    criticos: list.filter(p => p.diasRestantes <= 3).length,
+    pautaAtrasada: list.filter(p => p.diasParaPauta < 0).length,
   };
-  let list = body.data.map(toPrazo);
-
-  const term = filters.q?.trim().toLowerCase();
-  if (term) {
-    list = list.filter(p =>
-      p.parte.toLowerCase().includes(term) ||
-      p.assunto.toLowerCase().includes(term) ||
-      p.cnj.toLowerCase().includes(term) ||
-      p.orgaoJulgador.toLowerCase().includes(term) ||
-      p.tipo.toLowerCase().includes(term) ||
-      p.tribunal.toLowerCase().includes(term),
-    );
-  }
-  if (filters.tribunal) list = list.filter(p => p.tribunal === filters.tribunal);
-  if (filters.urgencia === 'critico') list = list.filter(p => p.diasRestantes <= 3);
-  else if (filters.urgencia === 'urgente') list = list.filter(p => p.diasRestantes <= 7);
-
-  sortPrazos(list, filters.sort);
-  return list;
 }
 
 export type ProcessoMovements = {

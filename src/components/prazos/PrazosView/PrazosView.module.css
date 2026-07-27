@@ -1,5 +1,16 @@
 .root { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
+.exportBar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  flex-shrink: 0;
+}
+
 /* container de scroll único: alerta crítico + view rolam juntos */
 .scrollArea { flex: 1; min-height: 0; overflow: auto; }
 
@@ -49,7 +60,7 @@
 .alertCount { font-size: 13px; font-weight: 600; color: var(--alert); }
 .alertDesc  { font-size: 13px; color: var(--ink-2); }
 
-/* ── Lista ── */
+/* ── Pauta (lista) ── */
 .listView { padding: 24px 32px; }
 
 .emptyState {
@@ -75,30 +86,128 @@
 
 .listDivider { flex: 1; height: 1px; background: var(--line); }
 
-.prazoItem {
-  border: 1px solid var(--line);
+.pautaTotal {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.pautaNota {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 72ch;
+  margin: -10px 0 22px;
+}
+
+.pautaNota strong { font-weight: 600; color: var(--ink-2); }
+
+/* ── Grupo: um dia de pauta ── */
+.pautaGrupo { margin-bottom: 26px; }
+
+.pautaHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 10px;
 }
 
-.prazoItemSignal { border-left: 3px solid var(--brick); }
-.prazoItemAlert  { border-left: 3px solid var(--alert); }
-.prazoItemQuiet  { border-left: 3px solid var(--line);  }
-
-.prazoHead {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 14px 20px 0;
-  gap: 8px;
+/* Rótulo relativo — o "quando" em texto, para a urgência não depender só de cor */
+.pautaRel {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 7px;
+  flex-shrink: 0;
 }
 
-.prazoTags {
+.pautaRelAtraso { color: var(--paper); background: var(--alert); }
+.pautaRelHoje   { color: var(--paper); background: var(--brick); }
+.pautaRelProx   { color: var(--ink-2); background: var(--paper-2); }
+
+.pautaHeadData {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pautaHeadCount {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+/* ── Linha da pauta ── */
+.pautaItem {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: var(--paper);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 160ms ease-out;
+}
+
+.pautaItem:hover { background: var(--paper-2); }
+.pautaItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.pautaItemSignal { border-left-color: var(--brick); }
+.pautaItemAlert  { border-left-color: var(--alert); }
+.pautaItemQuiet  { border-left-color: var(--line);  }
+
+/* Coluna esquerda — o prazo fatal, sempre rotulado */
+.pautaFatal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 14px;
+  border-right: 1px solid var(--line-soft);
+}
+
+.pautaFatalLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-4);
+}
+
+.pautaFatalData {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.pautaFatalSub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pautaBody { min-width: 0; }
+
+.pautaTags {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
+  margin-bottom: 6px;
 }
 
 .prazoTipo {
@@ -109,62 +218,82 @@
   color: var(--ink-3);
 }
 
-/* .prazos-meta-desktop hidden on mobile via globals.css */
-.prazoMetaDesktop {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-shrink: 0;
-}
-
-.diasNum {
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: 30px;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.diasSub    { font-size: 10px; color: var(--ink-3); margin-top: 2px; text-align: right; }
-.venceLabel { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-3); text-align: right; }
-
-.venceNum {
-  font-family: var(--mono);
-  font-weight: 600;
-  font-size: 17px;
-  margin-top: 3px;
-}
-
-.venceNumNormal   { color: var(--ink); }
-.venceNumCritical { color: var(--alert); }
-
 .diasColorNormal   { color: var(--ink);   }
 .diasColorUrgent   { color: var(--brick); }
 .diasColorCritical { color: var(--alert); }
 
-
-.prazoBody { padding: 8px 20px 14px; }
-
-.prazoParteName {
-  font-weight: 600;
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Título — o cliente, o que o advogado procura ao varrer a pauta */
+.pautaCliente {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
-.prazoProcessMeta {
+/* Subtítulo — o expediente: o que precisa ser feito até o prazo fatal */
+.pautaExpediente {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* Matéria, ao lado do expediente — recuada em cor para o "o que fazer" liderar */
+.pautaAssunto { color: var(--ink-3); }
+
+.pautaMeta {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 6px;
-  margin-top: 3px;
+  margin-top: 5px;
   color: var(--ink-3);
 }
 
-.prazoCnj {
+.pautaCnj {
   font-family: var(--mono);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pautaGo {
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink-4);
+}
+
+.pautaItem:hover .pautaGo { color: var(--brick); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pautaItem { transition: none; }
+}
+
+/* Parte do expediente — linha secundária rotulada, para não se confundir com o assunto */
+.prazoParte {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.prazoParteLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-4);
+  flex-shrink: 0;
+}
+
+.prazoParteNome {
+  font-size: 12px;
+  color: var(--ink-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -181,23 +310,6 @@
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
-
-/* .prazos-meta-mobile visible on mobile via globals.css */
-.prazoMetaMobile {}
-
-.prazoMetaMobileInner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px 12px;
-  border-top: 1px solid var(--line-soft);
-  flex-wrap: nowrap;
-}
-
-.mDias   { font-family: var(--mono); font-weight: 700; font-size: 18px; line-height: 1; flex-shrink: 0; }
-.mRest   { font-size: 11px; color: var(--ink-3); flex-shrink: 0; }
-.mSep    { color: var(--line-soft); flex-shrink: 0; }
-.mVence  { font-family: var(--mono); font-size: 12px; font-weight: 600; flex-shrink: 0; }
 
 /* ── Kanban ── */
 .kanbanWrap {
@@ -247,7 +359,11 @@
 
 .kanbanCardHead { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .kanbanCardTipo { font-size: 10px; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
-.kanbanCardParte { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.kanbanCardAssunto { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+
+.kanbanCardParte { display: flex; align-items: baseline; gap: 5px; margin-bottom: 6px; min-width: 0; }
+.kanbanCardParteLabel { font-family: var(--mono); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); flex-shrink: 0; }
+.kanbanCardParteNome  { font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kanbanCardProcess {
   display: flex;
   flex-direction: column;
@@ -405,13 +521,17 @@
   flex-shrink: 0;
 }
 
-.agendaParte {
+.agendaAssunto {
   font-weight: 600;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.agendaParte { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; min-width: 0; }
+.agendaParteLabel { font-family: var(--mono); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); flex-shrink: 0; }
+.agendaParteNome  { font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .agendaCnj { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 2px; }
 
@@ -427,6 +547,30 @@
     overflow: visible;
     min-height: auto;
   }
+
+  .exportBar { padding: 8px 16px; }
+
+  /* Pauta — coluna do fatal vira faixa no topo da linha */
+  .listView  { padding: 16px; }
+  .pautaNota { margin: -6px 0 18px; }
+
+  .pautaItem {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .pautaFatal {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    padding: 0 0 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .pautaFatalData { font-size: 17px; }
+  .pautaGo { display: none; }
 
   .calNavBar { padding: 10px 16px; }
   .calNavLabel { min-width: 0; flex: 1; }
@@ -454,8 +598,4 @@
   .calView { padding: 16px; }
   .calCell { min-height: 52px; padding: 6px 2px 4px; gap: 4px; }
   .agenda  { margin-top: 20px; }
-
-  /* Meta desktop → oculta; meta mobile → visível */
-  .prazoMetaDesktop { display: none; }
-  .prazoMetaMobile  { display: block; }
 }

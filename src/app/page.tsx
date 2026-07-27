@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { getProcessos, getMovimentacoes, getPrazos } from '@/lib/api.server';
+import { tituloPrazo } from '@/lib/prazo';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { Seal } from '@/components/ui/Seal/Seal';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const { processos } = await getProcessos();
   const { groups: movimentacoes, newToday } = await getMovimentacoes(1, 50);
-  const prazos = await getPrazos();
+  const { prazos } = await getPrazos();
   const allMovs = movimentacoes.flatMap(g => g.items);
   const movsHoje = movimentacoes.find(g => g.date === 'HOJE')?.items ?? [];
   const novasHoje = newToday;
@@ -73,7 +74,7 @@ export default async function DashboardPage() {
               {prazosCriticos.length} prazo{prazosCriticos.length > 1 ? 's' : ''} crítico{prazosCriticos.length > 1 ? 's' : ''}
             </span>
             <span className={styles.dashAlertPart} style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-              — {prazosCriticos[0].parte} vence em {prazosCriticos[0].diasRestantes} dia{prazosCriticos[0].diasRestantes !== 1 ? 's' : ''}
+              — {tituloPrazo(prazosCriticos[0])} vence em {prazosCriticos[0].diasRestantes} dia{prazosCriticos[0].diasRestantes !== 1 ? 's' : ''}
             </span>
             <Link
               href="/prazos"
@@ -119,7 +120,7 @@ export default async function DashboardPage() {
               label: 'Críticos',
               value: prazosCriticos.length,
               sub: prazosCriticos[0]
-                ? `${prazosCriticos[0].parte.split(' ')[0]} · ${prazosCriticos[0].diasRestantes}d`
+                ? `${tituloPrazo(prazosCriticos[0]).split(' ')[0]} · ${prazosCriticos[0].diasRestantes}d`
                 : 'nenhum',
               color: prazosCriticos.length > 0 ? 'var(--alert)' : 'var(--quiet)',
               href: '/prazos',

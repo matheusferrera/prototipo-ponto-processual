@@ -98,14 +98,24 @@ export interface TimelineEvent {
 export interface Prazo {
   id: string;
   tribunal: string;
+  /** "1º" | "2º" — grau derivado do sufixo G1/G2 do tribunal; "" quando o processo não veio */
+  grau: string;
   cnj: string;
   orgaoJulgador: string;
+  /** Parte do expediente (fallback: polo ativo do processo). Vazio quando o PJe não informou. */
   parte: string;
+  /** Assunto do processo. Vazio quando o PJe não informou — nunca cai para o nome da parte. */
   assunto: string;
   tipo: string;
+  /** Vencimento fatal formatado dd/mm */
   vencimento: string;
-  /** Data completa do vencimento (yyyy-mm-dd) — usada pelo calendário para casar ano+mês */
+  /** Data completa do vencimento fatal (yyyy-mm-dd) — usada pelo calendário para casar ano+mês */
   vencimentoISO: string;
+  /** Data da pauta (yyyy-mm-dd): 3 dias antes do fatal, antecipada p/ sexta se cair no fim de semana */
+  pautaISO: string;
+  /** Dias corridos até a data da pauta — 0 = trabalhar hoje, negativo = pauta atrasada */
+  diasParaPauta: number;
+  /** Dias corridos até o vencimento fatal */
   diasRestantes: number;
   state: StatusType;
 }

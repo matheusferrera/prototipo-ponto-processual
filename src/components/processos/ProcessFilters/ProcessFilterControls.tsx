@@ -25,7 +25,7 @@ import {
   type ProcessFilterState,
   type ProcessSort,
 } from '@/lib/process-filters';
-import styles from './ProcessFilters.module.css';
+import styles from '@/components/filters/FilterPanel.module.css';
 
 const TRIBUNAIS = ['TJDFT', 'TJPI', 'TRF1', 'TRF2', 'TRF3'] as const;
 const PROCESS_STATUS = [

@@ -1,0 +1,50 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.button {
+  min-height: 34px;
+  border-radius: 0;
+  border-color: var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.button:hover {
+  background: var(--paper-2);
+}
+
+.error {
+  color: var(--alert);
+  font-size: 11px;
+  text-align: right;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .root {
+    width: 100%;
+  }
+
+  .button {
+    min-height: 44px;
+  }
+
+  .error {
+    margin-right: auto;
+    text-align: left;
+  }
+}

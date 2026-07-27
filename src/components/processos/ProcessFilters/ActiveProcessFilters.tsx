@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { DEFAULT_PROCESS_FILTERS, serializeProcessFilters, type ProcessFilterState } from '@/lib/process-filters';
-import styles from './ProcessFilters.module.css';
+import styles from '@/components/filters/FilterPanel.module.css';
 
 const LABELS = {
   state: { signal: 'Com novidade', alert: 'Com erro', quiet: 'Sem novidade' },

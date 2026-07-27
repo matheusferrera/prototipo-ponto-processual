@@ -206,7 +206,7 @@ function PrazoItem({ prazo }: { prazo: Prazo }) {
         <span className={styles.prazoTipo}>{prazo.tipo}</span>
         <span className={styles.prazoMeta}>
           vence em {prazo.vencimento}
-          {prazo.parte !== '—' && ` · ${prazo.parte}`}
+          {prazo.parte && ` · ${prazo.parte}`}
         </span>
       </div>
     </li>
