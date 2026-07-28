@@ -12,16 +12,20 @@ export const metadata: Metadata = {
 };
 
 export default async function StatusPage() {
-  const tribunals = await getTribunaisStatus();
+  const { tribunals, unavailable } = await getTribunaisStatus();
 
   const totalTribunals = tribunals.length;
   const operacionaisCount = tribunals.filter(t => t.status === 'operacional').length;
   const emSincroniaCount = tribunals.filter(t => t.status === 'sincronizando').length;
   const alertasCount = tribunals.filter(t => t.status === 'atencao' || t.status === 'erro').length;
+  const semCredencialCount = tribunals.filter(t => t.status === 'nao_configurado').length;
 
-  const avgLatency = Math.round(
-    tribunals.reduce((acc, t) => acc + (t.latencyMs || 0), 0) / (totalTribunals || 1)
-  );
+  // Média apenas sobre tribunais efetivamente medidos: incluir os `null` como 0
+  // afundaria a média e faria o sistema parecer mais rápido do que é.
+  const measured = tribunals.filter(t => t.latencyMs !== null);
+  const avgLatency = measured.length
+    ? `${(measured.reduce((acc, t) => acc + (t.latencyMs ?? 0), 0) / measured.length / 1000).toFixed(1)}s`
+    : '—';
 
   const pageInfoContent: PageInfoContent = [
     {
@@ -32,7 +36,8 @@ export default async function StatusPage() {
         { label: 'Operacionais', value: String(operacionaisCount).padStart(2, '0'), tone: 'positive' },
         { label: 'Em Varredura', value: String(emSincroniaCount).padStart(2, '0'), tone: 'signal' },
         { label: 'Com Alertas', value: String(alertasCount).padStart(2, '0'), tone: 'alert' },
-        { label: 'Latência Média', value: `${avgLatency}ms` },
+        { label: 'Sem Credencial', value: String(semCredencialCount).padStart(2, '0') },
+        { label: 'Duração Média', value: avgLatency },
       ],
     },
   ];
@@ -50,12 +55,11 @@ export default async function StatusPage() {
         whatsBadge={{ active: true, count: totalTribunals }}
       />
 
-      <div style={{ padding: '0 24px 24px 24px' }}>
-        <StatusPageContent
-          initialTribunals={tribunals}
-          pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
-        />
-      </div>
+      <StatusPageContent
+        initialTribunals={tribunals}
+        initialUnavailable={unavailable}
+        pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
+      />
     </AppLayout>
   );
 }

@@ -1,8 +1,14 @@
+/* AppLayout trava o scroll (`.root`/`.main` com overflow: hidden) e cada rota
+   fornece a própria área rolável — sem isto a tabela transborda sem scroll. */
 .container {
   display: flex;
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px 24px;
 }
 
 .controlsBar {
@@ -61,15 +67,31 @@
   font-family: var(--ui);
   font-size: 12px;
   font-weight: 700;
-  color: var(--brick);
-  background: var(--brick-soft);
+  color: var(--signal);
+  background: var(--signal-soft);
   padding: 6px 12px;
-  border: 1px solid var(--brick);
+  border: 1px solid var(--signal);
   border-radius: 0;
+  white-space: nowrap;
+}
+
+.idleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--paper-2);
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  white-space: nowrap;
 }
 
 .pulseIcon {
-  color: var(--brick);
+  color: var(--signal);
   animation: pulse 2s infinite;
 }
 
@@ -103,66 +125,73 @@
   pointer-events: none;
 }
 
-/* Grid & Cards */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 16px;
-}
-
-.card {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-  transition: border-color 0.15s ease;
-  position: relative;
-  border-radius: 0;
-}
-
-.card:hover {
-  border-color: var(--ink-3);
-}
-
-.cardOperacional {
-  border-left: 4px solid var(--brick);
-}
-
-.cardSincronizando {
-  border-left: 4px solid var(--signal);
-}
-
-.cardAtencao {
-  border-left: 4px solid var(--signal);
-}
-
-.cardErro {
-  border-left: 4px solid var(--alert);
-}
-
-.cardHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.courtIdentity {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.codeRow {
+/* ---- Aviso de status indisponível ---- */
+.unavailableBanner {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  background: var(--alert-soft);
+  border: 1px solid var(--alert);
+  color: var(--alert);
+  padding: 10px 14px;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
+/* ---- Tabela ---- */
+.tableWrap {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  /* `overflow-x: auto` sozinho faria o eixo Y virar `auto` também e este wrapper
+     roubaria a rolagem vertical do container, levando junto o cabeçalho da
+     tabela. Aqui só a rolagem horizontal é dele. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ui);
+  min-width: 900px;
+}
+
+.table thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  background: var(--paper-2);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.thNum { text-align: right; }
+.thTribunal { min-width: 280px; }
+
+.row {
+  border-bottom: 1px solid var(--line-soft);
+  transition: background-color 0.15s ease;
+}
+
+.row:hover { background: var(--paper-2); }
+
+.table tbody td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+  vertical-align: middle;
+}
+
+/* Sem `display: flex` nos <td>: isso os tira do layout de tabela e as colunas
+   deixam de alinhar. Os filhos viram block e o espaçamento sai da margem. */
 .courtCode {
+  display: block;
   font-family: var(--mono);
   font-size: 13px;
   font-weight: 700;
@@ -170,156 +199,25 @@
   letter-spacing: -0.02em;
 }
 
+.courtName {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
 .esferaTag {
-  font-family: var(--ui);
+  display: inline-block;
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 2px 6px;
+  padding: 1px 6px;
   background: var(--paper-2);
   color: var(--ink-3);
   border: 1px solid var(--line-soft);
-}
-
-.courtName {
-  font-family: var(--ui);
-  font-size: 13px;
-  color: var(--ink-2);
-  line-height: 1.4;
-}
-
-.statusPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-family: var(--ui);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-radius: 0;
-  white-space: nowrap;
-}
-
-.statusPillOperacional {
-  background: var(--brick-soft);
-  color: var(--brick-deep);
-  border: 1px solid var(--brick);
-}
-
-.statusPillSincronizando {
-  background: var(--signal-soft);
-  color: var(--signal);
-  border: 1px solid var(--signal);
-}
-
-.statusPillAtencao {
-  background: var(--signal-soft);
-  color: var(--signal);
-  border: 1px solid var(--signal);
-}
-
-.statusPillErro {
-  background: var(--alert-soft);
-  color: var(--alert);
-  border: 1px solid var(--alert);
-}
-
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.dotOperacional { background: var(--brick); }
-.dotSincronizando { background: var(--signal); animation: pulse 1.5s infinite; }
-.dotAtencao { background: var(--signal); }
-.dotErro { background: var(--alert); }
-
-@keyframes pulse {
-  0% { opacity: 0.3; }
-  50% { opacity: 1; }
-  100% { opacity: 0.3; }
-}
-
-.cardMetrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  padding: 12px;
-  background: var(--paper-2);
-  border: 1px solid var(--line-soft);
-}
-
-.metricCell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.metricLabel {
-  font-family: var(--ui);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.metricValue {
-  font-family: var(--mono);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.timeRow {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 4px;
-  border-top: 1px dashed var(--line);
-}
-
-.timeLabel {
-  font-family: var(--ui);
-  font-size: 11px;
-  color: var(--ink-3);
-}
-
-.timeValue {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.timeRelative {
-  font-weight: 700;
-  color: var(--brick);
-}
-
-.errorBanner {
-  background: var(--alert-soft);
-  border: 1px solid var(--alert);
-  color: var(--alert);
-  padding: 8px 12px;
-  font-size: 11px;
-  line-height: 1.4;
-  font-family: var(--ui);
-}
-
-.cardFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line-soft);
+  margin-top: 5px;
 }
 
 .sistemaTag {
@@ -330,19 +228,176 @@
   background: var(--paper-2);
   padding: 2px 8px;
   border: 1px solid var(--line-soft);
+  white-space: nowrap;
 }
 
-.autoTag {
-  font-family: var(--ui);
-  font-size: 11px;
-  font-weight: 600;
+.tdNum {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.numHint {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
   color: var(--ink-3);
+}
+
+.noData {
+  color: var(--ink-4);
+  font-weight: 500;
+  cursor: help;
+}
+
+.tdSync {
+  white-space: nowrap;
+}
+
+.timeRelative {
+  display: block;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.timeAbsolute {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* ---- Status ---- */
+.statusPill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 0;
+  white-space: nowrap;
+  border: 1px solid;
 }
 
-/* Empty state */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* Cada classe serve tanto ao pill (fundo/borda/texto) quanto ao dot (background). */
+.statusOperacional {
+  background: var(--brick);
+  color: var(--brick-deep);
+  border-color: var(--brick);
+}
+.statusPill.statusOperacional { background: var(--brick-soft); }
+
+.statusSincronizando {
+  background: var(--signal);
+  color: var(--signal);
+  border-color: var(--signal);
+  animation: pulse 1.5s infinite;
+}
+.statusPill.statusSincronizando {
+  background: var(--signal-soft);
+  animation: none;
+}
+
+.statusAtencao {
+  background: var(--signal);
+  color: var(--signal);
+  border-color: var(--signal);
+}
+.statusPill.statusAtencao { background: var(--signal-soft); }
+
+.statusErro {
+  background: var(--alert);
+  color: var(--alert);
+  border-color: var(--alert);
+}
+.statusPill.statusErro { background: var(--alert-soft); }
+
+.statusNaoConfigurado {
+  background: var(--ink-4);
+  color: var(--ink-3);
+  border-color: var(--line);
+}
+.statusPill.statusNaoConfigurado { background: var(--paper-2); }
+
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+/* ---- Linha de erro ---- */
+.errorRow {
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--alert-soft);
+}
+
+.errorRow td {
+  padding: 8px 16px 10px 16px;
+}
+
+.errorLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--alert);
+}
+
+.errorText {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--alert);
+  margin-top: 2px;
+}
+
+/* ---- Falha já superada: informa sem alarmar ---- */
+.pastFailureRow {
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper-2);
+}
+
+.pastFailureRow td {
+  padding: 8px 16px 10px 16px;
+}
+
+.pastFailureLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.pastFailureText {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* ---- Empty state ---- */
 .emptyState {
   background: var(--paper);
   border: 1px dashed var(--line);
@@ -356,6 +411,14 @@
 }
 
 @media (max-width: 768px) {
+  /* No mobile o AppLayout volta a rolar a página inteira. */
+  .container {
+    flex: none;
+    min-height: auto;
+    overflow-y: visible;
+    padding: 0 16px 16px 16px;
+  }
+
   .controlsBar {
     flex-direction: column;
     align-items: stretch;
@@ -367,7 +430,9 @@
   .searchBox {
     min-width: 100%;
   }
-  .grid {
-    grid-template-columns: 1fr;
+  .autoBadge,
+  .idleBadge {
+    justify-content: center;
+    white-space: normal;
   }
 }

@@ -935,11 +935,17 @@ export async function getProcessoPrazos(processId: string): Promise<Prazo[]> {
   return body.data.map(toPrazo);
 }
 
-export async function getTribunaisStatus(): Promise<import('@/types').TribunalStatusItem[]> {
+export type TribunaisStatusResult = {
+  tribunals: import('@/types').TribunalStatusItem[];
+  /** true quando o backend não respondeu — a página não deve inventar saúde de tribunal. */
+  unavailable: boolean;
+};
+
+export async function getTribunaisStatus(): Promise<TribunaisStatusResult> {
   try {
     const body = await backendGet('/scraper/status') as { tribunals?: import('@/types').TribunalStatusItem[] };
-    if (body?.tribunals && Array.isArray(body.tribunals) && body.tribunals.length > 0) {
-      return body.tribunals;
+    if (body?.tribunals && Array.isArray(body.tribunals)) {
+      return { tribunals: body.tribunals, unavailable: false };
     }
   } catch (err: unknown) {
     // Next.js redirect() throws a special error that must NOT be caught
@@ -949,149 +955,7 @@ export async function getTribunaisStatus(): Promise<import('@/types').TribunalSt
     console.error('Falha ao buscar status no backend:', err);
   }
 
-  // Fallback se o backend retornar vazio ou estiver inacessível
-  return [
-    {
-      id: 'TJDFTG1',
-      codigo: 'TJDFT 1º Grau',
-      nome: 'Tribunal de Justiça do Distrito Federal e dos Territórios (1ª Instância)',
-      esfera: 'Estadual',
-      uf: 'DF',
-      sistema: 'PJe',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
-      latencyMs: 840,
-      successRate: 99.2,
-      activeProcessesCount: 42,
-      activeCredentialsCount: 3,
-    },
-    {
-      id: 'TJDFTG2',
-      codigo: 'TJDFT 2º Grau',
-      nome: 'Tribunal de Justiça do Distrito Federal e dos Territórios (2ª Instância)',
-      esfera: 'Estadual',
-      uf: 'DF',
-      sistema: 'PJe',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
-      latencyMs: 910,
-      successRate: 98.8,
-      activeProcessesCount: 18,
-      activeCredentialsCount: 3,
-    },
-    {
-      id: 'TRF1G1',
-      codigo: 'TRF-1 1º Grau',
-      nome: 'Tribunal Regional Federal da 1ª Região (Seções Judiciárias)',
-      esfera: 'Federal',
-      uf: 'DF',
-      sistema: 'PJe',
-      status: 'sincronizando',
-      lastSyncAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      latencyMs: 1420,
-      successRate: 96.5,
-      activeProcessesCount: 35,
-      activeCredentialsCount: 2,
-    },
-    {
-      id: 'TRF1G2',
-      codigo: 'TRF-1 2º Grau',
-      nome: 'Tribunal Regional Federal da 1ª Região (Tribunal)',
-      esfera: 'Federal',
-      uf: 'DF',
-      sistema: 'PJe',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
-      latencyMs: 1250,
-      successRate: 97.9,
-      activeProcessesCount: 12,
-      activeCredentialsCount: 2,
-    },
-    {
-      id: 'TRF3G1',
-      codigo: 'TRF-3 1º Grau',
-      nome: 'Tribunal Regional Federal da 3ª Região (SP/MS)',
-      esfera: 'Federal',
-      uf: 'SP',
-      sistema: 'PJe',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-      latencyMs: 1100,
-      successRate: 99.0,
-      activeProcessesCount: 27,
-      activeCredentialsCount: 2,
-    },
-    {
-      id: 'TRF3G2',
-      codigo: 'TRF-3 2º Grau',
-      nome: 'Tribunal Regional Federal da 3ª Região (2ª Instância)',
-      esfera: 'Federal',
-      uf: 'SP',
-      sistema: 'PJe',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-      latencyMs: 1050,
-      successRate: 99.5,
-      activeProcessesCount: 9,
-      activeCredentialsCount: 2,
-    },
-    {
-      id: 'TJPIG1',
-      codigo: 'TJPI 1º Grau',
-      nome: 'Tribunal de Justiça do Estado do Piauí (1ª Instância)',
-      esfera: 'Estadual',
-      uf: 'PI',
-      sistema: 'PJe',
-      status: 'atencao',
-      lastSyncAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
-      latencyMs: 2450,
-      successRate: 91.2,
-      activeProcessesCount: 15,
-      activeCredentialsCount: 1,
-      lastError: 'Lentidão detectada na resposta do PJe/TJPI (HTTP 504 Gateway Timeout esporádico)',
-    },
-    {
-      id: 'TJPIG2',
-      codigo: 'TJPI 2º Grau',
-      nome: 'Tribunal de Justiça do Estado do Piauí (2ª Instância)',
-      esfera: 'Estadual',
-      uf: 'PI',
-      sistema: 'PJe',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-      latencyMs: 1320,
-      successRate: 97.0,
-      activeProcessesCount: 6,
-      activeCredentialsCount: 1,
-    },
-    {
-      id: 'TRF2G1',
-      codigo: 'TRF-2 1º Grau',
-      nome: 'Tribunal Regional Federal da 2ª Região (RJ/ES)',
-      esfera: 'Federal',
-      uf: 'RJ',
-      sistema: 'e-Proc',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
-      latencyMs: 780,
-      successRate: 99.8,
-      activeProcessesCount: 14,
-      activeCredentialsCount: 1,
-    },
-    {
-      id: 'TRF2G2',
-      codigo: 'TRF-2 2º Grau',
-      nome: 'Tribunal Regional Federal da 2ª Região (2ª Instância)',
-      esfera: 'Federal',
-      uf: 'RJ',
-      sistema: 'e-Proc',
-      status: 'operacional',
-      lastSyncAt: new Date(Date.now() - 31 * 60 * 1000).toISOString(),
-      latencyMs: 810,
-      successRate: 100.0,
-      activeProcessesCount: 5,
-      activeCredentialsCount: 1,
-    },
-  ];
+  // Sem dataset de fallback: esta é uma página de monitoramento, e status
+  // inventado é pior do que status ausente.
+  return { tribunals: [], unavailable: true };
 }
-

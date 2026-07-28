@@ -120,7 +120,12 @@ export interface Prazo {
   state: StatusType;
 }
 
-export type TribunalHealthStatus = 'operacional' | 'sincronizando' | 'atencao' | 'erro';
+export type TribunalHealthStatus =
+  | 'operacional'
+  | 'sincronizando'
+  | 'atencao'
+  | 'erro'
+  | 'nao_configurado';
 
 export interface TribunalStatusItem {
   id: string;
@@ -131,11 +136,17 @@ export interface TribunalStatusItem {
   sistema: string;
   status: TribunalHealthStatus;
   lastSyncAt: string | null;
-  latencyMs: number;
-  successRate: number;
+  /** null quando não houve execução medível no período. */
+  latencyMs: number | null;
+  /** null quando não houve nenhuma execução nas últimas 24h. */
+  successRate: number | null;
   activeProcessesCount: number;
   activeCredentialsCount: number;
+  /** Erro ainda em aberto: nenhuma execução posterior deu certo. */
   lastError?: string | null;
+  /** Última falha do período, mesmo já superada por um sucesso posterior. */
+  lastFailure?: string | null;
+  lastFailureAt?: string | null;
   totalJobsLast24h?: number;
   successJobsLast24h?: number;
   failedJobsLast24h?: number;
