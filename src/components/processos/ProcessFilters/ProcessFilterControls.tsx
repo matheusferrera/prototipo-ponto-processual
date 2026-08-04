@@ -27,7 +27,7 @@ import {
 } from '@/lib/process-filters';
 import styles from '@/components/filters/FilterPanel.module.css';
 
-const TRIBUNAIS = ['TJBA', 'TJDFT', 'TJPI', 'TJRN', 'TRF1', 'TRF2', 'TRF3'] as const;
+const TRIBUNAIS = ['STJ', 'TJBA', 'TJDFT', 'TJPI', 'TJRN', 'TRF1', 'TRF2', 'TRF3'] as const;
 const PROCESS_STATUS = [
   { value: 'active', label: 'Ativo' },
   { value: 'archived', label: 'Arquivado' },

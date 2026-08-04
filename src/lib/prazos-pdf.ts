@@ -1,5 +1,5 @@
 import type { Prazo } from '@/types';
-import { assuntoSecundario, clientePrazo, expedientePrazo } from '@/lib/prazo';
+import { assuntoSecundario, clientePrazo, expedientePrazo, rotuloNatureza } from '@/lib/prazo';
 
 const PAPER = [250, 248, 243] as const;
 const INK = [26, 36, 30] as const;
@@ -78,6 +78,7 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
       'Tribunal',
       'Cliente',
       'Expediente',
+      'Prazo para',
       'Assunto',
       'CNJ',
       'Órgão julgador',
@@ -91,6 +92,7 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
         textOrFallback(prazo.grau ? `${prazo.tribunal}-${prazo.grau}` : prazo.tribunal),
         textOrFallback(cliente),
         textOrFallback(expedientePrazo(prazo)),
+        textOrFallback(rotuloNatureza(prazo)),
         textOrFallback(assuntoSecundario(prazo, cliente)),
         textOrFallback(prazo.cnj),
         textOrFallback(prazo.orgaoJulgador),
@@ -119,15 +121,16 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
     },
     // Larguras somam 273mm = A4 paisagem (297) menos as margens laterais (2 × 12)
     columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 20, fontStyle: 'bold' },
-      2: { cellWidth: 12, halign: 'center' },
-      3: { cellWidth: 18 },
-      4: { cellWidth: 45, fontStyle: 'bold' },
-      5: { cellWidth: 34 },
-      6: { cellWidth: 32 },
-      7: { cellWidth: 40 },
-      8: { cellWidth: 52 },
+      0: { cellWidth: 18 },
+      1: { cellWidth: 18, fontStyle: 'bold' },
+      2: { cellWidth: 11, halign: 'center' },
+      3: { cellWidth: 17 },
+      4: { cellWidth: 42, fontStyle: 'bold' },
+      5: { cellWidth: 32 },
+      6: { cellWidth: 20 },  // Prazo para (ciência / manifestação)
+      7: { cellWidth: 29 },
+      8: { cellWidth: 38 },
+      9: { cellWidth: 48 },
     },
     didDrawPage: ({ pageNumber }) => {
       if (pageNumber > 1) {

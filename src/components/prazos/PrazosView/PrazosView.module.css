@@ -243,6 +243,9 @@
 /* Matéria, ao lado do expediente — recuada em cor para o "o que fazer" liderar */
 .pautaAssunto { color: var(--ink-3); }
 
+/* "prazo para ciência/manifestação" — o que o expediente cobra. */
+.pautaNatureza { color: var(--ink-2); font-weight: 600; }
+
 .pautaMeta {
   display: flex;
   align-items: baseline;
@@ -360,6 +363,7 @@
 .kanbanCardHead { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .kanbanCardTipo { font-size: 10px; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
 .kanbanCardAssunto { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.kanbanCardNatureza { font-size: 10px; color: var(--ink-2); font-weight: 600; margin-bottom: 4px; }
 
 .kanbanCardParte { display: flex; align-items: baseline; gap: 5px; margin-bottom: 6px; min-width: 0; }
 .kanbanCardParteLabel { font-family: var(--mono); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); flex-shrink: 0; }
@@ -528,6 +532,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.agendaNatureza { font-size: 11px; color: var(--ink-2); font-weight: 600; margin-top: 2px; }
 
 .agendaParte { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; min-width: 0; }
 .agendaParteLabel { font-family: var(--mono); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); flex-shrink: 0; }

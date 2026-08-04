@@ -7,7 +7,7 @@ import { Seal } from '@/components/ui/Seal/Seal';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ExportPrazosPdfButton } from '@/components/prazos/ExportPrazosPdfButton/ExportPrazosPdfButton';
-import { tituloPrazo, parteSecundaria, clientePrazo, expedientePrazo, assuntoSecundario } from '@/lib/prazo';
+import { tituloPrazo, parteSecundaria, clientePrazo, expedientePrazo, assuntoSecundario, rotuloNatureza } from '@/lib/prazo';
 import styles from './PrazosView.module.css';
 
 export type PrazoView = 'lista' | 'kanban' | 'calendario';
@@ -87,6 +87,7 @@ function PautaItem({ pz }: { pz: Prazo }) {
   const isCritical = pz.diasRestantes <= 3;
   const cliente    = clientePrazo(pz);
   const assunto    = assuntoSecundario(pz, cliente);
+  const natureza   = rotuloNatureza(pz);
   const stateClass =
     pz.state === 'alert'  ? styles.pautaItemAlert  :
     pz.state === 'signal' ? styles.pautaItemSignal :
@@ -114,6 +115,12 @@ function PautaItem({ pz }: { pz: Prazo }) {
         <div className={styles.pautaCliente}>{cliente}</div>
         <div className={styles.pautaExpediente}>
           {expedientePrazo(pz)}
+          {natureza && (
+            <>
+              <span className={styles.metaSep} aria-hidden="true"> · </span>
+              <span className={styles.pautaNatureza}>prazo para {natureza}</span>
+            </>
+          )}
           {assunto && (
             <>
               <span className={styles.metaSep} aria-hidden="true"> · </span>
@@ -225,6 +232,9 @@ function KanbanView({ prazos }: { prazos: Prazo[] }) {
                   <TribTag label={pz.tribunal} />
                   <span className={styles.kanbanCardTipo}>{pz.tipo}</span>
                 </div>
+                {rotuloNatureza(pz) && (
+                  <div className={styles.kanbanCardNatureza}>prazo para {rotuloNatureza(pz)}</div>
+                )}
                 <div className={styles.kanbanCardAssunto}>{titulo}</div>
                 {parte && (
                   <div className={styles.kanbanCardParte}>
@@ -270,6 +280,9 @@ function AgendaItem({ pz, showDay }: { pz: Prazo; showDay?: number }) {
         <span className={`${styles.agendaDias} ${diasColorClass(pz.diasRestantes, styles)}`}>{pz.diasRestantes}d</span>
       </div>
       <div className={styles.agendaAssunto}>{titulo}</div>
+      {rotuloNatureza(pz) && (
+        <div className={styles.agendaNatureza}>prazo para {rotuloNatureza(pz)}</div>
+      )}
       {parte && (
         <div className={styles.agendaParte}>
           <span className={styles.agendaParteLabel}>Parte</span>
@@ -394,6 +407,7 @@ export function PrazosView({
   order,
   criticos,
   pautaAtrasada,
+  titularIndisponivel,
 }: {
   prazos: Prazo[];
   view: PrazoView;
@@ -402,6 +416,8 @@ export function PrazosView({
   /** Contagens já calculadas no servidor sobre o conjunto filtrado. */
   criticos?: number;
   pautaAtrasada?: number;
+  /** Filtro "Somente do Dr." pedido sem credencial com OAB/CPF cadastrada. */
+  titularIndisponivel?: boolean;
 }) {
   const now                     = new Date();
   const [calYear, setCalYear]   = useState(now.getFullYear());
@@ -455,6 +471,15 @@ export function PrazosView({
       )}
 
       <div className={styles.scrollArea}>
+        {titularIndisponivel && (
+          <Alert className={styles.alert}>
+            <AlertTitle className={styles.alertCount}>Não dá para separar os prazos do Dr.</AlertTitle>
+            <AlertDescription className={styles.alertDesc}>
+              — o titular é identificado pela OAB e pelo CPF das credenciais; nenhuma cadastrada tem esses dados.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {criticalCount > 0 && (
           <Alert className={styles.alert}>
             <AlertTitle className={styles.alertCount}>

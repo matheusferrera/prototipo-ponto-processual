@@ -8,6 +8,7 @@ import type {
   Movimentacao,
   MovimentacaoGroup,
   Prazo,
+  NaturezaPrazo,
   ProximoPrazo,
   DocumentoMovimentacao,
 } from '@/types';
@@ -30,7 +31,8 @@ async function backendGet(path: string) {
   return res.json();
 }
 
-async function backendGetOrNull<T>(path: string): Promise<T | null> {
+/** `vaziosEm` lista os status que significam "sem dados", não erro (default: 404). */
+async function backendGetOrNull<T>(path: string, vaziosEm: readonly number[] = [404]): Promise<T | null> {
   const jar = await cookies();
   const token = jar.get('access_token')?.value;
   if (!token) redirect('/login');
@@ -41,7 +43,7 @@ async function backendGetOrNull<T>(path: string): Promise<T | null> {
   });
 
   if (res.status === 401) redirect('/login');
-  if (res.status === 404) return null;
+  if (vaziosEm.includes(res.status)) return null;
   if (!res.ok) throw new Error(`Backend error ${res.status} on ${path}`);
 
   return res.json() as T;
@@ -684,6 +686,7 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
 type BackendDeadline = {
   id: string;
   tipoDocumento: string;
+  natureza: NaturezaPrazo | null;
   parte: string | null;
   prazo: number | null;
   dataLimite: string;
@@ -759,6 +762,7 @@ function toPrazo(d: BackendDeadline): Prazo {
     parte,
     assunto: d.process?.assunto?.trim() || '',
     tipo: d.tipoDocumento,
+    natureza: d.natureza ?? null,
     vencimento,
     vencimentoISO,
     pautaISO: toISODate(pauta),
@@ -770,6 +774,11 @@ function toPrazo(d: BackendDeadline): Prazo {
 
 export type PrazoFilters = {
   q?: string;
+  /**
+   * `"dr"` devolve só o expediente de parte representada pelo advogado, cortando
+   * o do adversário. Resolvido no backend — ver `/deadlines?titular=dr`.
+   */
+  titular?: 'dr' | string;
   /** Tribunais em CSV ou lista (ex.: "TRF1,TJDFT"). */
   tribunal?: CsvFilter;
   grau?: '1' | '2' | string;
@@ -781,6 +790,8 @@ export type PrazoFilters = {
   situacao?: string;
   /** Tipo do expediente (contém). */
   tipo?: string;
+  /** "ciencia" | "manifestacao" — o que o prazo cobra. Resolvido no backend. */
+  natureza?: string;
   assunto?: string;
   orgao?: string;
   /** Nome da parte/cliente (contém). */
@@ -803,6 +814,11 @@ export type PrazoPage = {
   criticos: number;
   /** Quantos já passaram da data da pauta sem terem sido trabalhados. */
   pautaAtrasada: number;
+  /**
+   * `titular=dr` foi pedido mas o backend não sabe quem é o advogado (nenhuma
+   * credencial com OAB ou CPF). A tela avisa em vez de mostrar pauta vazia.
+   */
+  titularIndisponivel?: boolean;
 };
 
 const contem = (valor: string, termo?: string) =>
@@ -883,9 +899,19 @@ export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {
   if (filters.fatalTo) params.set('to', `${filters.fatalTo}T23:59:59.999-03:00`);
   appendQueryValue(params, 'q', filters.q);
   appendQueryValue(params, 'tipoDocumento', filters.tipo);
+  appendQueryValue(params, 'titular', filters.titular);
+  appendQueryValue(params, 'natureza', filters.natureza);
   if (filters.situacao) params.set('fechado', String(filters.situacao === 'fechado'));
 
-  const body = await backendGet(`/deadlines?${params.toString()}`) as { data: BackendDeadline[] };
+  // 409 = pediu `titular=dr` sem credencial com OAB/CPF: é estado da conta, não
+  // falha da consulta, então vira aviso na tela em vez de derrubar a página.
+  const body = await backendGetOrNull<{ data: BackendDeadline[] }>(
+    `/deadlines?${params.toString()}`,
+    filters.titular === 'dr' ? [409] : [],
+  );
+  if (!body) {
+    return { prazos: [], total: 0, criticos: 0, pautaAtrasada: 0, titularIndisponivel: true };
+  }
 
   const list = filtraPrazos(body.data.map(toPrazo), filters);
   sortPrazos(list, filters.sort, filters.order);

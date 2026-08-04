@@ -78,6 +78,7 @@ export function ActivePrazoFilters({ filters }: { filters: PrazoFilterState }) {
 function buildChips(filters: PrazoFilterState): Chip[] {
   const chips: Chip[] = [];
   if (filters.q) chips.push({ id: 'q', label: `Busca: ${filters.q}`, remove: c => ({ ...c, q: '' }) });
+  if (filters.titular) chips.push({ id: 'titular', label: 'Somente do Dr.', remove: c => ({ ...c, titular: '' }) });
   filters.tribunal.forEach(value => chips.push({
     id: `tribunal-${value}`,
     label: value,
@@ -88,6 +89,11 @@ function buildChips(filters: PrazoFilterState): Chip[] {
   if (filters.pauta) chips.push({ id: 'pauta', label: LABELS.pauta[filters.pauta], remove: c => ({ ...c, pauta: '' }) });
   if (filters.situacao) chips.push({ id: 'situacao', label: LABELS.situacao[filters.situacao], remove: c => ({ ...c, situacao: '' }) });
   if (filters.cliente) chips.push({ id: 'cliente', label: `Cliente: ${filters.cliente}`, remove: c => ({ ...c, cliente: '' }) });
+  if (filters.natureza) chips.push({
+    id: 'natureza',
+    label: `Prazo para: ${filters.natureza === 'ciencia' ? 'ciência' : 'manifestação'}`,
+    remove: c => ({ ...c, natureza: '' }),
+  });
   if (filters.tipo) chips.push({ id: 'tipo', label: `Expediente: ${filters.tipo}`, remove: c => ({ ...c, tipo: '' }) });
   if (filters.assunto) chips.push({ id: 'assunto', label: `Assunto: ${filters.assunto}`, remove: c => ({ ...c, assunto: '' }) });
   if (filters.orgao) chips.push({ id: 'orgao', label: `Órgão: ${filters.orgao}`, remove: c => ({ ...c, orgao: '' }) });

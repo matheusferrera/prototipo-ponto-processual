@@ -384,6 +384,12 @@
   gap: 12px;
 }
 
+/* Campo que ocupa a linha inteira do grid — evita a meia-linha órfã quando o
+   número de campos é ímpar e destaca o corte principal da seção. */
+.fieldSpan {
+  grid-column: 1 / -1;
+}
+
 .sheetBody [data-slot="input"],
 .sheetBody [data-slot="native-select"] {
   min-height: 42px;

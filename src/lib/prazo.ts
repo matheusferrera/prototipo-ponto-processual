@@ -1,4 +1,19 @@
-import type { Prazo } from '@/types';
+import type { NaturezaPrazo, Prazo } from '@/types';
+
+const ROTULO_NATUREZA: Record<NaturezaPrazo, string> = {
+  ciencia: 'ciência',
+  manifestacao: 'manifestação',
+};
+
+/**
+ * "ciência" ou "manifestação" — o que o prazo cobra do advogado.
+ *
+ * `null` quando o tribunal não deixou claro: a UI omite o rótulo em vez de
+ * chutar, porque um prazo rotulado errado é pior do que um prazo sem rótulo.
+ */
+export function rotuloNatureza(pz: Prazo): string | null {
+  return pz.natureza ? ROTULO_NATUREZA[pz.natureza] : null;
+}
 
 /**
  * Título de um prazo na UI: o assunto do processo; sem assunto, a parte;

@@ -95,6 +95,13 @@ export interface TimelineEvent {
   documentos: DocumentoMovimentacao[];
 }
 
+/**
+ * Natureza do prazo. No PJe a grid de expedientes tem uma coluna de data só,
+ * "Data limite prevista para ciência ou manifestação" — quem separa as duas é o
+ * backend, a partir do texto do ato. Ver `naturezaDoAto` na API.
+ */
+export type NaturezaPrazo = 'ciencia' | 'manifestacao';
+
 export interface Prazo {
   id: string;
   tribunal: string;
@@ -107,6 +114,11 @@ export interface Prazo {
   /** Assunto do processo. Vazio quando o PJe não informou — nunca cai para o nome da parte. */
   assunto: string;
   tipo: string;
+  /**
+   * O que o prazo cobra: tomar ciência do ato ou se manifestar sobre ele.
+   * `null` quando o tribunal não deixa claro — a UI omite o rótulo em vez de chutar.
+   */
+  natureza: NaturezaPrazo | null;
   /** Vencimento fatal formatado dd/mm */
   vencimento: string;
   /** Data completa do vencimento fatal (yyyy-mm-dd) — usada pelo calendário para casar ano+mês */

@@ -230,6 +230,17 @@ export function PrazoFilterControls({
                   </FieldSet>
 
                   <div className={styles.fieldGrid}>
+                    <Field className={styles.fieldSpan}>
+                      <FieldLabel htmlFor={`${variant}-prazo-titular`}>Titular do expediente</FieldLabel>
+                      <NativeSelect
+                        id={`${variant}-prazo-titular`}
+                        value={draft.titular}
+                        onChange={event => changeDraft(current => ({ ...current, titular: event.target.value as PrazoFilterState['titular'] }), true)}
+                      >
+                        <NativeSelectOption value="">Ambos os lados</NativeSelectOption>
+                        <NativeSelectOption value="dr">Somente do Dr.</NativeSelectOption>
+                      </NativeSelect>
+                    </Field>
                     <Field>
                       <FieldLabel htmlFor={`${variant}-prazo-urgencia`}>Urgência</FieldLabel>
                       <NativeSelect
@@ -279,6 +290,18 @@ export function PrazoFilterControls({
                         <NativeSelectOption value="">Todos</NativeSelectOption>
                         <NativeSelectOption value="pendente">Pendente</NativeSelectOption>
                         <NativeSelectOption value="fechado">Fechado</NativeSelectOption>
+                      </NativeSelect>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`${variant}-prazo-natureza`}>Prazo para</FieldLabel>
+                      <NativeSelect
+                        id={`${variant}-prazo-natureza`}
+                        value={draft.natureza}
+                        onChange={event => changeDraft(current => ({ ...current, natureza: event.target.value as PrazoFilterState['natureza'] }), true)}
+                      >
+                        <NativeSelectOption value="">Todos</NativeSelectOption>
+                        <NativeSelectOption value="ciencia">Ciência</NativeSelectOption>
+                        <NativeSelectOption value="manifestacao">Manifestação</NativeSelectOption>
                       </NativeSelect>
                     </Field>
                   </div>

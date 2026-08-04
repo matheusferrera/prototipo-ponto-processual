@@ -22,6 +22,7 @@ const tiposFiltro = [
 ];
 const tribunaisFiltro = [
   { label: 'TODOS', value: '' },
+  { label: 'STJ', value: 'STJ' },
   { label: 'TRF1', value: 'TRF1' },
   { label: 'TJDFT', value: 'TJDFT' },
   { label: 'TRF3', value: 'TRF3' },

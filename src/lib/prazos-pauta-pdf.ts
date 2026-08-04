@@ -1,5 +1,5 @@
 import type { Prazo } from '@/types';
-import { assuntoSecundario, clientePrazo, expedientePrazo } from '@/lib/prazo';
+import { assuntoSecundario, clientePrazo, expedientePrazo, rotuloNatureza } from '@/lib/prazo';
 
 /**
  * PDF da pauta em texto corrido, no formato do e-mail que o escritório já manda:
@@ -80,10 +80,21 @@ function runsDoPrazo(prazo: Prazo): Run[] {
   return [
     { text: '- ' },
     { text: fmtISO(prazo.pautaISO), bold: true },
-    { text: ` - ${cliente} (${parenteses}) - prazo para ${expedientePrazo(prazo)} ` },
+    { text: ` - ${cliente} (${parenteses}) - ${chamadaDoPrazo(prazo)} ` },
     { text: marcador, bold: true },
     { text: ';' },
   ];
+}
+
+/**
+ * O miolo da linha da pauta: o que o prazo cobra e sobre qual expediente.
+ * Sem natureza reconhecida cai na forma antiga ("prazo para <expediente>") —
+ * a pauta vai para o cliente, e um rótulo chutado ali é pior que nenhum.
+ */
+function chamadaDoPrazo(prazo: Prazo): string {
+  const natureza = rotuloNatureza(prazo);
+  const expediente = expedientePrazo(prazo);
+  return natureza ? `prazo para ${natureza} de ${expediente}` : `prazo para ${expediente}`;
 }
 
 type Doc = Awaited<ReturnType<typeof novoDocumento>>;

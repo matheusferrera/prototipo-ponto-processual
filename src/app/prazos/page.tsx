@@ -27,7 +27,8 @@ export default async function PrazosPage({
   const sp = await searchParams;
   const filters = parsePrazoFilters(sp);
 
-  const { prazos, criticos, pautaAtrasada } = await getPrazos(1, 100, prazoFiltersToApi(filters));
+  const { prazos, criticos, pautaAtrasada, titularIndisponivel } =
+    await getPrazos(1, 100, prazoFiltersToApi(filters));
 
   return (
     <AppLayout
@@ -50,6 +51,7 @@ export default async function PrazosPage({
         order={filters.order}
         criticos={criticos}
         pautaAtrasada={pautaAtrasada}
+        titularIndisponivel={titularIndisponivel}
       />
     </AppLayout>
   );

@@ -66,7 +66,7 @@ export const DEFAULT_PROCESS_FILTERS: ProcessFilterState = {
   order: 'desc',
 };
 
-const ALLOWED_TRIBUNAIS = new Set(['TJBA', 'TJDFT', 'TJPI', 'TJRN', 'TRF1', 'TRF2', 'TRF3']);
+const ALLOWED_TRIBUNAIS = new Set(['STJ', 'TJBA', 'TJDFT', 'TJPI', 'TJRN', 'TRF1', 'TRF2', 'TRF3']);
 const ALLOWED_STATUS = new Set(['active', 'archived']);
 const ALLOWED_STATE = new Set(['signal', 'alert', 'quiet']);
 const ALLOWED_SORT = new Set<ProcessSort>(['recent', 'cnj', 'tribunal', 'valor', 'autuado']);
