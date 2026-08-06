@@ -1,4 +1,5 @@
 import type { PrazoFilters } from '@/lib/api.server';
+import { FALLBACK_TRIBUNALS } from '@/lib/tribunals';
 
 /**
  * Filtros da página de Prazos — mesmo contrato do `process-filters`: a URL é a
@@ -44,11 +45,13 @@ export type PrazoSituacao = '' | 'pendente' | 'fechado';
  */
 export type PrazoNatureza = '' | 'ciencia' | 'manifestacao';
 /**
- * De quem é o expediente. O PJe lista o prazo dos dois lados do processo, então
- * `dr` corta o que é do adversário — o backend resolve pela OAB/CPF das
- * credenciais cruzada com os representantes das partes (`/deadlines?titular=dr`).
+ * De quem é o expediente. O PJe lista o prazo dos dois lados do processo, e a
+ * pauta que interessa é a do escritório — por isso o padrão é `dr`, que corta o
+ * do adversário (o backend resolve pela OAB/CPF das credenciais cruzada com os
+ * representantes das partes, `/deadlines?titular=dr`). `todos` é a escolha
+ * explícita de ver os dois lados, e é o único valor que vai para a URL.
  */
-export type PrazoTitular = '' | 'dr';
+export type PrazoTitular = 'dr' | 'todos';
 export type PrazoView = 'lista' | 'kanban' | 'calendario';
 
 export type PrazoFilterState = {
@@ -77,7 +80,7 @@ export type PrazoSearchParams = Record<string, string | string[] | undefined>;
 
 export const DEFAULT_PRAZO_FILTERS: PrazoFilterState = {
   q: '',
-  titular: '',
+  titular: 'dr',
   tribunal: [],
   grau: '',
   urgencia: '',
@@ -97,9 +100,7 @@ export const DEFAULT_PRAZO_FILTERS: PrazoFilterState = {
   view: 'lista',
 };
 
-export const PRAZO_TRIBUNAIS = ['STJ', 'TJDFT', 'TJPI', 'TRF1', 'TRF2', 'TRF3'] as const;
-
-const ALLOWED_TRIBUNAIS = new Set<string>(PRAZO_TRIBUNAIS);
+const FALLBACK_TRIBUNAL_CODES = FALLBACK_TRIBUNALS.map(tribunal => tribunal.code);
 const ALLOWED_SORT = new Set<PrazoSort>(['fatal', 'pauta', 'tribunal', 'cliente', 'expediente']);
 const ALLOWED_URGENCIA = new Set(['critico', 'urgente', 'atencao', 'normal']);
 const ALLOWED_PAUTA = new Set(['atrasada', 'hoje', 'semana']);
@@ -125,7 +126,10 @@ function cleanDate(value: string | string[] | undefined): string {
   return DATE_RE.test(date) ? date : '';
 }
 
-export function parsePrazoFilters(searchParams: PrazoSearchParams): PrazoFilterState {
+export function parsePrazoFilters(
+  searchParams: PrazoSearchParams,
+  allowedTribunals: readonly string[] = FALLBACK_TRIBUNAL_CODES,
+): PrazoFilterState {
   const sortValue = cleanText(searchParams.sort) as PrazoSort;
   const sort = ALLOWED_SORT.has(sortValue) ? sortValue : DEFAULT_PRAZO_FILTERS.sort;
   const orderValue = cleanText(searchParams.order);
@@ -138,8 +142,10 @@ export function parsePrazoFilters(searchParams: PrazoSearchParams): PrazoFilterS
 
   return {
     q: cleanText(searchParams.q),
-    titular: cleanText(searchParams.titular) === 'dr' ? 'dr' : '',
-    tribunal: cleanCsv(searchParams.tribunal, ALLOWED_TRIBUNAIS),
+    // Só `todos` desliga o recorte: qualquer outra coisa (ausente, lixo, o `dr`
+    // antigo) cai no padrão, que é a pauta do próprio escritório.
+    titular: cleanText(searchParams.titular) === 'todos' ? 'todos' : 'dr',
+    tribunal: cleanCsv(searchParams.tribunal, new Set(allowedTribunals)),
     grau: grauValue === '1' || grauValue === '2' ? grauValue : '',
     urgencia: ALLOWED_URGENCIA.has(urgenciaValue) ? urgenciaValue as PrazoUrgencia : '',
     pauta: ALLOWED_PAUTA.has(pautaValue) ? pautaValue as PrazoPautaJanela : '',
@@ -166,7 +172,6 @@ export function serializePrazoFilters(filters: PrazoFilterState): URLSearchParam
   };
 
   set('q', filters.q);
-  set('titular', filters.titular);
   set('tribunal', filters.tribunal.join(','));
   set('grau', filters.grau);
   set('urgencia', filters.urgencia);
@@ -182,6 +187,7 @@ export function serializePrazoFilters(filters: PrazoFilterState): URLSearchParam
   set('pautaFrom', filters.pautaFrom);
   set('pautaTo', filters.pautaTo);
 
+  if (filters.titular !== DEFAULT_PRAZO_FILTERS.titular) params.set('titular', filters.titular);
   if (filters.sort !== DEFAULT_PRAZO_FILTERS.sort) params.set('sort', filters.sort);
   if (filters.order !== defaultOrderFor(filters.sort)) params.set('order', filters.order);
   if (filters.view !== DEFAULT_PRAZO_FILTERS.view) params.set('view', filters.view);
@@ -195,7 +201,8 @@ export function prazoFiltersToRecord(filters: PrazoFilterState): Record<string, 
 export function prazoFiltersToApi(filters: PrazoFilterState): PrazoFilters {
   return {
     q: filters.q || undefined,
-    titular: filters.titular || undefined,
+    // `todos` não é parâmetro do backend — é a ausência do recorte.
+    titular: filters.titular === 'dr' ? 'dr' : undefined,
     tribunal: filters.tribunal.length ? filters.tribunal : undefined,
     grau: filters.grau || undefined,
     urgencia: filters.urgencia || undefined,
@@ -222,7 +229,7 @@ export function defaultOrderFor(sort: PrazoSort): PrazoOrder {
 
 export function countActivePrazoFilters(filters: PrazoFilterState): number {
   return filters.tribunal.length +
-    Number(Boolean(filters.titular)) +
+    Number(filters.titular !== DEFAULT_PRAZO_FILTERS.titular) +
     Number(Boolean(filters.grau)) +
     Number(Boolean(filters.urgencia)) +
     Number(Boolean(filters.pauta)) +

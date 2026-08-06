@@ -416,7 +416,10 @@ export function PrazosView({
   /** Contagens já calculadas no servidor sobre o conjunto filtrado. */
   criticos?: number;
   pautaAtrasada?: number;
-  /** Filtro "Somente do Dr." pedido sem credencial com OAB/CPF cadastrada. */
+  /**
+   * "Somente do Dr." (o padrão) pedido sem credencial com OAB/CPF cadastrada —
+   * a lista veio sem o recorte, com os dois lados.
+   */
   titularIndisponivel?: boolean;
 }) {
   const now                     = new Date();
@@ -473,9 +476,10 @@ export function PrazosView({
       <div className={styles.scrollArea}>
         {titularIndisponivel && (
           <Alert className={styles.alert}>
-            <AlertTitle className={styles.alertCount}>Não dá para separar os prazos do Dr.</AlertTitle>
+            <AlertTitle className={styles.alertCount}>Mostrando os prazos dos dois lados</AlertTitle>
             <AlertDescription className={styles.alertDesc}>
-              — o titular é identificado pela OAB e pelo CPF das credenciais; nenhuma cadastrada tem esses dados.
+              — o titular é identificado pela OAB e pelo CPF das credenciais; nenhuma cadastrada tem esses dados,
+              então não dá para separar só os do Dr.
             </AlertDescription>
           </Alert>
         )}

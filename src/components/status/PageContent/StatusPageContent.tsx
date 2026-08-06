@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment, useState, useTransition, useEffect } from 'react';
+import { Fragment, useMemo, useState, useTransition, useEffect } from 'react';
 import { Search, AlertTriangle, Activity, CircleOff } from 'lucide-react';
 import type { TribunalStatusItem, TribunalHealthStatus } from '@/types';
+import { agruparPorTribunal } from '@/lib/tribunal-status';
 import styles from './StatusPageContent.module.css';
 
 interface StatusPageContentProps {
@@ -100,24 +101,30 @@ export function StatusPageContent({
     return () => clearInterval(interval);
   }, []);
 
-  const filteredTribunals = tribunals.filter(t => {
+  // Uma linha por tribunal: 1º e 2º grau moram na mesma linha, cada um com seu
+  // status. Os graus continuam sendo a unidade de medida do backend.
+  const grupos = useMemo(() => agruparPorTribunal(tribunals), [tribunals]);
+
+  const filteredTribunals = grupos.filter(g => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
-      t.codigo.toLowerCase().includes(q) ||
-      t.nome.toLowerCase().includes(q) ||
-      t.uf.toLowerCase().includes(q);
+      g.codigo.toLowerCase().includes(q) ||
+      g.nome.toLowerCase().includes(q) ||
+      g.uf.toLowerCase().includes(q) ||
+      g.graus.some(t => t.codigo.toLowerCase().includes(q) || t.nome.toLowerCase().includes(q));
 
     if (!matchesSearch) return false;
 
-    if (filterEsfera === 'Federal') return t.esfera === 'Federal';
-    if (filterEsfera === 'Estadual') return t.esfera === 'Estadual';
-    if (filterEsfera === 'ALERTAS') return t.status === 'atencao' || t.status === 'erro';
+    if (filterEsfera === 'Federal') return g.esfera === 'Federal';
+    if (filterEsfera === 'Estadual') return g.esfera === 'Estadual';
+    if (filterEsfera === 'ALERTAS') return g.status === 'atencao' || g.status === 'erro';
 
     return true;
   });
 
+  // Varredura é por grau — duas varreduras do mesmo tribunal são duas varreduras.
   const sincronizandoCount = tribunals.filter(t => t.status === 'sincronizando').length;
-  const alertasCount = tribunals.filter(t => t.status === 'atencao' || t.status === 'erro').length;
+  const alertasCount = grupos.filter(g => g.status === 'atencao' || g.status === 'erro').length;
 
   const lastSyncOverall = tribunals.reduce<string | null>((best, t) => {
     if (!t.lastSyncAt) return best;
@@ -134,19 +141,19 @@ export function StatusPageContent({
             onClick={() => startTransition(() => setFilterEsfera('TODOS'))}
             className={`${styles.filterBtn} ${filterEsfera === 'TODOS' ? styles.filterBtnActive : ''}`}
           >
-            Todos ({tribunals.length})
+            Todos ({grupos.length})
           </button>
           <button
             onClick={() => startTransition(() => setFilterEsfera('Federal'))}
             className={`${styles.filterBtn} ${filterEsfera === 'Federal' ? styles.filterBtnActive : ''}`}
           >
-            Federal ({tribunals.filter(t => t.esfera === 'Federal').length})
+            Federal ({grupos.filter(g => g.esfera === 'Federal').length})
           </button>
           <button
             onClick={() => startTransition(() => setFilterEsfera('Estadual'))}
             className={`${styles.filterBtn} ${filterEsfera === 'Estadual' ? styles.filterBtnActive : ''}`}
           >
-            Estadual ({tribunals.filter(t => t.esfera === 'Estadual').length})
+            Estadual ({grupos.filter(g => g.esfera === 'Estadual').length})
           </button>
           <button
             onClick={() => startTransition(() => setFilterEsfera('ALERTAS'))}
@@ -246,11 +253,21 @@ export function StatusPageContent({
                       <span className={styles.sistemaTag}>{tribunal.sistema}</span>
                     </td>
 
+                    {/* Um pill por grau, na mesma linha do tribunal. */}
                     <td>
-                      <span className={`${styles.statusPill} ${STATUS_CLASS[tribunal.status]}`}>
-                        <span className={`${styles.dot} ${STATUS_CLASS[tribunal.status]}`} />
-                        {STATUS_LABEL[tribunal.status]}
-                      </span>
+                      <div className={styles.statusStack}>
+                        {tribunal.graus.map(grau => (
+                          <div key={grau.id} className={styles.statusEntry}>
+                            {grau.grauLabel && (
+                              <span className={styles.grauLabel}>{grau.grauLabel}</span>
+                            )}
+                            <span className={`${styles.statusPill} ${STATUS_CLASS[grau.status]}`}>
+                              <span className={`${styles.dot} ${STATUS_CLASS[grau.status]}`} />
+                              {STATUS_LABEL[grau.status]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </td>
 
                     <td className={styles.tdNum}>{tribunal.activeProcessesCount}</td>
@@ -289,25 +306,31 @@ export function StatusPageContent({
                   </tr>
 
                   {/* Erro em aberto pesa como alerta; falha já superada por um
-                      sucesso posterior é só o histórico que explica a taxa. */}
-                  {tribunal.lastError ? (
-                    <tr className={styles.errorRow}>
-                      <td colSpan={7}>
-                        <span className={styles.errorLabel}>Erro em aberto</span>
-                        <span className={styles.errorText}>{tribunal.lastError}</span>
-                      </td>
-                    </tr>
-                  ) : tribunal.lastFailure ? (
-                    <tr className={styles.pastFailureRow}>
-                      <td colSpan={7}>
-                        <span className={styles.pastFailureLabel}>
-                          Última falha{tribunal.lastFailureAt ? ` · ${relativeTime(tribunal.lastFailureAt)}` : ''}
-                          {' · '}já recuperado
-                        </span>
-                        <span className={styles.pastFailureText}>{tribunal.lastFailure}</span>
-                      </td>
-                    </tr>
-                  ) : null}
+                      sucesso posterior é só o histórico que explica a taxa. O grau
+                      é nomeado: o erro é de um grau, não do tribunal inteiro. */}
+                  {tribunal.graus.map(grau =>
+                    grau.lastError ? (
+                      <tr key={`${grau.id}-erro`} className={styles.errorRow}>
+                        <td colSpan={7}>
+                          <span className={styles.errorLabel}>
+                            Erro em aberto{grau.grauLabel ? ` · ${grau.grauLabel} grau` : ''}
+                          </span>
+                          <span className={styles.errorText}>{grau.lastError}</span>
+                        </td>
+                      </tr>
+                    ) : grau.lastFailure ? (
+                      <tr key={`${grau.id}-falha`} className={styles.pastFailureRow}>
+                        <td colSpan={7}>
+                          <span className={styles.pastFailureLabel}>
+                            Última falha{grau.grauLabel ? ` · ${grau.grauLabel} grau` : ''}
+                            {grau.lastFailureAt ? ` · ${relativeTime(grau.lastFailureAt)}` : ''}
+                            {' · '}já recuperado
+                          </span>
+                          <span className={styles.pastFailureText}>{grau.lastFailure}</span>
+                        </td>
+                      </tr>
+                    ) : null,
+                  )}
                 </Fragment>
               ))}
             </tbody>

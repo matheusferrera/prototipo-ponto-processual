@@ -56,7 +56,7 @@ export function Sidebar({ active, onClose }: SidebarProps) {
       <div className={styles.spacer} />
 
       <SectionLabel>Monitoramento</SectionLabel>
-      <NavItem label="Status dos Tribunais" href="/design-system" badge="LIVE" active={active === 'Status'} />
+      <NavItem label="Status dos Tribunais" href="/status" badge="LIVE" active={active === 'Status'} />
 
       <div className={styles.spacer} />
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { Processo } from '@/types';
+import { FilterWorkspace } from '@/components/filters/FilterWorkspace';
 import { ProcessTable } from '../ProcessTable/ProcessTable';
 import { buttonVariants } from '@/components/ui/button';
 import { cn, buildQuery } from '@/lib/utils';
@@ -17,9 +18,10 @@ interface PageContentProps {
   listParams?: Record<string, string | undefined>;
   pageInfo?: ReactNode;
   tableControls?: ReactNode;
+  panelHostId: string;
 }
 
-export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo, tableControls }: PageContentProps) {
+export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo, tableControls, panelHostId }: PageContentProps) {
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, total);
   const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
@@ -35,34 +37,36 @@ export function PageContent({ processos, total, totalPages, currentPage, listPar
   const btnDisabled = cn(btnBase, 'pointer-events-none opacity-40');
 
   return (
-    <>
-      <div className={styles.scrollArea}>
-        {pageInfo}
-        {tableControls}
+    <FilterWorkspace panelHostId={panelHostId}>
+      <div className={styles.contentColumn}>
+        <div className={styles.scrollArea}>
+          {pageInfo}
+          {tableControls}
 
-        {isEmpty ? (
-          <EmptyState hasFilters={hasFilters} />
-        ) : (
-          <ProcessTable processos={processos} listParams={listParams} />
+          {isEmpty ? (
+            <EmptyState hasFilters={hasFilters} />
+          ) : (
+            <ProcessTable processos={processos} listParams={listParams} />
+          )}
+        </div>
+
+        {!isEmpty && (
+          <div className={`px-page ${styles.pagination}`}>
+            <span className={styles.paginationInfo}>{rangeStart}–{rangeEnd} de {total}</span>
+            <div className={styles.spacer} />
+            {currentPage <= 1
+              ? <span className={btnDisabled} aria-label="Página anterior" aria-disabled="true">←</span>
+              : <Link href={pageHref(currentPage - 1)} className={btnBase} aria-label="Página anterior" rel="prev">←</Link>
+            }
+            <span className={styles.paginationPage}>{currentPage} / {totalPages}</span>
+            {currentPage >= totalPages
+              ? <span className={btnDisabled} aria-label="Próxima página" aria-disabled="true">→</span>
+              : <Link href={pageHref(currentPage + 1)} className={btnBase} aria-label="Próxima página" rel="next">→</Link>
+            }
+          </div>
         )}
       </div>
-
-      {!isEmpty && (
-        <div className={`px-page ${styles.pagination}`}>
-          <span className={styles.paginationInfo}>{rangeStart}–{rangeEnd} de {total}</span>
-          <div className={styles.spacer} />
-          {currentPage <= 1
-            ? <span className={btnDisabled} aria-label="Página anterior" aria-disabled="true">←</span>
-            : <Link href={pageHref(currentPage - 1)} className={btnBase} aria-label="Página anterior" rel="prev">←</Link>
-          }
-          <span className={styles.paginationPage}>{currentPage} / {totalPages}</span>
-          {currentPage >= totalPages
-            ? <span className={btnDisabled} aria-label="Próxima página" aria-disabled="true">→</span>
-            : <Link href={pageHref(currentPage + 1)} className={btnBase} aria-label="Próxima página" rel="next">→</Link>
-          }
-        </div>
-      )}
-    </>
+    </FilterWorkspace>
   );
 }
 

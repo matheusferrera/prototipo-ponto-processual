@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition, type FormEvent, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ArrowUpDown, Columns3, Funnel, X } from 'lucide-react';
 import { SearchControl } from '@/components/layout/PageHeader/SearchControl';
+import { ResponsiveFilterPanel } from '@/components/filters/ResponsiveFilterPanel';
 import { ProcessTableSettingsPanel } from '@/components/processos/ProcessTable/ProcessTableProvider';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,8 +26,11 @@ import {
   type ProcessSort,
 } from '@/lib/process-filters';
 import styles from '@/components/filters/FilterPanel.module.css';
+import type { TribunalOption } from '@/lib/tribunals';
 
-const TRIBUNAIS = ['STJ', 'TJBA', 'TJDFT', 'TJPI', 'TJRN', 'TRF1', 'TRF2', 'TRF3'] as const;
+export const PROCESS_FILTER_PANEL_HOST_ID = 'process-filter-panel-host';
+const PROCESS_FILTER_PANEL_ID = 'process-filter-panel';
+
 const PROCESS_STATUS = [
   { value: 'active', label: 'Ativo' },
   { value: 'archived', label: 'Arquivado' },
@@ -48,6 +51,7 @@ const SORT_OPTIONS: { value: `${ProcessSort}:${'asc' | 'desc'}`; label: string }
 
 interface ProcessFilterControlsProps {
   filters: ProcessFilterState;
+  tribunals: readonly TribunalOption[];
   variant?: 'desktop' | 'mobile';
   viewsControl?: ReactNode;
 }
@@ -56,6 +60,7 @@ type OpenPanel = 'filters' | 'columns' | null;
 
 export function ProcessFilterControls({
   filters,
+  tribunals,
   variant = 'desktop',
   viewsControl,
 }: ProcessFilterControlsProps) {
@@ -63,8 +68,10 @@ export function ProcessFilterControls({
   const pathname = usePathname();
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const [draft, setDraft] = useState(filters);
-  const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
   const [isPending, startTransition] = useTransition();
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const columnsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const activeCount = countActiveProcessFilters(filters);
 
   const preservedForSearch = useMemo(() => {
@@ -115,13 +122,6 @@ export function ProcessFilterControls({
   }, [filters]);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setPanelHost(document.getElementById('process-inline-panel-host'));
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-
-  useEffect(() => {
     const fields: (keyof ProcessFilterState)[] = [
       'assunto', 'classe', 'orgao', 'valorMin', 'valorMax',
       'autuadoFrom', 'autuadoTo', 'movFrom', 'movTo',
@@ -157,6 +157,7 @@ export function ProcessFilterControls({
       />
 
       <Button
+        ref={filterButtonRef}
         type="button"
         variant="outline"
         size={variant === 'mobile' ? 'icon-lg' : 'icon'}
@@ -164,8 +165,11 @@ export function ProcessFilterControls({
         data-active={activeCount > 0 || undefined}
         aria-label={activeCount ? `Abrir filtros, ${activeCount} ativos` : 'Abrir filtros'}
         aria-expanded={openPanel === 'filters'}
-        aria-controls="process-inline-panel"
-        onClick={() => togglePanel('filters')}
+        aria-controls={PROCESS_FILTER_PANEL_ID}
+        onClick={() => {
+          returnFocusRef.current = filterButtonRef.current;
+          togglePanel('filters');
+        }}
       >
         <Funnel />
         {activeCount > 0 && <span className={styles.controlCount} aria-hidden="true">{activeCount}</span>}
@@ -184,26 +188,36 @@ export function ProcessFilterControls({
       {viewsControl}
 
         <Button
+          ref={columnsButtonRef}
           type="button"
           variant="outline"
           className={styles.panelButton}
           data-active={openPanel === 'columns' || undefined}
           aria-expanded={openPanel === 'columns'}
-          aria-controls="process-inline-panel"
-          onClick={() => togglePanel('columns')}
+          aria-controls={PROCESS_FILTER_PANEL_ID}
+          onClick={() => {
+            returnFocusRef.current = columnsButtonRef.current;
+            togglePanel('columns');
+          }}
         >
           <Columns3 />
           <span>Colunas</span>
         </Button>
       </div>
 
-      {openPanel && panelHost && createPortal(
-        <div id="process-inline-panel" className={styles.inlinePanel}>
+      <ResponsiveFilterPanel
+        open={openPanel !== null}
+        onOpenChange={open => { if (!open) setOpenPanel(null); }}
+        panelHostId={PROCESS_FILTER_PANEL_HOST_ID}
+        panelId={PROCESS_FILTER_PANEL_ID}
+        title={openPanel === 'columns' ? 'Configurar tabela' : 'Filtrar processos'}
+        returnFocusRef={returnFocusRef}
+      >
           {openPanel === 'filters' ? (
           <form className={`${styles.filterForm} ${styles.inlineFilterForm}`} onSubmit={applyFilters}>
             <div className={styles.sheetHeader}>
               <div>
-                <h2>Filtrar processos</h2>
+                <h2 data-filter-panel-title tabIndex={-1}>Filtrar processos</h2>
                 <p>As alterações são aplicadas automaticamente à tabela.</p>
               </div>
               <div className={styles.panelStatus} role="status" aria-live="polite">
@@ -222,19 +236,22 @@ export function ProcessFilterControls({
                   <FieldSet className={styles.nestedGroup}>
                     <FieldLegend variant="label">Tribunal</FieldLegend>
                     <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
-                      {TRIBUNAIS.map(tribunal => (
-                        <Field key={tribunal} orientation="horizontal" className={styles.checkField}>
+                      {tribunals.map(tribunal => (
+                        <Field key={tribunal.code} orientation="horizontal" className={styles.checkField}>
                           <Checkbox
-                            id={`${variant}-tribunal-${tribunal}`}
-                            checked={draft.tribunal.includes(tribunal)}
+                            id={`${variant}-tribunal-${tribunal.code}`}
+                            checked={draft.tribunal.includes(tribunal.code)}
                             onCheckedChange={checked => changeDraft(current => ({
                               ...current,
                               tribunal: checked
-                                ? [...new Set([...current.tribunal, tribunal])]
-                                : current.tribunal.filter(item => item !== tribunal),
+                                ? [...new Set([...current.tribunal, tribunal.code])]
+                                : current.tribunal.filter(item => item !== tribunal.code),
                             }), true)}
                           />
-                          <FieldLabel htmlFor={`${variant}-tribunal-${tribunal}`}>{tribunal}</FieldLabel>
+                          <FieldLabel className={styles.tribunalLabel} htmlFor={`${variant}-tribunal-${tribunal.code}`}>
+                            <span>{tribunal.code}</span>
+                            <small>{tribunal.system}</small>
+                          </FieldLabel>
                         </Field>
                       ))}
                     </FieldGroup>
@@ -361,7 +378,7 @@ export function ProcessFilterControls({
             <div className={styles.inlineSettingsWrap}>
               <div className={styles.sheetHeader}>
                 <div>
-                  <h2>Configurar tabela</h2>
+                  <h2 data-filter-panel-title tabIndex={-1}>Configurar tabela</h2>
                   <p>As alterações aparecem imediatamente e são salvas automaticamente.</p>
                 </div>
                 <Button type="button" variant="outline" size="icon" onClick={() => setOpenPanel(null)} aria-label="Fechar configuração de colunas">
@@ -371,9 +388,7 @@ export function ProcessFilterControls({
               <ProcessTableSettingsPanel embedded />
             </div>
           )}
-        </div>,
-        panelHost,
-      )}
+      </ResponsiveFilterPanel>
     </>
   );
 }

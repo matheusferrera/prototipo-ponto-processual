@@ -5,6 +5,7 @@ import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
 import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
 import { StatusPageContent } from '@/components/status/PageContent/StatusPageContent';
 import { getTribunaisStatus } from '@/lib/api.server';
+import { agruparPorTribunal } from '@/lib/tribunal-status';
 
 export const metadata: Metadata = {
   title: 'Status dos Tribunais — Ponto Processual',
@@ -14,17 +15,21 @@ export const metadata: Metadata = {
 export default async function StatusPage() {
   const { tribunals, unavailable } = await getTribunaisStatus();
 
-  const totalTribunals = tribunals.length;
-  const operacionaisCount = tribunals.filter(t => t.status === 'operacional').length;
-  const emSincroniaCount = tribunals.filter(t => t.status === 'sincronizando').length;
-  const alertasCount = tribunals.filter(t => t.status === 'atencao' || t.status === 'erro').length;
-  const semCredencialCount = tribunals.filter(t => t.status === 'nao_configurado').length;
+  // Os contadores falam de tribunais, não de graus — é o que a tabela mostra,
+  // uma linha por tribunal. O status de um grupo é o pior grau dele.
+  const grupos = agruparPorTribunal(tribunals);
+
+  const totalTribunals = grupos.length;
+  const operacionaisCount = grupos.filter(g => g.status === 'operacional').length;
+  const emSincroniaCount = grupos.filter(g => g.status === 'sincronizando').length;
+  const alertasCount = grupos.filter(g => g.status === 'atencao' || g.status === 'erro').length;
+  const semCredencialCount = grupos.filter(g => g.status === 'nao_configurado').length;
 
   // Média apenas sobre tribunais efetivamente medidos: incluir os `null` como 0
   // afundaria a média e faria o sistema parecer mais rápido do que é.
-  const measured = tribunals.filter(t => t.latencyMs !== null);
+  const measured = grupos.filter(g => g.latencyMs !== null);
   const avgLatency = measured.length
-    ? `${(measured.reduce((acc, t) => acc + (t.latencyMs ?? 0), 0) / measured.length / 1000).toFixed(1)}s`
+    ? `${(measured.reduce((acc, g) => acc + (g.latencyMs ?? 0), 0) / measured.length / 1000).toFixed(1)}s`
     : '—';
 
   const pageInfoContent: PageInfoContent = [

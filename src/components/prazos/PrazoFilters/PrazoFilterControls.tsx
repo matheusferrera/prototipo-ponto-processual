@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ArrowUpDown, Funnel, X } from 'lucide-react';
 import { SearchControl } from '@/components/layout/PageHeader/SearchControl';
+import { ResponsiveFilterPanel } from '@/components/filters/ResponsiveFilterPanel';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import {
   DEFAULT_PRAZO_FILTERS,
-  PRAZO_TRIBUNAIS,
   countActivePrazoFilters,
   defaultOrderFor,
   serializePrazoFilters,
@@ -21,11 +20,12 @@ import {
   type PrazoSort,
   type PrazoView,
 } from '@/lib/prazo-filters';
+import type { TribunalOption } from '@/lib/tribunals';
 import headerStyles from '@/components/layout/PageHeader/PageHeader.module.css';
 import styles from '@/components/filters/FilterPanel.module.css';
 
-/** Host do painel inline — renderizado pela página, dentro da área de conteúdo. */
-export const PRAZO_PANEL_HOST_ID = 'prazo-inline-panel-host';
+export const PRAZO_PANEL_HOST_ID = 'prazo-filter-panel-host';
+const PRAZO_PANEL_ID = 'prazo-filter-panel';
 
 const VIEWS: { value: PrazoView; label: string }[] = [
   { value: 'lista', label: 'Pauta' },
@@ -47,17 +47,20 @@ const SORT_OPTIONS: { value: `${PrazoSort}:${'asc' | 'desc'}`; label: string }[]
 
 export function PrazoFilterControls({
   filters,
+  tribunals,
   variant = 'desktop',
 }: {
   filters: PrazoFilterState;
+  tribunals: readonly TribunalOption[];
   variant?: 'desktop' | 'mobile';
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(filters);
-  const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
   const [isPending, startTransition] = useTransition();
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const activeCount = countActivePrazoFilters(filters);
 
   const preservedForSearch = useMemo(() => {
@@ -89,13 +92,6 @@ export function PrazoFilterControls({
     const timer = window.setTimeout(() => setDraft(filters), 0);
     return () => window.clearTimeout(timer);
   }, [filters]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setPanelHost(document.getElementById(PRAZO_PANEL_HOST_ID));
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
 
   // Campos de texto/data aplicam sozinhos, com folga para o usuário terminar de digitar
   useEffect(() => {
@@ -141,6 +137,7 @@ export function PrazoFilterControls({
       />
 
       <Button
+        ref={filterButtonRef}
         type="button"
         variant="outline"
         size={variant === 'mobile' ? 'icon-lg' : 'icon'}
@@ -148,11 +145,14 @@ export function PrazoFilterControls({
         data-active={activeCount > 0 || undefined}
         aria-label={activeCount ? `Abrir filtros, ${activeCount} ativos` : 'Abrir filtros'}
         aria-expanded={open}
-        aria-controls="prazo-inline-panel"
-        onClick={() => setOpen(current => {
-          if (!current) setDraft(filters);
-          return !current;
-        })}
+        aria-controls={PRAZO_PANEL_ID}
+        onClick={() => {
+          returnFocusRef.current = filterButtonRef.current;
+          setOpen(current => {
+            if (!current) setDraft(filters);
+            return !current;
+          });
+        }}
       >
         <Funnel />
         {activeCount > 0 && <span className={styles.controlCount} aria-hidden="true">{activeCount}</span>}
@@ -184,15 +184,21 @@ export function PrazoFilterControls({
         </>
       )}
 
-      {open && panelHost && createPortal(
-        <div id="prazo-inline-panel" className={styles.inlinePanel}>
+      <ResponsiveFilterPanel
+        open={open}
+        onOpenChange={setOpen}
+        panelHostId={PRAZO_PANEL_HOST_ID}
+        panelId={PRAZO_PANEL_ID}
+        title="Filtrar prazos"
+        returnFocusRef={returnFocusRef}
+      >
           <form
             className={`${styles.filterForm} ${styles.inlineFilterForm}`}
             onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); navigate(draft); }}
           >
             <div className={styles.sheetHeader}>
               <div>
-                <h2>Filtrar prazos</h2>
+                <h2 data-filter-panel-title tabIndex={-1}>Filtrar prazos</h2>
                 <p>As alterações são aplicadas automaticamente à pauta.</p>
               </div>
               <div className={styles.panelStatus} role="status" aria-live="polite">
@@ -211,19 +217,22 @@ export function PrazoFilterControls({
                   <FieldSet className={styles.nestedGroup}>
                     <FieldLegend variant="label">Tribunal</FieldLegend>
                     <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
-                      {PRAZO_TRIBUNAIS.map(tribunal => (
-                        <Field key={tribunal} orientation="horizontal" className={styles.checkField}>
+                      {tribunals.map(tribunal => (
+                        <Field key={tribunal.code} orientation="horizontal" className={styles.checkField}>
                           <Checkbox
-                            id={`${variant}-prazo-tribunal-${tribunal}`}
-                            checked={draft.tribunal.includes(tribunal)}
+                            id={`${variant}-prazo-tribunal-${tribunal.code}`}
+                            checked={draft.tribunal.includes(tribunal.code)}
                             onCheckedChange={checked => changeDraft(current => ({
                               ...current,
                               tribunal: checked
-                                ? [...new Set([...current.tribunal, tribunal])]
-                                : current.tribunal.filter(item => item !== tribunal),
+                                ? [...new Set([...current.tribunal, tribunal.code])]
+                                : current.tribunal.filter(item => item !== tribunal.code),
                             }), true)}
                           />
-                          <FieldLabel htmlFor={`${variant}-prazo-tribunal-${tribunal}`}>{tribunal}</FieldLabel>
+                          <FieldLabel className={styles.tribunalLabel} htmlFor={`${variant}-prazo-tribunal-${tribunal.code}`}>
+                            <span>{tribunal.code}</span>
+                            <small>{tribunal.system}</small>
+                          </FieldLabel>
                         </Field>
                       ))}
                     </FieldGroup>
@@ -237,8 +246,8 @@ export function PrazoFilterControls({
                         value={draft.titular}
                         onChange={event => changeDraft(current => ({ ...current, titular: event.target.value as PrazoFilterState['titular'] }), true)}
                       >
-                        <NativeSelectOption value="">Ambos os lados</NativeSelectOption>
                         <NativeSelectOption value="dr">Somente do Dr.</NativeSelectOption>
+                        <NativeSelectOption value="todos">Ambos os lados</NativeSelectOption>
                       </NativeSelect>
                     </Field>
                     <Field>
@@ -366,9 +375,7 @@ export function PrazoFilterControls({
               <span className={styles.autosaveHint}>Aplicação automática</span>
             </div>
           </form>
-        </div>,
-        panelHost,
-      )}
+      </ResponsiveFilterPanel>
     </>
   );
 }

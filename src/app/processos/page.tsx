@@ -5,10 +5,13 @@ import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
 import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
 import { PageContent } from '@/components/processos/PageContent/PageContent';
 import { ActiveProcessFilters } from '@/components/processos/ProcessFilters/ActiveProcessFilters';
-import { ProcessFilterControls } from '@/components/processos/ProcessFilters/ProcessFilterControls';
+import {
+  PROCESS_FILTER_PANEL_HOST_ID,
+  ProcessFilterControls,
+} from '@/components/processos/ProcessFilters/ProcessFilterControls';
 import { ProcessSavedViewsControl } from '@/components/processos/ProcessFilters/ProcessSavedViewsControl';
 import { ProcessTableProvider } from '@/components/processos/ProcessTable/ProcessTableProvider';
-import { getProcessos } from '@/lib/api.server';
+import { getProcessos, getSupportedTribunals } from '@/lib/api.server';
 import {
   parseProcessFilters,
   processFiltersToApi,
@@ -29,7 +32,9 @@ export default async function ProcessosPage({
   const sp = await searchParams;
   const requestedPage = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
   const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const filters = parseProcessFilters(sp);
+  const tribunals = await getSupportedTribunals();
+  const tribunalCodes = tribunals.map(tribunal => tribunal.code);
+  const filters = parseProcessFilters(sp, tribunalCodes);
 
   const {
     processos,
@@ -37,7 +42,6 @@ export default async function ProcessosPage({
     totalPages,
     page: backendPage,
     comNovidade,
-    comErro,
   } = await getProcessos(currentPage, 20, processFiltersToApi(filters));
 
   // prazos abertos só são conhecidos na página carregada — o backend não agrega isso
@@ -50,7 +54,6 @@ export default async function ProcessosPage({
       items: [
         { label: 'Total filtrado', value: String(total).padStart(2, '0') },
         { label: 'Com novidade', value: String(comNovidade).padStart(2, '0'), tone: 'signal' },
-        { label: 'Com erro', value: String(comErro).padStart(2, '0'), tone: 'alert' },
         { label: 'Prazos abertos nesta página', value: String(prazosNaPagina).padStart(2, '0') },
       ],
     },
@@ -67,15 +70,17 @@ export default async function ProcessosPage({
         mobileActions={(
           <ProcessFilterControls
             filters={filters}
+            tribunals={tribunals}
             variant="mobile"
-            viewsControl={<ProcessSavedViewsControl filters={filters} compact />}
+            viewsControl={<ProcessSavedViewsControl filters={filters} allowedTribunals={tribunalCodes} compact />}
           />
         )}
       >
         <PageHeader basePath="/processos" title="Processos" breadcrumb="Início / Processos">
           <ProcessFilterControls
             filters={filters}
-            viewsControl={<ProcessSavedViewsControl filters={filters} />}
+            tribunals={tribunals}
+            viewsControl={<ProcessSavedViewsControl filters={filters} allowedTribunals={tribunalCodes} />}
           />
         </PageHeader>
 
@@ -85,12 +90,10 @@ export default async function ProcessosPage({
           totalPages={totalPages}
           currentPage={backendPage}
           listParams={listParams}
+          panelHostId={PROCESS_FILTER_PANEL_HOST_ID}
           pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
           tableControls={(
-            <>
-              <div id="process-inline-panel-host" />
-              <ActiveProcessFilters filters={filters} />
-            </>
+            <ActiveProcessFilters filters={filters} />
           )}
         />
       </AppLayout>

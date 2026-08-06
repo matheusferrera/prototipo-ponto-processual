@@ -20,14 +20,14 @@ export interface SavedProcessView {
   updatedAt: string;
 }
 
-export function loadSavedProcessViews(): SavedProcessView[] {
+export function loadSavedProcessViews(allowedTribunals?: readonly string[]): SavedProcessView[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = window.localStorage.getItem(PROCESS_SAVED_VIEWS_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap(normalizeSavedView).slice(0, 30);
+    return parsed.flatMap(value => normalizeSavedView(value, allowedTribunals)).slice(0, 30);
   } catch {
     return [];
   }
@@ -46,6 +46,7 @@ export function createSavedProcessView(
   name: string,
   filters: ProcessFilterState,
   table: ProcessTablePreferences,
+  allowedTribunals?: readonly string[],
 ): SavedProcessView {
   const now = new Date().toISOString();
   return {
@@ -53,7 +54,7 @@ export function createSavedProcessView(
       ? crypto.randomUUID()
       : `view-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name: cleanName(name),
-    filters: normalizeFilters(filters),
+    filters: normalizeFilters(filters, allowedTribunals),
     table: normalizeProcessTablePreferences(table),
     createdAt: now,
     updatedAt: now,
@@ -63,17 +64,18 @@ export function createSavedProcessView(
 export function updateSavedProcessView(
   view: SavedProcessView,
   updates: Partial<Pick<SavedProcessView, 'name' | 'filters' | 'table'>>,
+  allowedTribunals?: readonly string[],
 ): SavedProcessView {
   return {
     ...view,
     name: updates.name === undefined ? view.name : cleanName(updates.name),
-    filters: updates.filters === undefined ? view.filters : normalizeFilters(updates.filters),
+    filters: updates.filters === undefined ? view.filters : normalizeFilters(updates.filters, allowedTribunals),
     table: updates.table === undefined ? view.table : normalizeProcessTablePreferences(updates.table),
     updatedAt: new Date().toISOString(),
   };
 }
 
-function normalizeSavedView(value: unknown): SavedProcessView[] {
+function normalizeSavedView(value: unknown, allowedTribunals?: readonly string[]): SavedProcessView[] {
   if (!value || typeof value !== 'object') return [];
   const source = value as Record<string, unknown>;
   if (typeof source.id !== 'string' || typeof source.name !== 'string') return [];
@@ -82,14 +84,14 @@ function normalizeSavedView(value: unknown): SavedProcessView[] {
   return [{
     id: source.id,
     name: cleanName(source.name),
-    filters: normalizeFilters(source.filters),
+    filters: normalizeFilters(source.filters, allowedTribunals),
     table: normalizeProcessTablePreferences(source.table),
     createdAt,
     updatedAt,
   }];
 }
 
-function normalizeFilters(value: unknown): ProcessFilterState {
+function normalizeFilters(value: unknown, allowedTribunals?: readonly string[]): ProcessFilterState {
   if (!value || typeof value !== 'object') return { ...DEFAULT_PROCESS_FILTERS };
   const source = value as Partial<ProcessFilterState>;
   const candidate = {
@@ -99,7 +101,7 @@ function normalizeFilters(value: unknown): ProcessFilterState {
     status: Array.isArray(source.status) ? source.status : [],
   } as ProcessFilterState;
   const params = serializeProcessFilters(candidate);
-  return parseProcessFilters(Object.fromEntries(params.entries()));
+  return parseProcessFilters(Object.fromEntries(params.entries()), allowedTribunals);
 }
 
 function cleanName(value: string): string {

@@ -26,9 +26,11 @@ import styles from '@/components/filters/FilterPanel.module.css';
 
 export function ProcessSavedViewsControl({
   filters,
+  allowedTribunals,
   compact = false,
 }: {
   filters: ProcessFilterState;
+  allowedTribunals: readonly string[];
   compact?: boolean;
 }) {
   const router = useRouter();
@@ -61,7 +63,7 @@ export function ProcessSavedViewsControl({
 
   function saveNew() {
     if (!newName.trim()) return;
-    const view = createSavedProcessView(newName, filters, preferences);
+    const view = createSavedProcessView(newName, filters, preferences, allowedTribunals);
     persist([view, ...views]);
     setSelectedId(view.id);
     setNewName('');
@@ -78,7 +80,7 @@ export function ProcessSavedViewsControl({
 
   function overwrite(view: SavedProcessView) {
     const next = views.map(item => item.id === view.id
-      ? updateSavedProcessView(item, { filters, table: preferences })
+      ? updateSavedProcessView(item, { filters, table: preferences }, allowedTribunals)
       : item);
     persist(next);
     setSelectedId(view.id);
@@ -91,7 +93,7 @@ export function ProcessSavedViewsControl({
       return;
     }
     persist(views.map(item => item.id === view.id
-      ? updateSavedProcessView(item, { name: renameValue })
+      ? updateSavedProcessView(item, { name: renameValue }, allowedTribunals)
       : item));
     setRenamingId(null);
     setRenameValue('');
@@ -112,7 +114,7 @@ export function ProcessSavedViewsControl({
         size={compact ? 'icon-lg' : 'default'}
         className={styles.viewsTrigger}
         onClick={() => {
-          setViews(loadSavedProcessViews());
+          setViews(loadSavedProcessViews(allowedTribunals));
           setMessage('');
           setOpen(true);
         }}

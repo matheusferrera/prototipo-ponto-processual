@@ -57,32 +57,88 @@
   background: var(--paper-2);
 }
 
-.inlineFilterForm { height: auto; }
+.filterWorkspace {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.filterWorkspaceMain {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidePanelHost {
+  flex: 0 0 clamp(320px, 28vw, 380px);
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.sidePanelHost:empty { display: none; }
+
+.sidePanelSurface,
+.sidePanelSheet {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.sidePanelSurface {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidePanelSurface > *,
+.sidePanelSheet > :not([data-slot="sheet-title"]) {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.sidePanelSheet {
+  width: min(420px, 100vw) !important;
+  max-width: none !important;
+}
+
+.inlineFilterForm { height: 100%; }
 
 .inlineFilterForm .sheetBody {
-  max-height: 300px;
-  padding: 20px 32px 24px;
+  max-height: none;
+  padding: 20px 20px 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 .inlineFilterGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr) minmax(280px, 1fr);
+  display: flex;
+  flex-direction: column;
   align-items: start;
   gap: 20px;
 }
 
 .inlineFilterGrid > .filterSection {
-  height: 100%;
-  padding: 0 20px 0 0;
-  border-right: 1px solid var(--line-soft);
-  border-bottom: 0;
+  width: 100%;
+  height: auto;
+  padding: 0 0 20px;
+  border-right: 0;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .inlineFilterGrid > .filterSection:last-child {
-  padding-right: 0;
-  border-right: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .panelStatus {
@@ -101,7 +157,13 @@
   font-size: 11px;
 }
 
-.inlineSettingsWrap { min-width: 0; }
+.inlineSettingsWrap {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
 .viewsTrigger {
   min-height: 36px;
@@ -309,6 +371,8 @@
   font-weight: 800;
 }
 
+.sheetHeader h2:focus { outline: none; }
+
 .sheetHeader p {
   margin: 4px 0 0;
   color: var(--ink-3);
@@ -362,7 +426,7 @@
 
 .checkboxGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -375,6 +439,21 @@
 
 .checkField [data-slot="checkbox"] {
   border-radius: 0;
+}
+
+.tribunalLabel {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tribunalLabel small {
+  color: var(--ink-3);
+  font: 600 9px/1 var(--mono);
+  white-space: nowrap;
 }
 
 .fieldGrid,
@@ -601,4 +680,36 @@
   .clearAll {
     min-height: 44px;
   }
+
+  .filterWorkspace {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .filterWorkspaceMain {
+    flex: none;
+    min-height: auto;
+  }
+
+  .sidePanelSheet {
+    width: 100% !important;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 1099px) {
+  .sidePanelHost { display: none; }
+
+  .sidePanelSheet .filterForm {
+    max-height: 100dvh;
+  }
+
+  .sidePanelSheet .inlineFilterForm .sheetBody {
+    max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidePanelSheet { transition-duration: 0s !important; }
 }

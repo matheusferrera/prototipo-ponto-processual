@@ -1,4 +1,5 @@
 import type { ProcessoFilters } from '@/lib/api.server';
+import { FALLBACK_TRIBUNALS } from '@/lib/tribunals';
 
 export const PROCESS_FILTER_KEYS = [
   'q',
@@ -66,7 +67,7 @@ export const DEFAULT_PROCESS_FILTERS: ProcessFilterState = {
   order: 'desc',
 };
 
-const ALLOWED_TRIBUNAIS = new Set(['STJ', 'TJBA', 'TJDFT', 'TJPI', 'TJRN', 'TRF1', 'TRF2', 'TRF3']);
+const FALLBACK_TRIBUNAL_CODES = FALLBACK_TRIBUNALS.map(tribunal => tribunal.code);
 const ALLOWED_STATUS = new Set(['active', 'archived']);
 const ALLOWED_STATE = new Set(['signal', 'alert', 'quiet']);
 const ALLOWED_SORT = new Set<ProcessSort>(['recent', 'cnj', 'tribunal', 'valor', 'autuado']);
@@ -96,7 +97,10 @@ function cleanNumber(value: string | string[] | undefined): string {
   return Number.isFinite(number) && number >= 0 ? String(number) : '';
 }
 
-export function parseProcessFilters(searchParams: ProcessSearchParams): ProcessFilterState {
+export function parseProcessFilters(
+  searchParams: ProcessSearchParams,
+  allowedTribunals: readonly string[] = FALLBACK_TRIBUNAL_CODES,
+): ProcessFilterState {
   const stateValue = cleanText(searchParams.state);
   const sortValue = cleanText(searchParams.sort) as ProcessSort;
   const orderValue = cleanText(searchParams.order);
@@ -106,7 +110,7 @@ export function parseProcessFilters(searchParams: ProcessSearchParams): ProcessF
 
   return {
     q: cleanText(searchParams.q),
-    tribunal: cleanCsv(searchParams.tribunal, ALLOWED_TRIBUNAIS),
+    tribunal: cleanCsv(searchParams.tribunal, new Set(allowedTribunals)),
     grau: grauValue === '1' || grauValue === '2' ? grauValue : '',
     state: ALLOWED_STATE.has(stateValue) ? stateValue as ProcessFilterState['state'] : '',
     status: cleanCsv(searchParams.status, ALLOWED_STATUS),

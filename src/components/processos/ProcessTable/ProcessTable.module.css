@@ -373,13 +373,9 @@
 }
 
 .settingsInline {
-  max-height: 320px;
-  padding: 20px 32px 24px;
-  display: grid;
-  grid-template-columns: minmax(360px, 1.65fr) minmax(240px, .85fr);
-  grid-template-rows: auto auto 1fr;
-  align-items: start;
-  gap: 0 28px;
+  max-height: none;
+  padding: 20px 20px 24px;
+  display: block;
   overflow-y: auto;
 }
 
@@ -388,15 +384,14 @@
 }
 
 .settingsInline .settingsSection:first-child {
-  grid-row: 1 / span 3;
-  padding-right: 28px;
-  border-right: 1px solid var(--line-soft);
-  border-bottom: 0;
+  padding-right: 0;
+  border-right: 0;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .settingsInline .columnList {
-  max-height: 210px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: contain;
 }
 

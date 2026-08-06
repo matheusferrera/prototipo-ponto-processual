@@ -12,6 +12,11 @@ import type {
   ProximoPrazo,
   DocumentoMovimentacao,
 } from '@/types';
+import {
+  FALLBACK_TRIBUNALS,
+  normalizeTribunalOptions,
+  type TribunalOption,
+} from '@/lib/tribunals';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -776,7 +781,8 @@ export type PrazoFilters = {
   q?: string;
   /**
    * `"dr"` devolve só o expediente de parte representada pelo advogado, cortando
-   * o do adversário. Resolvido no backend — ver `/deadlines?titular=dr`.
+   * o do adversário — é o padrão da tela de Prazos. Resolvido no backend
+   * (`/deadlines?titular=dr`); omitir devolve os dois lados.
    */
   titular?: 'dr' | string;
   /** Tribunais em CSV ou lista (ex.: "TRF1,TJDFT"). */
@@ -816,7 +822,8 @@ export type PrazoPage = {
   pautaAtrasada: number;
   /**
    * `titular=dr` foi pedido mas o backend não sabe quem é o advogado (nenhuma
-   * credencial com OAB ou CPF). A tela avisa em vez de mostrar pauta vazia.
+   * credencial com OAB ou CPF). A lista já vem sem o recorte — dos dois lados —
+   * e a tela avisa, em vez de mostrar pauta vazia.
    */
   titularIndisponivel?: boolean;
 };
@@ -904,16 +911,21 @@ export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {
   if (filters.situacao) params.set('fechado', String(filters.situacao === 'fechado'));
 
   // 409 = pediu `titular=dr` sem credencial com OAB/CPF: é estado da conta, não
-  // falha da consulta, então vira aviso na tela em vez de derrubar a página.
-  const body = await backendGetOrNull<{ data: BackendDeadline[] }>(
+  // falha da consulta. Como `dr` é o padrão da tela, engolir isso como pauta
+  // vazia esconderia todos os prazos de quem ainda não cadastrou OAB/CPF — então
+  // a consulta é refeita sem o recorte e a tela avisa que está mostrando os dois lados.
+  let titularIndisponivel = false;
+  let body = await backendGetOrNull<{ data: BackendDeadline[] }>(
     `/deadlines?${params.toString()}`,
     filters.titular === 'dr' ? [409] : [],
   );
   if (!body) {
-    return { prazos: [], total: 0, criticos: 0, pautaAtrasada: 0, titularIndisponivel: true };
+    titularIndisponivel = true;
+    params.delete('titular');
+    body = await backendGetOrNull<{ data: BackendDeadline[] }>(`/deadlines?${params.toString()}`, []);
   }
 
-  const list = filtraPrazos(body.data.map(toPrazo), filters);
+  const list = filtraPrazos((body?.data ?? []).map(toPrazo), filters);
   sortPrazos(list, filters.sort, filters.order);
 
   return {
@@ -921,6 +933,7 @@ export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {
     total: list.length,
     criticos: list.filter(p => p.diasRestantes <= 3).length,
     pautaAtrasada: list.filter(p => p.diasParaPauta < 0).length,
+    ...(titularIndisponivel && { titularIndisponivel }),
   };
 }
 
@@ -984,4 +997,19 @@ export async function getTribunaisStatus(): Promise<TribunaisStatusResult> {
   // Sem dataset de fallback: esta é uma página de monitoramento, e status
   // inventado é pior do que status ausente.
   return { tribunals: [], unavailable: true };
+}
+
+export async function getSupportedTribunals(): Promise<TribunalOption[]> {
+  try {
+    const body = await backendGet('/tribunals') as { tribunals?: unknown };
+    const tribunals = normalizeTribunalOptions(body?.tribunals);
+    if (tribunals.length) return tribunals;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message?.includes('NEXT_REDIRECT')) {
+      throw err;
+    }
+    console.error('Falha ao buscar catálogo de tribunais no backend:', err);
+  }
+
+  return [...FALLBACK_TRIBUNALS];
 }

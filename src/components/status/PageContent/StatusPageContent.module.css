@@ -274,6 +274,30 @@
 }
 
 /* ---- Status ---- */
+/* 1º e 2º grau na mesma linha do tribunal: um pill por grau, empilhados. */
+.statusStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.statusEntry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grauLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3);
+  /* Largura fixa para os pills de 1º e 2º grau alinharem à esquerda. */
+  min-width: 14px;
+  text-align: right;
+}
+
 .statusPill {
   display: inline-flex;
   align-items: center;
