@@ -67,12 +67,14 @@ situação, natureza, tipo, assunto, órgão e cliente continuarão funcionando.
 
 - prazos com data, enviados às visualizações atuais de lista, kanban e
   calendário;
-- expedientes sem data, exibidos em uma seção própria no topo da área rolável.
+- expedientes sem data, exibidos em uma seção própria no final da área rolável.
 
-A seção será a mesma nas três visualizações. Cada item mostrará tribunal/grau,
-cliente ou parte, tipo do expediente, natureza quando conhecida, número do
-processo e órgão julgador. O rótulo explicará que o PJe ainda não informou uma
-data limite. O item continuará levando ao processo correspondente.
+A seção será a mesma nas três visualizações e aparecerá depois da lista, do
+kanban ou do calendário. Como os itens não têm urgência cronológica, eles não
+devem ocupar o início da pauta. Cada item mostrará tribunal/grau, cliente ou
+parte, tipo do expediente, natureza quando conhecida, número do processo e
+órgão julgador. O rótulo explicará que o PJe ainda não informou uma data limite.
+O item continuará levando ao processo correspondente.
 
 O cabeçalho informará a quantidade de expedientes sem data. O estado vazio da
 visualização principal só aparecerá quando ambos os conjuntos estiverem vazios.
@@ -120,7 +122,7 @@ Serão cobertos:
 - mapeamento de `dataLimite = null` sem `Invalid Date` ou `NaN`;
 - itens sem data fora dos contadores de criticidade e pauta atrasada;
 - filtros de urgência, pauta e data excluindo corretamente itens sem data;
-- seção sem data presente nas visualizações lista, kanban e calendário;
+- seção sem data presente no final das visualizações lista, kanban e calendário;
 - remoção do controle e dos chips de titular;
 - PDFs sem data inválida;
 - regressão dos prazos com data e dos filtros existentes.
