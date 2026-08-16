@@ -20,7 +20,8 @@ function reportDate(date: Date) {
 }
 
 /** yyyy-mm-dd → dd/mm, no mesmo formato de `Prazo.vencimento`. */
-function shortISODate(iso: string) {
+function shortISODate(iso: string | null) {
+  if (!iso) return '-';
   const [, month, day] = iso.split('-');
   return month && day ? `${day}/${month}` : '-';
 }
@@ -87,8 +88,8 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
       const cliente = clientePrazo(prazo);
       return [
         textOrFallback(shortISODate(prazo.pautaISO)),
-        textOrFallback(prazo.vencimento),
-        String(prazo.diasRestantes),
+        prazo.vencimento ?? 'Sem prazo definido',
+        prazo.diasRestantes === null ? '-' : String(prazo.diasRestantes),
         textOrFallback(prazo.grau ? `${prazo.tribunal}-${prazo.grau}` : prazo.tribunal),
         textOrFallback(cliente),
         textOrFallback(expedientePrazo(prazo)),

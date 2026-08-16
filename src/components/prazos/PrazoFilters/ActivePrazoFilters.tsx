@@ -78,12 +78,6 @@ export function ActivePrazoFilters({ filters }: { filters: PrazoFilterState }) {
 function buildChips(filters: PrazoFilterState): Chip[] {
   const chips: Chip[] = [];
   if (filters.q) chips.push({ id: 'q', label: `Busca: ${filters.q}`, remove: c => ({ ...c, q: '' }) });
-  // O padrão já é "Somente do Dr."; o chip marca a escolha que amplia a pauta.
-  if (filters.titular === 'todos') chips.push({
-    id: 'titular',
-    label: 'Ambos os lados',
-    remove: c => ({ ...c, titular: DEFAULT_PRAZO_FILTERS.titular }),
-  });
   filters.tribunal.forEach(value => chips.push({
     id: `tribunal-${value}`,
     label: value,

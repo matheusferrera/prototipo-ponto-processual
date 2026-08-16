@@ -29,7 +29,7 @@ export default async function PrazosPage({
   const tribunals = await getSupportedTribunals();
   const filters = parsePrazoFilters(sp, tribunals.map(tribunal => tribunal.code));
 
-  const { prazos, criticos, pautaAtrasada, titularIndisponivel } =
+  const { prazos, criticos, pautaAtrasada } =
     await getPrazos(1, 100, prazoFiltersToApi(filters));
 
   return (
@@ -53,7 +53,6 @@ export default async function PrazosPage({
           order={filters.order}
           criticos={criticos}
           pautaAtrasada={pautaAtrasada}
-          titularIndisponivel={titularIndisponivel}
         />
       </FilterWorkspace>
     </AppLayout>

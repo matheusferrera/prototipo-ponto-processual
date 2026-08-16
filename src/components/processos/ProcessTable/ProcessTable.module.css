@@ -25,15 +25,22 @@
 
 .desktopTableWrap {
   width: 100%;
-  overflow-x: auto;
+  overflow: visible;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 1px solid var(--line);
   outline: none;
+  cursor: grab;
 }
 
 .desktopTableWrap:focus-visible {
   box-shadow: inset 0 0 0 2px var(--brick);
+}
+
+/* Arrastando com o mouse (mãozinha) para rolar a tabela para o lado. */
+.desktopTableWrap[data-dragging] {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .table {
@@ -61,8 +68,9 @@
   padding: 0 16px;
   border-bottom-color: var(--line);
   border-right-color: var(--line);
-  position: relative;
-  z-index: 1;
+  position: sticky;
+  top: 0;
+  z-index: 3;
   color: var(--ink-3);
   font-size: 10px;
   font-weight: 700;
@@ -81,7 +89,6 @@
 }
 
 .table tbody tr {
-  cursor: pointer;
   outline: none;
 }
 
@@ -113,6 +120,7 @@
   align-items: center;
   gap: 6px;
   text-decoration: none;
+  cursor: pointer;
   transition: color 150ms ease;
 }
 
@@ -180,6 +188,7 @@
   min-height: 32px;
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .processLink:hover { color: var(--brick); text-decoration: underline; text-underline-offset: 3px; }
@@ -242,8 +251,6 @@
 .expanderIconOpen { transform: rotate(180deg); }
 
 /* Painel de detalhe da linha */
-.table tbody tr.detailsRow { cursor: default; }
-
 .detailsRow td,
 .detailsRow:hover td {
   padding: 0;
@@ -326,6 +333,7 @@
   font-size: 0.9em;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .rowDetailsLink svg { width: 14px; height: 14px; }

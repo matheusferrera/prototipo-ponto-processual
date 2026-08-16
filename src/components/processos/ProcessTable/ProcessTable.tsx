@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import Link from 'next/link';
@@ -220,7 +221,9 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
       id: 'tribunal',
       accessorKey: 'tribunal',
       header: () => <SortHeader label="Tribunal" sortKey="tribunal" listParams={listParams} />,
-      cell: ({ getValue }) => <TribTag label={String(getValue())} />,
+      cell: ({ row }) => (
+        <TribTag label={row.original.grau ? `${row.original.tribunal}-${row.original.grau}` : row.original.tribunal} />
+      ),
       size: 96,
       minSize: MIN_COLUMN_SIZE,
       maxSize: 180,
@@ -574,11 +577,93 @@ function ResizeHandle({
   );
 }
 
+/** Ancestral rolável mais próximo — concentra os dois eixos para permitir o header sticky. */
+function findScrollAncestor(start: HTMLElement): HTMLElement {
+  let node = start.parentElement;
+  while (node) {
+    const style = window.getComputedStyle(node);
+    const scrollsX = (style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth;
+    const scrollsY = (style.overflowY === 'auto' || style.overflowY === 'scroll') && node.scrollHeight > node.clientHeight;
+    if (scrollsX || scrollsY) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return (document.scrollingElement ?? document.documentElement) as HTMLElement;
+}
+
+/**
+ * Arrastar a tabela (com a "mãozinha") para rolar para os lados e para cima/baixo com o mouse.
+ * Só confirma o arraste (e só então captura o ponteiro) depois de um deslocamento mínimo — assim
+ * um clique simples em um link/botão dentro da tabela nunca é sequestrado pelo drag.
+ */
+function useDragToScroll() {
+  const drag = useRef({
+    dragging: false,
+    moved: false,
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    startScrollLeft: 0,
+    startScrollTop: 0,
+    scrollAncestor: null as HTMLElement | null,
+  });
+
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    const wrap = event.currentTarget;
+    const scrollAncestor = findScrollAncestor(wrap);
+    drag.current = {
+      dragging: true,
+      moved: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startScrollLeft: scrollAncestor.scrollLeft,
+      startScrollTop: scrollAncestor.scrollTop,
+      scrollAncestor,
+    };
+  }
+
+  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
+    const state = drag.current;
+    if (!state.dragging || event.pointerId !== state.pointerId) return;
+    const wrap = event.currentTarget;
+    const deltaX = event.clientX - state.startX;
+    const deltaY = event.clientY - state.startY;
+    if (!state.moved) {
+      if (Math.abs(deltaX) < 4 && Math.abs(deltaY) < 4) return;
+      state.moved = true;
+      wrap.setPointerCapture(state.pointerId);
+      wrap.dataset.dragging = 'true';
+    }
+    event.preventDefault();
+    if (state.scrollAncestor) {
+      state.scrollAncestor.scrollLeft = state.startScrollLeft - deltaX;
+      state.scrollAncestor.scrollTop = state.startScrollTop - deltaY;
+    }
+  }
+
+  function onPointerUp(event: PointerEvent<HTMLDivElement>) {
+    const wrap = event.currentTarget;
+    const state = drag.current;
+    state.dragging = false;
+    delete wrap.dataset.dragging;
+    if (state.moved && wrap.hasPointerCapture(state.pointerId)) wrap.releasePointerCapture(state.pointerId);
+  }
+
+  return {
+    moved: () => drag.current.moved,
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+  };
+}
+
 export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) {
   const router = useRouter();
   const { preferences, setPreferences } = useProcessTablePreferences();
   const columns = useMemo(() => makeColumns(listParams), [listParams]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const dragToScroll = useDragToScroll();
 
   const toggleExpanded = (id: string) => setExpanded(current => {
     const next = new Set(current);
@@ -629,7 +714,10 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
     : SORT_DEFAULTS[activeSort] ?? 'desc';
 
   const rowHref = (processo: Processo) => `/processos/${encodeURIComponent(processo.cnj)}`;
-  const openRow = (processo: Processo) => router.push(rowHref(processo));
+  const openRow = (processo: Processo) => {
+    if (dragToScroll.moved()) return;
+    router.push(rowHref(processo));
+  };
 
   const tableStyle = {
     width: table.getTotalSize() + EXPANDER_WIDTH,
@@ -648,7 +736,12 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
         <span className={styles.tableMetaHint}>Arraste os divisores do cabeçalho para ajustar as larguras.</span>
       </div>
 
-      <div className={styles.desktopTableWrap} tabIndex={0} aria-label="Tabela com rolagem horizontal">
+      <div
+        className={styles.desktopTableWrap}
+        tabIndex={0}
+        aria-label="Tabela com rolagem horizontal — arraste para o lado"
+        {...dragToScroll.handlers}
+      >
         <table className={styles.table} style={tableStyle}>
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
@@ -656,7 +749,7 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
                 <th
                   scope="col"
                   className={styles.expanderCell}
-                  style={{ width: EXPANDER_WIDTH, left: 0, position: 'sticky', zIndex: 2 }}
+                  style={{ width: EXPANDER_WIDTH, left: 0, position: 'sticky', top: 0, zIndex: 4 }}
                 >
                   <span className="sr-only">Detalhes</span>
                 </th>
@@ -673,7 +766,12 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
                     <th
                       key={header.id}
                       scope="col"
-                      style={{ width: header.getSize(), ...pinnedStyle(header.column) }}
+                      style={{
+                        width: header.getSize(),
+                        ...pinnedStyle(header.column),
+                        top: 0,
+                        zIndex: header.column.getIsPinned() ? 4 : 3,
+                      }}
                       className={header.column.getIsPinned() ? styles.pinnedCell : undefined}
                       aria-sort={sortKey ? isSorted ? activeOrder === 'asc' ? 'ascending' : 'descending' : 'none' : undefined}
                     >

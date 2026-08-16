@@ -239,17 +239,6 @@ export function PrazoFilterControls({
                   </FieldSet>
 
                   <div className={styles.fieldGrid}>
-                    <Field className={styles.fieldSpan}>
-                      <FieldLabel htmlFor={`${variant}-prazo-titular`}>Titular do expediente</FieldLabel>
-                      <NativeSelect
-                        id={`${variant}-prazo-titular`}
-                        value={draft.titular}
-                        onChange={event => changeDraft(current => ({ ...current, titular: event.target.value as PrazoFilterState['titular'] }), true)}
-                      >
-                        <NativeSelectOption value="dr">Somente do Dr.</NativeSelectOption>
-                        <NativeSelectOption value="todos">Ambos os lados</NativeSelectOption>
-                      </NativeSelect>
-                    </Field>
                     <Field>
                       <FieldLabel htmlFor={`${variant}-prazo-urgencia`}>Urgência</FieldLabel>
                       <NativeSelect

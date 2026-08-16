@@ -119,16 +119,16 @@ export interface Prazo {
    * `null` quando o tribunal não deixa claro — a UI omite o rótulo em vez de chutar.
    */
   natureza: NaturezaPrazo | null;
-  /** Vencimento fatal formatado dd/mm */
-  vencimento: string;
-  /** Data completa do vencimento fatal (yyyy-mm-dd) — usada pelo calendário para casar ano+mês */
-  vencimentoISO: string;
-  /** Data da pauta (yyyy-mm-dd): 3 dias antes do fatal, antecipada p/ sexta se cair no fim de semana */
-  pautaISO: string;
-  /** Dias corridos até a data da pauta — 0 = trabalhar hoje, negativo = pauta atrasada */
-  diasParaPauta: number;
-  /** Dias corridos até o vencimento fatal */
-  diasRestantes: number;
+  /** Vencimento fatal formatado dd/mm; nulo quando o PJe não informou data. */
+  vencimento: string | null;
+  /** Data fatal yyyy-mm-dd; nula para expediente sem data definida. */
+  vencimentoISO: string | null;
+  /** Data da pauta yyyy-mm-dd; nula quando não há prazo fatal. */
+  pautaISO: string | null;
+  /** Dias até a pauta; nulo quando não há data para calcular. */
+  diasParaPauta: number | null;
+  /** Dias até o vencimento; nulo quando não há data para calcular. */
+  diasRestantes: number | null;
   state: StatusType;
 }
 

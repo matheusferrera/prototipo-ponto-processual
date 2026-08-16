@@ -17,11 +17,13 @@ interface PageContentProps {
   /** params de filtro/busca a preservar nos links de paginação */
   listParams?: Record<string, string | undefined>;
   pageInfo?: ReactNode;
+  /** Busca/filtro/ordenação — só aparece no mobile, em fluxo com o conteúdo (não fixo no topo). */
+  mobileControls?: ReactNode;
   tableControls?: ReactNode;
   panelHostId: string;
 }
 
-export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo, tableControls, panelHostId }: PageContentProps) {
+export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo, mobileControls, tableControls, panelHostId }: PageContentProps) {
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, total);
   const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
@@ -41,6 +43,7 @@ export function PageContent({ processos, total, totalPages, currentPage, listPar
       <div className={styles.contentColumn}>
         <div className={styles.scrollArea}>
           {pageInfo}
+          {mobileControls && <div className={styles.mobileControls}>{mobileControls}</div>}
           {tableControls}
 
           {isEmpty ? (

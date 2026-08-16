@@ -20,8 +20,13 @@ export default async function DashboardPage() {
   const allMovs = movimentacoes.flatMap(g => g.items);
   const movsHoje = movimentacoes.find(g => g.date === 'HOJE')?.items ?? [];
   const novasHoje = newToday;
-  const prazosCriticos = prazos.filter(p => p.diasRestantes <= 3);
-  const prazosOrdenados = [...prazos].sort((a, b) => a.diasRestantes - b.diasRestantes);
+  const prazosCriticos = prazos.filter(p => p.diasRestantes !== null && p.diasRestantes <= 3);
+  const prazosOrdenados = [...prazos].sort((a, b) => {
+    if (a.diasRestantes === null && b.diasRestantes === null) return 0;
+    if (a.diasRestantes === null) return 1;
+    if (b.diasRestantes === null) return -1;
+    return a.diasRestantes - b.diasRestantes;
+  });
   const processosAlert = processos.filter(p => p.state === 'alert').length;
   const processosSignal = processos.filter(p => p.state === 'signal').length;
   const processosQuiet = processos.filter(p => p.state === 'quiet').length;
@@ -112,7 +117,7 @@ export default async function DashboardPage() {
             {
               label: 'Prazos ativos',
               value: prazos.length,
-              sub: `${prazos.filter(p => p.diasRestantes <= 7).length} vencem em ≤ 7 dias`,
+              sub: `${prazos.filter(p => p.diasRestantes !== null && p.diasRestantes <= 7).length} vencem em ≤ 7 dias`,
               color: 'var(--ink)',
               href: '/prazos',
             },
@@ -244,8 +249,9 @@ export default async function DashboardPage() {
               </div>
 
               {prazosOrdenados.map((pz, i) => {
-                const isCrit = pz.diasRestantes <= 3;
-                const isUrg = pz.diasRestantes <= 7;
+                const semData = pz.diasRestantes === null;
+                const isCrit = pz.diasRestantes !== null && pz.diasRestantes <= 3;
+                const isUrg = pz.diasRestantes !== null && pz.diasRestantes <= 7;
                 return (
                   <div
                     key={pz.id}
@@ -267,7 +273,7 @@ export default async function DashboardPage() {
                         textAlign: 'right',
                       }}
                     >
-                      {pz.diasRestantes}d
+                      {semData ? '—' : `${pz.diasRestantes}d`}
                     </div>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div
@@ -282,7 +288,7 @@ export default async function DashboardPage() {
                         {pz.parte}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
-                        {pz.tipo} · {pz.vencimento}
+                        {pz.tipo} · {pz.vencimento ?? 'sem prazo definido'}
                       </div>
                     </div>
                     <TribTag label={pz.tribunal} />

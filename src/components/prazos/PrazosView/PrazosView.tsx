@@ -12,6 +12,22 @@ import styles from './PrazosView.module.css';
 
 export type PrazoView = 'lista' | 'kanban' | 'calendario';
 
+type PrazoComData = Prazo & {
+  vencimento: string;
+  vencimentoISO: string;
+  pautaISO: string;
+  diasParaPauta: number;
+  diasRestantes: number;
+};
+
+function temDataDefinida(prazo: Prazo): prazo is PrazoComData {
+  return prazo.vencimento !== null
+    && prazo.vencimentoISO !== null
+    && prazo.pautaISO !== null
+    && prazo.diasParaPauta !== null
+    && prazo.diasRestantes !== null;
+}
+
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAY_NAMES   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const WEEKDAY_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
@@ -53,12 +69,12 @@ interface PautaGrupo {
   data: Date;
   /** dias corridos até a data da pauta — negativo = pauta atrasada */
   dias: number;
-  itens: Prazo[];
+  itens: PrazoComData[];
 }
 
 /** Preserva a ordem de `prazos` dentro de cada grupo, respeitando o sort escolhido. */
-function agruparPorPauta(prazos: Prazo[], desc: boolean): PautaGrupo[] {
-  const mapa = new Map<string, Prazo[]>();
+function agruparPorPauta(prazos: PrazoComData[], desc: boolean): PautaGrupo[] {
+  const mapa = new Map<string, PrazoComData[]>();
   for (const pz of prazos) {
     const atual = mapa.get(pz.pautaISO);
     if (atual) atual.push(pz);
@@ -82,7 +98,7 @@ function rotuloPauta(dias: number): { texto: string; className: string } {
   return { texto: `em ${dias} dias`, className: styles.pautaRelProx };
 }
 
-function PautaItem({ pz }: { pz: Prazo }) {
+function PautaItem({ pz }: { pz: PrazoComData }) {
   const fatal      = parseISODate(pz.vencimentoISO);
   const isCritical = pz.diasRestantes <= 3;
   const cliente    = clientePrazo(pz);
@@ -145,7 +161,17 @@ function PautaItem({ pz }: { pz: Prazo }) {
   );
 }
 
-function ListView({ prazos, sort, order }: { prazos: Prazo[]; sort?: string; order?: string }) {
+function ListView({
+  prazos,
+  sort,
+  order,
+  hasSemData = false,
+}: {
+  prazos: PrazoComData[];
+  sort?: string;
+  order?: string;
+  hasSemData?: boolean;
+}) {
   // A pauta é cronológica; só uma ordenação por data explicitamente decrescente a inverte.
   const desc = order === 'desc' && (sort === 'fatal' || sort === 'pauta');
   const grupos = agruparPorPauta(prazos, desc);
@@ -166,7 +192,7 @@ function ListView({ prazos, sort, order }: { prazos: Prazo[]; sort?: string; ord
         sexta quando cai no fim de semana.
       </p>
 
-      {grupos.length === 0 && (
+      {grupos.length === 0 && !hasSemData && (
         <div className={styles.emptyState}>Nenhum prazo encontrado com os filtros atuais.</div>
       )}
 
@@ -202,7 +228,7 @@ const KANBAN_COLS = [
   { label: 'Normal',  minD: 15, maxD: Infinity, accent: 'var(--quiet)', soft: 'var(--quiet-soft)'  },
 ] as const;
 
-function KanbanView({ prazos }: { prazos: Prazo[] }) {
+function KanbanView({ prazos }: { prazos: PrazoComData[] }) {
   return (
     <div className={`px-page ${styles.kanbanWrap}`}>
       {KANBAN_COLS.map(col => {
@@ -264,7 +290,7 @@ function KanbanView({ prazos }: { prazos: Prazo[] }) {
 
 // ─── Calendário ──────────────────────────────────────────────────────────────
 
-function AgendaItem({ pz, showDay }: { pz: Prazo; showDay?: number }) {
+function AgendaItem({ pz, showDay }: { pz: PrazoComData; showDay?: number }) {
   const titulo = tituloPrazo(pz);
   const parte  = parteSecundaria(pz, titulo);
   return (
@@ -297,7 +323,7 @@ function AgendaItem({ pz, showDay }: { pz: Prazo; showDay?: number }) {
 function CalendarioView({
   prazos, year, month, selectedDay, onSelectDay,
 }: {
-  prazos: Prazo[];
+  prazos: PrazoComData[];
   year: number;
   month: number;
   selectedDay: number | null;
@@ -309,14 +335,14 @@ function CalendarioView({
   const todayDay     = today.getFullYear() === year && today.getMonth() + 1 === month ? today.getDate() : -1;
 
   // Só prazos do ano+mês exibidos, ordenados por dia
-  const inMonth: { day: number; pz: Prazo }[] = [];
+  const inMonth: { day: number; pz: PrazoComData }[] = [];
   for (const pz of prazos) {
     const v = parseVencISO(pz.vencimentoISO);
     if (v.year === year && v.month === month) inMonth.push({ day: v.day, pz });
   }
   inMonth.sort((a, b) => a.day - b.day);
 
-  const byDay: Record<number, Prazo[]> = {};
+  const byDay: Record<number, PrazoComData[]> = {};
   for (const { day, pz } of inMonth) byDay[day] = [...(byDay[day] ?? []), pz];
 
   const cells: (number | null)[] = [
@@ -398,6 +424,59 @@ function CalendarioView({
   );
 }
 
+function ExpedientesSemData({ prazos }: { prazos: Prazo[] }) {
+  if (prazos.length === 0) return null;
+
+  return (
+    <section className={`px-page ${styles.semDataSection}`} aria-labelledby="expedientes-sem-data-title">
+      <div className={styles.semDataHeader}>
+        <div>
+          <span className={styles.semDataEyebrow}>§ ACOMPANHAMENTO</span>
+          <h2 id="expedientes-sem-data-title" className={styles.semDataTitle}>Expedientes sem prazo definido</h2>
+        </div>
+        <span className={styles.semDataCount}>
+          {prazos.length} {prazos.length === 1 ? 'expediente' : 'expedientes'}
+        </span>
+      </div>
+
+      <p className={styles.semDataNote}>
+        O PJe ainda não informou uma data limite. Estes expedientes não entram nos cálculos de pauta ou urgência.
+      </p>
+
+      <div className={styles.semDataList}>
+        {prazos.map(pz => {
+          const cliente = clientePrazo(pz);
+          const assunto = assuntoSecundario(pz, cliente);
+          const natureza = rotuloNatureza(pz);
+          return (
+            <Link
+              key={pz.id}
+              href={`/processos/${encodeURIComponent(pz.cnj)}`}
+              className={styles.semDataItem}
+            >
+              <div className={styles.semDataBadge}>SEM DATA</div>
+              <div className={styles.semDataBody}>
+                <div className={styles.semDataTags}>
+                  <TribTag label={pz.grau ? `${pz.tribunal}-${pz.grau}` : pz.tribunal} />
+                  <span className={styles.semDataTipo}>{expedientePrazo(pz)}</span>
+                  {natureza && <span className={styles.semDataNatureza}>para {natureza}</span>}
+                </div>
+                <div className={styles.semDataCliente}>{cliente}</div>
+                {assunto && <div className={styles.semDataAssunto}>{assunto}</div>}
+                <div className={styles.semDataMeta}>
+                  <span>autos nº {pz.cnj}</span>
+                  {pz.orgaoJulgador !== '—' && <span>{pz.orgaoJulgador}</span>}
+                </div>
+              </div>
+              <span className={styles.semDataGo} aria-hidden="true">→</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export function PrazosView({
@@ -407,7 +486,6 @@ export function PrazosView({
   order,
   criticos,
   pautaAtrasada,
-  titularIndisponivel,
 }: {
   prazos: Prazo[];
   view: PrazoView;
@@ -416,20 +494,17 @@ export function PrazosView({
   /** Contagens já calculadas no servidor sobre o conjunto filtrado. */
   criticos?: number;
   pautaAtrasada?: number;
-  /**
-   * "Somente do Dr." (o padrão) pedido sem credencial com OAB/CPF cadastrada —
-   * a lista veio sem o recorte, com os dois lados.
-   */
-  titularIndisponivel?: boolean;
 }) {
   const now                     = new Date();
   const [calYear, setCalYear]   = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
   const [calDay, setCalDay]     = useState<number | null>(now.getDate());
 
-  const criticalCount = criticos ?? prazos.filter(p => p.diasRestantes <= 3).length;
-  const atrasadaCount = pautaAtrasada ?? prazos.filter(p => p.diasParaPauta < 0).length;
-  const firstCritical = prazos.find(p => p.diasRestantes <= 3);
+  const prazosComData = prazos.filter(temDataDefinida);
+  const prazosSemData = prazos.filter(prazo => !temDataDefinida(prazo));
+  const criticalCount = criticos ?? prazosComData.filter(p => p.diasRestantes <= 3).length;
+  const atrasadaCount = pautaAtrasada ?? prazosComData.filter(p => p.diasParaPauta < 0).length;
+  const firstCritical = prazosComData.find(p => p.diasRestantes <= 3);
 
   const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth() + 1;
 
@@ -456,7 +531,7 @@ export function PrazosView({
   return (
     <div className={styles.root}>
       <div className={styles.exportBar}>
-        <ExportPrazosPdfButton prazos={prazos} format="pauta" />
+        <ExportPrazosPdfButton prazos={prazosComData} format="pauta" />
         <ExportPrazosPdfButton prazos={prazos} />
       </div>
 
@@ -474,16 +549,6 @@ export function PrazosView({
       )}
 
       <div className={styles.scrollArea}>
-        {titularIndisponivel && (
-          <Alert className={styles.alert}>
-            <AlertTitle className={styles.alertCount}>Mostrando os prazos dos dois lados</AlertTitle>
-            <AlertDescription className={styles.alertDesc}>
-              — o titular é identificado pela OAB e pelo CPF das credenciais; nenhuma cadastrada tem esses dados,
-              então não dá para separar só os do Dr.
-            </AlertDescription>
-          </Alert>
-        )}
-
         {criticalCount > 0 && (
           <Alert className={styles.alert}>
             <AlertTitle className={styles.alertCount}>
@@ -498,11 +563,13 @@ export function PrazosView({
           </Alert>
         )}
 
-        {view === 'lista'      && <ListView      prazos={prazos} sort={sort} order={order} />}
-        {view === 'kanban'     && <KanbanView     prazos={prazos} />}
+        {view === 'lista'      && <ListView      prazos={prazosComData} sort={sort} order={order} hasSemData={prazosSemData.length > 0} />}
+        {view === 'kanban'     && <KanbanView     prazos={prazosComData} />}
         {view === 'calendario' && (
-          <CalendarioView prazos={prazos} year={calYear} month={calMonth} selectedDay={calDay} onSelectDay={setCalDay} />
+          <CalendarioView prazos={prazosComData} year={calYear} month={calMonth} selectedDay={calDay} onSelectDay={setCalDay} />
         )}
+
+        <ExpedientesSemData prazos={prazosSemData} />
       </div>
     </div>
   );

@@ -9,7 +9,6 @@ import {
   PROCESS_FILTER_PANEL_HOST_ID,
   ProcessFilterControls,
 } from '@/components/processos/ProcessFilters/ProcessFilterControls';
-import { ProcessSavedViewsControl } from '@/components/processos/ProcessFilters/ProcessSavedViewsControl';
 import { ProcessTableProvider } from '@/components/processos/ProcessTable/ProcessTableProvider';
 import { getProcessos, getSupportedTribunals } from '@/lib/api.server';
 import {
@@ -67,21 +66,9 @@ export default async function ProcessosPage({
         active="Processos"
         mobileTitle="Processos"
         mobileBreadcrumb="Início / Processos"
-        mobileActions={(
-          <ProcessFilterControls
-            filters={filters}
-            tribunals={tribunals}
-            variant="mobile"
-            viewsControl={<ProcessSavedViewsControl filters={filters} allowedTribunals={tribunalCodes} compact />}
-          />
-        )}
       >
         <PageHeader basePath="/processos" title="Processos" breadcrumb="Início / Processos">
-          <ProcessFilterControls
-            filters={filters}
-            tribunals={tribunals}
-            viewsControl={<ProcessSavedViewsControl filters={filters} allowedTribunals={tribunalCodes} />}
-          />
+          <ProcessFilterControls filters={filters} tribunals={tribunals} />
         </PageHeader>
 
         <PageContent
@@ -92,6 +79,9 @@ export default async function ProcessosPage({
           listParams={listParams}
           panelHostId={PROCESS_FILTER_PANEL_HOST_ID}
           pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
+          mobileControls={(
+            <ProcessFilterControls filters={filters} tribunals={tribunals} variant="mobile" inline />
+          )}
           tableControls={(
             <ActiveProcessFilters filters={filters} />
           )}

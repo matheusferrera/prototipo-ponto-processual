@@ -37,6 +37,15 @@ const FIRST_BASELINE = 3.4;
 /** Trecho de texto com peso próprio — o parágrafo é montado a partir deles. */
 type Run = { text: string; bold?: boolean };
 
+type PrazoComData = Prazo & {
+  pautaISO: string;
+  vencimentoISO: string;
+};
+
+function temDataDefinida(prazo: Prazo): prazo is PrazoComData {
+  return prazo.pautaISO !== null && prazo.vencimentoISO !== null;
+}
+
 function fmtISO(iso: string) {
   const [year, month, day] = iso.split('-');
   return year && month && day ? `${day}.${month}.${year}` : '—';
@@ -55,7 +64,7 @@ function fileDate(date: Date) {
 }
 
 /** Ordem da pauta: data de trabalho, depois o fatal, depois o cliente. */
-function ordenarPauta(prazos: Prazo[]): Prazo[] {
+function ordenarPauta(prazos: PrazoComData[]): PrazoComData[] {
   return [...prazos].sort((a, b) =>
     a.pautaISO.localeCompare(b.pautaISO) ||
     a.vencimentoISO.localeCompare(b.vencimentoISO) ||
@@ -64,7 +73,7 @@ function ordenarPauta(prazos: Prazo[]): Prazo[] {
 }
 
 /** Monta a linha do e-mail: "- data - Cliente (autos … ) - prazo para X (marcador);" */
-function runsDoPrazo(prazo: Prazo): Run[] {
+function runsDoPrazo(prazo: PrazoComData): Run[] {
   const cliente = clientePrazo(prazo);
   const assunto = assuntoSecundario(prazo, cliente);
   const tribunal = prazo.grau ? `${prazo.tribunal} - PJe ${prazo.grau}` : prazo.tribunal;
@@ -179,6 +188,7 @@ function desenhaCard(doc: Doc, linhas: Pedaco[][], y: number): number {
 }
 
 export async function createPautaPdf(prazos: Prazo[], generatedAt = new Date()) {
+  const prazosComData = prazos.filter(temDataDefinida);
   const doc = await novoDocumento();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -196,7 +206,7 @@ export async function createPautaPdf(prazos: Prazo[], generatedAt = new Date()) 
   doc.setFontSize(8.5);
   doc.setTextColor(...INK_MUTED);
   doc.text(
-    `${prazos.length} prazo${prazos.length === 1 ? '' : 's'} · data da pauta = 3 dias antes do prazo fatal`,
+    `${prazosComData.length} prazo${prazosComData.length === 1 ? '' : 's'} · data da pauta = 3 dias antes do prazo fatal`,
     MARGIN_X,
     MARGIN_TOP + 7.4,
   );
@@ -209,13 +219,13 @@ export async function createPautaPdf(prazos: Prazo[], generatedAt = new Date()) 
   doc.setFont('helvetica', 'normal');
   let y = MARGIN_TOP + 24;
 
-  if (prazos.length === 0) {
+  if (prazosComData.length === 0) {
     doc.setTextColor(...INK_MUTED);
     doc.text('Nenhum prazo no período.', MARGIN_X, y);
   } else {
     const larguraTexto = pageWidth - MARGIN_X * 2 - CARD_PADDING_X * 2;
 
-    for (const prazo of ordenarPauta(prazos)) {
+    for (const prazo of ordenarPauta(prazosComData)) {
       doc.setFontSize(FONT_SIZE);
       const linhas = layoutParagrafo(doc, runsDoPrazo(prazo), larguraTexto);
 

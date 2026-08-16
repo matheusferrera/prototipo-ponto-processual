@@ -195,17 +195,19 @@ function CapaItem({ label, value }: { label: string; value: string }) {
 }
 
 function PrazoItem({ prazo }: { prazo: Prazo }) {
-  const tone = prazo.diasRestantes <= 2
+  const tone = prazo.diasRestantes !== null && prazo.diasRestantes <= 2
     ? styles.prazoUrgente
-    : prazo.diasRestantes <= 7 ? styles.prazoProximo : styles.prazoCalmo;
+    : prazo.diasRestantes !== null && prazo.diasRestantes <= 7 ? styles.prazoProximo : styles.prazoCalmo;
 
   return (
     <li className={styles.prazoItem}>
-      <span className={`${styles.prazoChip} ${tone}`}>{prazoLabel(prazo.diasRestantes)}</span>
+      <span className={`${styles.prazoChip} ${tone}`}>
+        {prazo.diasRestantes === null ? 'Sem data' : prazoLabel(prazo.diasRestantes)}
+      </span>
       <div className={styles.prazoBody}>
         <span className={styles.prazoTipo}>{prazo.tipo}</span>
         <span className={styles.prazoMeta}>
-          vence em {prazo.vencimento}
+          {prazo.vencimento ? `vence em ${prazo.vencimento}` : 'PJe ainda não informou a data limite'}
           {prazo.parte && ` · ${prazo.parte}`}
         </span>
       </div>
@@ -238,8 +240,8 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
 
   const novidades = timeline.filter(e => e.state === 'signal').length;
   const idade = idadeLabel(diasDesde(processo.autuadoEm) ?? diasDesde(timeline.at(-1)?.rawDate));
-  const prazosAbertos = prazos.filter(p => p.diasRestantes >= 0);
-  const proximo = prazosAbertos[0];
+  const prazosAbertos = prazos.filter(p => p.diasRestantes === null || p.diasRestantes >= 0);
+  const proximo = prazosAbertos.find(p => p.diasRestantes !== null);
 
   const documentos = timeline.flatMap(evento =>
     evento.documentos.map(doc => ({ ...doc, movimentacao: evento.title, data: evento.date, n: evento.n })),
@@ -272,8 +274,10 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
         },
         {
           label: 'Próximo',
-          value: proximo ? `${prazoLabel(proximo.diasRestantes)} · ${proximo.vencimento}` : '—',
-          tone: proximo && proximo.diasRestantes <= 2 ? 'alert' : undefined,
+          value: proximo && proximo.diasRestantes !== null
+            ? `${prazoLabel(proximo.diasRestantes)} · ${proximo.vencimento}`
+            : '—',
+          tone: proximo?.diasRestantes !== null && proximo?.diasRestantes !== undefined && proximo.diasRestantes <= 2 ? 'alert' : undefined,
         },
         { label: 'Tipo', value: proximo?.tipo ?? '—' },
       ],

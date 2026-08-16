@@ -24,7 +24,8 @@ export function ActiveProcessFilters({ filters }: { filters: ProcessFilterState 
 
   function navigate(next: ProcessFilterState) {
     const params = serializeProcessFilters(next);
-    router.push(params.size ? `${pathname}?${params.toString()}` : pathname);
+    // scroll:false — sem isso o Next volta a página pro topo a cada filtro removido.
+    router.push(params.size ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
   }
 
   if (!chips.length) return null;

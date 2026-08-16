@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ArrowUpDown, Columns3, Funnel, X } from 'lucide-react';
 import { SearchControl } from '@/components/layout/PageHeader/SearchControl';
@@ -53,7 +53,8 @@ interface ProcessFilterControlsProps {
   filters: ProcessFilterState;
   tribunals: readonly TribunalOption[];
   variant?: 'desktop' | 'mobile';
-  viewsControl?: ReactNode;
+  /** Usado quando os controles ficam em fluxo com o conteúdo (não colados a um título). */
+  inline?: boolean;
 }
 
 type OpenPanel = 'filters' | 'columns' | null;
@@ -62,7 +63,7 @@ export function ProcessFilterControls({
   filters,
   tribunals,
   variant = 'desktop',
-  viewsControl,
+  inline = false,
 }: ProcessFilterControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -147,7 +148,10 @@ export function ProcessFilterControls({
 
   return (
     <>
-      <div className={`${styles.controls} ${variant === 'mobile' ? styles.controlsMobile : ''}`} aria-label="Controles de processos">
+      <div
+        className={`${styles.controls} ${variant === 'mobile' ? styles.controlsMobile : ''} ${inline ? styles.controlsInline : ''}`}
+        aria-label="Controles de processos"
+      >
       <SearchControl
         basePath="/processos"
         searchLabel="Pesquisar processos"
@@ -184,8 +188,6 @@ export function ProcessFilterControls({
           ))}
         </NativeSelect>
       </label>
-
-      {viewsControl}
 
         <Button
           ref={columnsButtonRef}
