@@ -124,6 +124,8 @@ Server Component. Cada rota tem seu próprio `PageContent` em `src/components/<r
 | `/processos` | `processos/PageContent` | Tabela de processos com `<ProcessoRow>` + paginação |
 | `/movimentacoes` | `movimentacoes/PageContent` | Feed agrupado por data com `<MovItem>` inline |
 | `/prazos` | `prazos/PrazosView` | (mesmo papel, nome diferente) |
+| `/status` | `status/PageContent` (`StatusPageContent`) | Tabela de saúde por tribunal, `'use client'` (polling 30s) |
+| `/credenciais` | `credenciais/PageContent` (`CredenciaisPageContent`) | Painel de cobertura por sistema + cards de credencial; `'use client'`. Fluxo de criação/edição vive em `credenciais/CredentialSheet` (wizard de 3 passos: sistema → tribunais → acesso/MFA). Catálogo de sistemas/tribunais em `src/lib/credenciais.ts` (`agruparPorSistema`, reaproveitando `agruparPorTribunal` de `/status`) |
 
 `PageContent` recebe:
 - Os dados tipados da rota (`processos: Processo[]`, `movimentacoes: {...}[]`, etc.)
@@ -198,7 +200,8 @@ Paleta "creme + verde-floresta" — tokens em `src/app/globals.css`.
 - [x] Conectar `/api/movimentacoes` e `/api/processos` ao backend (mock-data removido)
 - [x] Autenticação JWT + middleware de proteção de rotas (`src/middleware.ts`)
 - [x] Filtros/busca/ordenação interativos via URL search params (feito em `PageHeader` + `api.server`)
-- [ ] Telas: `/credenciais`, `/configuracoes/whatsapp`
+- [x] Tela `/credenciais` — cobertura por sistema (PJe/CPE/Projudi) + CRUD de `ScraperSecret` via `/api/secrets/*`, upload de QR do MFA
+- [ ] Tela `/configuracoes/whatsapp`
 - [ ] Onboarding (primeira vez sem processos)
 - [ ] Responsivo mobile
 - [ ] Extrair `TimelineItem` de `/processos/[id]/page.tsx` para componente próprio

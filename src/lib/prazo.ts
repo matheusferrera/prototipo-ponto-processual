@@ -1,4 +1,7 @@
 import type { NaturezaPrazo, Prazo } from '@/types';
+import { assuntoCurto, semCodigo } from '@/lib/pje-text';
+
+export { assuntoCurto };
 
 const ROTULO_NATUREZA: Record<NaturezaPrazo, string> = {
   ciencia: 'ciência',
@@ -29,22 +32,6 @@ export function tituloPrazo(pz: Prazo): string {
 /** Parte a exibir como linha secundária — omitida quando ela já é o título. */
 export function parteSecundaria(pz: Prazo, titulo: string): string | null {
   return pz.parte && pz.parte !== titulo ? pz.parte : null;
-}
-
-/** Remove o código numérico que o PJe anexa a assuntos e tipos: "Intimação (466281043)" → "Intimação". */
-function semCodigo(valor: string): string {
-  return valor.replace(/\s*\(\d+\)\s*$/, '').trim();
-}
-
-/**
- * Folha do assunto do PJe, que vem como caminho taxonômico completo:
- * "DIREITO TRIBUTÁRIO (14) / Impostos (5916) / IRPJ… (5933) / Retido na fonte (5937)"
- * → "Retido na fonte". É a matéria que o advogado reconhece na pauta.
- */
-export function assuntoCurto(assunto: string): string {
-  if (!assunto) return '';
-  const folha = assunto.split(' / ').at(-1) ?? assunto;
-  return semCodigo(folha) || semCodigo(assunto) || assunto;
 }
 
 /**

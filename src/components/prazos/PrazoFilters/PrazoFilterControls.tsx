@@ -276,6 +276,19 @@ export function PrazoFilterControls({
                         <NativeSelectOption value="">Todos</NativeSelectOption>
                         <NativeSelectOption value="1">1º grau</NativeSelectOption>
                         <NativeSelectOption value="2">2º grau</NativeSelectOption>
+                        <NativeSelectOption value="djen">DJEN sem grau</NativeSelectOption>
+                      </NativeSelect>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`${variant}-prazo-origem`}>Origem</FieldLabel>
+                      <NativeSelect
+                        id={`${variant}-prazo-origem`}
+                        value={draft.origem}
+                        onChange={event => changeDraft(current => ({ ...current, origem: event.target.value as PrazoFilterState['origem'] }), true)}
+                      >
+                        <NativeSelectOption value="">Todas</NativeSelectOption>
+                        <NativeSelectOption value="scraper">Robô (scraper)</NativeSelectOption>
+                        <NativeSelectOption value="djen">DJEN</NativeSelectOption>
                       </NativeSelect>
                     </Field>
                     <Field>

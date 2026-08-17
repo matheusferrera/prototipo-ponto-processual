@@ -28,45 +28,66 @@
 .dateDivider { flex: 1; height: 1px; background: var(--line); }
 .dateCount   { font-size: 11px; color: var(--ink-3); }
 
-/* MovItem */
+/* MovItem — cartão inteiro é o link (mesma linguagem visual da Pauta de Prazos) */
 .item {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
   border: 1px solid var(--line);
-  margin-bottom: 10px;
+  border-left-width: 3px;
+  background: var(--paper);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 160ms ease-out;
 }
 
-.itemSignal { border-left: 3px solid var(--brick); }
-.itemAlert  { border-left: 3px solid var(--alert); }
-.itemQuiet  { border-left: 3px solid var(--line);  }
+.item:hover { background: var(--paper-2); }
+.item:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
-.itemInner  { display: flex; align-items: stretch; }
+.itemSignal { border-left-color: var(--brick); }
+.itemAlert  { border-left-color: var(--alert); }
+.itemQuiet  { border-left-color: var(--line);  }
 
+/* Coluna esquerda — o horário, sempre rotulado */
 .timeCol {
-  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 14px;
   border-right: 1px solid var(--line-soft);
-  min-width: 86px;
+}
+
+.timeLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-4);
 }
 
 .time {
   font-family: var(--mono);
-  font-weight: 600;
-  font-size: 18px;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeSignal { color: var(--brick); }
 .timeNormal { color: var(--ink);   }
 
-.bodyCol {
-  padding: 18px 20px;
-  flex: 1;
-  min-width: 0;
-}
+.bodyCol { min-width: 0; }
 
 .bodyHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
 
 .tipoLabel {
@@ -79,8 +100,31 @@
 .tipoSignal { color: var(--brick);  }
 .tipoNormal { color: var(--ink-3);  }
 
-.parte  { font-size: 14px; font-weight: 600; }
-.detail { font-size: 13px; margin-top: 2px; color: var(--ink-2); }
+/* Título — o cliente, o que o advogado procura ao varrer o feed */
+.cliente {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* Subtítulo — a movimentação em si: o que aconteceu no processo */
+.detail {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* Assunto do processo, quando difere do título */
+.assunto {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
 
 .processMeta {
   display: flex;
@@ -91,66 +135,32 @@
   color: var(--ink-3);
 }
 
-.cnj { font-family: var(--mono); font-size: 11px; }
+.cnj {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
 .metaSep { font-size: 11px; color: var(--ink-4); }
 .orgaoJulgador {
   min-width: 0;
   font-size: 11px;
   line-height: 1.35;
-  color: var(--ink-3);
   overflow-wrap: anywhere;
 }
 
-.whatsCol {
-  padding: 18px 20px;
-  border-left: 1px solid var(--line-soft);
-  min-width: 200px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.go {
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink-4);
 }
 
-.whatsRow { display: flex; align-items: center; gap: 8px; }
+.item:hover .go { color: var(--brick); }
 
-.whatsIcon {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--paper);
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.whatsIconSent   { background: var(--quiet); }
-.whatsIconUnsent { background: var(--ink-4); }
-
-.whatsLabel { font-size: 13px; font-weight: 600; }
-.whatsLabelSent   { color: var(--ink);   }
-.whatsLabelUnsent { color: var(--ink-3); }
-
-.whatsStatus { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
-
-.actionCol {
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-}
-
-.viewBtn {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--ui);
-  font-weight: 600;
-  font-size: 12px;
-  padding: 6px 10px;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
-  text-decoration: none;
+@media (prefers-reduced-motion: reduce) {
+  .item { transition: none; }
 }
 
 .pagination {
@@ -173,6 +183,20 @@
     min-height: auto;
   }
 
-  .whatsCol  { display: none; }
-  .actionCol { display: none; }
+  .item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .timeCol {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    padding: 0 0 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .go { display: none; }
 }

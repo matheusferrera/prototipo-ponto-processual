@@ -1,11 +1,5 @@
 export type StatusType = 'signal' | 'quiet' | 'alert';
 
-export interface WhatsStatus {
-  sent: boolean;
-  time?: string;
-  reason?: string;
-}
-
 export interface Movimentacao {
   id: string;
   tribunal: string;
@@ -16,7 +10,6 @@ export interface Movimentacao {
   tipo: string;
   detail: string;
   time: string;
-  whats: WhatsStatus;
   state: StatusType;
 }
 
@@ -55,6 +48,8 @@ export interface Processo {
   assunto?: string;
   classeJudicial?: string;
   grau: string;
+  /** De onde este processo veio: `scraper` (robô autenticado) ou `djen` (descoberta pública). */
+  origem: 'scraper' | 'djen' | '';
   ultimaMov: string;
   state: StatusType;
   status: string;
@@ -107,6 +102,8 @@ export interface Prazo {
   tribunal: string;
   /** "1º" | "2º" — grau derivado do sufixo G1/G2 do tribunal; "" quando o processo não veio */
   grau: string;
+  /** De onde o processo veio: `scraper` (robô autenticado) ou `djen` (descoberta pública). */
+  origem: 'scraper' | 'djen' | '';
   cnj: string;
   orgaoJulgador: string;
   /** Parte do expediente (fallback: polo ativo do processo). Vazio quando o PJe não informou. */

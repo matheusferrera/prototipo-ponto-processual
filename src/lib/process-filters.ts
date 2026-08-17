@@ -5,6 +5,7 @@ export const PROCESS_FILTER_KEYS = [
   'q',
   'tribunal',
   'grau',
+  'origem',
   'state',
   'status',
   'monitored',
@@ -28,7 +29,9 @@ export type ProcessOrder = 'asc' | 'desc';
 export type ProcessFilterState = {
   q: string;
   tribunal: string[];
-  grau: '' | '1' | '2';
+  grau: '' | '1' | '2' | 'djen';
+  /** Origem do dado: `scraper` (robô autenticado) ou `djen` (descoberta pública). */
+  origem: '' | 'scraper' | 'djen';
   state: '' | 'signal' | 'alert' | 'quiet';
   status: string[];
   monitored: '' | 'true' | 'false';
@@ -51,6 +54,7 @@ export const DEFAULT_PROCESS_FILTERS: ProcessFilterState = {
   q: '',
   tribunal: [],
   grau: '',
+  origem: '',
   state: '',
   status: [],
   monitored: '',
@@ -106,12 +110,14 @@ export function parseProcessFilters(
   const orderValue = cleanText(searchParams.order);
   const sort = ALLOWED_SORT.has(sortValue) ? sortValue : 'recent';
   const grauValue = cleanText(searchParams.grau);
+  const origemValue = cleanText(searchParams.origem);
   const monitoredValue = cleanText(searchParams.monitored);
 
   return {
     q: cleanText(searchParams.q),
     tribunal: cleanCsv(searchParams.tribunal, new Set(allowedTribunals)),
-    grau: grauValue === '1' || grauValue === '2' ? grauValue : '',
+    grau: grauValue === '1' || grauValue === '2' || grauValue === 'djen' ? grauValue : '',
+    origem: origemValue === 'scraper' || origemValue === 'djen' ? origemValue : '',
     state: ALLOWED_STATE.has(stateValue) ? stateValue as ProcessFilterState['state'] : '',
     status: cleanCsv(searchParams.status, ALLOWED_STATUS),
     monitored: monitoredValue === 'true' || monitoredValue === 'false' ? monitoredValue : '',
@@ -138,6 +144,7 @@ export function serializeProcessFilters(filters: ProcessFilterState, page?: numb
   set('q', filters.q);
   set('tribunal', filters.tribunal.join(','));
   set('grau', filters.grau);
+  set('origem', filters.origem);
   set('state', filters.state);
   set('status', filters.status.join(','));
   set('monitored', filters.monitored);
@@ -167,6 +174,7 @@ export function processFiltersToApi(filters: ProcessFilterState): ProcessoFilter
     q: filters.q || undefined,
     tribunal: filters.tribunal.length ? filters.tribunal : undefined,
     grau: filters.grau || undefined,
+    origem: filters.origem || undefined,
     state: filters.state || undefined,
     status: filters.status.length ? filters.status : undefined,
     monitored: filters.monitored || undefined,
@@ -192,6 +200,7 @@ export function countActiveProcessFilters(filters: ProcessFilterState): number {
   return filters.tribunal.length +
     filters.status.length +
     Number(Boolean(filters.grau)) +
+    Number(Boolean(filters.origem)) +
     Number(Boolean(filters.state)) +
     Number(Boolean(filters.monitored)) +
     Number(Boolean(filters.assunto)) +

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import type { Processo, ProcessoParte, ProximoPrazo } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
+import { tribunalTagLabel, origemLabel } from '@/lib/tribunals';
 import { buildQuery } from '@/lib/utils';
 import {
   createDefaultProcessTablePreferences,
@@ -222,7 +223,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
       accessorKey: 'tribunal',
       header: () => <SortHeader label="Tribunal" sortKey="tribunal" listParams={listParams} />,
       cell: ({ row }) => (
-        <TribTag label={row.original.grau ? `${row.original.tribunal}-${row.original.grau}` : row.original.tribunal} />
+        <TribTag label={tribunalTagLabel(row.original.tribunal, row.original.grau)} />
       ),
       size: 96,
       minSize: MIN_COLUMN_SIZE,
@@ -441,7 +442,8 @@ function RowDetails({ processo }: { processo: Processo }) {
       <dl className={styles.rowDetailsGrid}>
         <DetailItem label="Classe judicial" value={processo.classeJudicial ?? '—'} />
         <DetailItem label="Assunto" value={processo.assunto ?? '—'} />
-        <DetailItem label="Grau" value={processo.grau} />
+        <DetailItem label="Grau" value={processo.grau || '—'} />
+        <DetailItem label="Origem" value={origemLabel(processo.origem)} />
         <DetailItem label="Situação" value={displayStatus(processo.status)} />
         <DetailItem
           label="Valor da causa"

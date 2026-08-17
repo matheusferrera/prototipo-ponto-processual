@@ -22,6 +22,7 @@ const LABELS = {
     semana: 'Pauta · próximos 7d',
   },
   situacao: { pendente: 'Expediente pendente', fechado: 'Expediente fechado' },
+  origem: { scraper: 'Robô (scraper)', djen: 'DJEN' },
 } as const;
 
 interface Chip {
@@ -83,7 +84,12 @@ function buildChips(filters: PrazoFilterState): Chip[] {
     label: value,
     remove: c => ({ ...c, tribunal: c.tribunal.filter(item => item !== value) }),
   }));
-  if (filters.grau) chips.push({ id: 'grau', label: `${filters.grau}º grau`, remove: c => ({ ...c, grau: '' }) });
+  if (filters.grau) chips.push({
+    id: 'grau',
+    label: filters.grau === 'djen' ? 'DJEN' : `${filters.grau}º grau`,
+    remove: c => ({ ...c, grau: '' }),
+  });
+  if (filters.origem) chips.push({ id: 'origem', label: LABELS.origem[filters.origem], remove: c => ({ ...c, origem: '' }) });
   if (filters.urgencia) chips.push({ id: 'urgencia', label: LABELS.urgencia[filters.urgencia], remove: c => ({ ...c, urgencia: '' }) });
   if (filters.pauta) chips.push({ id: 'pauta', label: LABELS.pauta[filters.pauta], remove: c => ({ ...c, pauta: '' }) });
   if (filters.situacao) chips.push({ id: 'situacao', label: LABELS.situacao[filters.situacao], remove: c => ({ ...c, situacao: '' }) });

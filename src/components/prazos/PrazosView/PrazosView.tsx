@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ExportPrazosPdfButton } from '@/components/prazos/ExportPrazosPdfButton/ExportPrazosPdfButton';
 import { tituloPrazo, parteSecundaria, clientePrazo, expedientePrazo, assuntoSecundario, rotuloNatureza } from '@/lib/prazo';
+import { tribunalTagLabel } from '@/lib/tribunals';
 import styles from './PrazosView.module.css';
 
 export type PrazoView = 'lista' | 'kanban' | 'calendario';
@@ -123,7 +124,7 @@ function PautaItem({ pz }: { pz: PrazoComData }) {
 
       <div className={styles.pautaBody}>
         <div className={styles.pautaTags}>
-          <TribTag label={pz.grau ? `${pz.tribunal}-${pz.grau}` : pz.tribunal} />
+          <TribTag label={tribunalTagLabel(pz.tribunal, pz.grau)} />
           {isCritical && <Seal variant="erro" label="CRÍTICO" />}
         </div>
 
@@ -457,7 +458,7 @@ function ExpedientesSemData({ prazos }: { prazos: Prazo[] }) {
               <div className={styles.semDataBadge}>SEM DATA</div>
               <div className={styles.semDataBody}>
                 <div className={styles.semDataTags}>
-                  <TribTag label={pz.grau ? `${pz.tribunal}-${pz.grau}` : pz.tribunal} />
+                  <TribTag label={tribunalTagLabel(pz.tribunal, pz.grau)} />
                   <span className={styles.semDataTipo}>{expedientePrazo(pz)}</span>
                   {natureza && <span className={styles.semDataNatureza}>para {natureza}</span>}
                 </div>

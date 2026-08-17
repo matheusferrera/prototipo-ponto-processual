@@ -1,63 +1,42 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
-import { HeaderControls } from '@/components/layout/PageHeader/HeaderControls';
 import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
 import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
+import { FilterWorkspace } from '@/components/filters/FilterWorkspace';
 import { PageContent } from '@/components/movimentacoes/PageContent/PageContent';
-import { getMovimentacoes } from '@/lib/api.server';
+import { ActiveMovimentacaoFilters } from '@/components/movimentacoes/MovimentacaoFilters/ActiveMovimentacaoFilters';
+import {
+  MOVIMENTACAO_PANEL_HOST_ID,
+  MovimentacaoFilterControls,
+} from '@/components/movimentacoes/MovimentacaoFilters/MovimentacaoFilterControls';
+import { getMovimentacoes, getSupportedTribunals } from '@/lib/api.server';
+import {
+  movimentacaoFiltersToApi,
+  movimentacaoFiltersToRecord,
+  parseMovimentacaoFilters,
+  type MovimentacaoSearchParams,
+} from '@/lib/movimentacao-filters';
 
 export const metadata: Metadata = {
   title: 'Movimentações — Ponto Processual',
   description: 'Feed geral de movimentações de todos os processos monitorados.',
 };
 
-const tiposFiltro = [
-  { label: 'TODAS', value: '' },
-  { label: 'INTIMAÇÕES', value: 'Intimação' },
-  { label: 'SENTENÇAS', value: 'Sentença' },
-  { label: 'DESPACHOS', value: 'Despacho' },
-  { label: 'AUDIÊNCIAS', value: 'Audiência' },
-  { label: 'JUNTADAS', value: 'Juntada' },
-];
-const tribunaisFiltro = [
-  { label: 'TODOS', value: '' },
-  { label: 'STJ', value: 'STJ' },
-  { label: 'TRF1', value: 'TRF1' },
-  { label: 'TJDFT', value: 'TJDFT' },
-  { label: 'TRF3', value: 'TRF3' },
-];
-const statusFiltro = [
-  { label: 'TODOS', value: '' },
-  { label: 'ENVIADOS', value: 'enviados' },
-  { label: 'NÃO ENVIADOS', value: 'nao-enviados' },
-  { label: 'COM ERRO', value: 'erro' },
-];
-const ordenacao = [
-  { label: 'MAIS RECENTES', value: '' },
-  { label: 'MAIS ANTIGAS', value: 'antigas' },
-  { label: 'TRIBUNAL', value: 'tribunal' },
-  { label: 'STATUS WHATSAPP', value: 'whats' },
-];
-
 export default async function MovimentacoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string; tipo?: string; tribunal?: string; status?: string; sort?: string }>;
+  searchParams: Promise<MovimentacaoSearchParams>;
 }) {
   const sp = await searchParams;
-  const query = sp.q?.trim() ?? '';
-  const currentPage = Math.max(1, Number(sp.page ?? 1));
+  const requestedPage = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
+  const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
-  const filters = {
-    q: query,
-    tipo: sp.tipo,
-    tribunal: sp.tribunal,
-    status: sp.status,
-    sort: sp.sort,
-  };
+  const tribunals = await getSupportedTribunals();
+  const filters = parseMovimentacaoFilters(sp, tribunals.map(tribunal => tribunal.code));
 
-  const { groups, total, totalPages, newToday } = await getMovimentacoes(currentPage, 20, filters);
+  const { groups, total, totalPages, page: backendPage, newToday } =
+    await getMovimentacoes(currentPage, 20, movimentacaoFiltersToApi(filters));
 
   const pageInfoContent: PageInfoContent = [
     {
@@ -71,39 +50,32 @@ export default async function MovimentacoesPage({
     },
   ];
 
-  const currentParams = { q: query || undefined, tipo: sp.tipo, tribunal: sp.tribunal, status: sp.status, sort: sp.sort };
-
-  const headerControls = {
-    basePath: '/movimentacoes',
-    currentParams,
-    searchLabel: 'Pesquisar movimentações',
-    searchPlaceholder: 'Pesquisar movimentações',
-    searchValue: query,
-    filters: [
-      { label: 'Tipo', param: 'tipo', options: tiposFiltro },
-      { label: 'Tribunal', param: 'tribunal', options: tribunaisFiltro },
-      { label: 'WhatsApp', param: 'status', options: statusFiltro },
-    ],
-    sortOptions: ordenacao,
-  };
+  const listParams = movimentacaoFiltersToRecord(filters);
 
   return (
     <AppLayout
       active="Movimentações"
       mobileTitle="Movimentações"
       mobileBreadcrumb="Início / Movimentações"
-      mobileActions={<HeaderControls {...headerControls} variant="mobile" />}
+      mobileActions={<MovimentacaoFilterControls filters={filters} tribunals={tribunals} variant="mobile" />}
     >
-      <PageHeader {...headerControls} title="Movimentações" breadcrumb="Início / Movimentações" />
-      <PageContent
-        key={currentPage}
-        movimentacoes={groups}
-        total={total}
-        totalPages={totalPages}
-        currentPage={currentPage}
-        listParams={currentParams}
-        pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
-      />
+      <PageHeader basePath="/movimentacoes" title="Movimentações" breadcrumb="Início / Movimentações">
+        <MovimentacaoFilterControls filters={filters} tribunals={tribunals} />
+      </PageHeader>
+
+      <FilterWorkspace panelHostId={MOVIMENTACAO_PANEL_HOST_ID}>
+        <ActiveMovimentacaoFilters filters={filters} />
+
+        <PageContent
+          key={backendPage}
+          movimentacoes={groups}
+          total={total}
+          totalPages={totalPages}
+          currentPage={backendPage}
+          listParams={listParams}
+          pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
+        />
+      </FilterWorkspace>
     </AppLayout>
   );
 }

@@ -17,6 +17,7 @@ import {
   normalizeTribunalOptions,
   type TribunalOption,
 } from '@/lib/tribunals';
+import { TIPOS_MOVIMENTACAO, type MovimentacaoSort } from '@/lib/movimentacao-filters';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -54,10 +55,22 @@ async function backendGetOrNull<T>(path: string, vaziosEm: readonly number[] = [
   return res.json() as T;
 }
 
+/** Grau exportado pelo backend: '1' | '2' | 'DJEN' (DJEN = ainda não confirmado). */
+export function grauLabel(grau: string | undefined | null): string {
+  if (grau === '1') return '1º';
+  if (grau === '2') return '2º';
+  if (grau === 'DJEN') return 'DJEN';
+  return '';
+}
+
 type BackendProcess = {
   id: string;
   numero: string;
   tribunal: string;
+  /** '1' | '2' | 'DJEN' — DJEN = grau ainda não confirmado (nem palpitado). Pode ser '1'/'2' tanto confirmado (origem scraper) quanto palpite (origem djen) — ver `origem`. */
+  grau: string;
+  /** `scraper` (robô autenticado) ou `djen` (descoberta pública do DJEN). */
+  origem: 'scraper' | 'djen';
   status: string;
   monitored: boolean;
   syncStatus: string | null;
@@ -227,8 +240,7 @@ function toProcesso(p: BackendProcess): Processo {
     ultimaMov = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  // grau não vem no payload — derivado do sufixo G1/G2 do tribunal
-  const grau = /G2$/.test(p.tribunal) ? '2º' : '1º';
+  const grau = grauLabel(p.grau);
 
   const poloAtivo = normalizePartes(p.poloAtivo);
   const poloPassivo = normalizePartes(p.poloPassivo);
@@ -250,6 +262,7 @@ function toProcesso(p: BackendProcess): Processo {
     assunto,
     classeJudicial,
     grau,
+    origem: p.origem ?? '',
     ultimaMov,
     state,
     status: p.status,
@@ -286,6 +299,8 @@ export type ProcessoFilters = {
   /** Tribunal(is) em CSV ou lista (ex.: "TRF1,TJDFT"). */
   tribunal?: CsvFilter;
   grau?: '1' | '2' | string;
+  /** `scraper` (robô autenticado) ou `djen` (descoberta pública). */
+  origem?: 'scraper' | 'djen' | string;
   /** Estado visual derivado pelo backend. */
   state?: StatusType | string;
   /** Status processual em CSV ou lista (ex.: "active,archived"). */
@@ -329,6 +344,7 @@ export async function getProcessos(page = 1, limit = 20, filters: ProcessoFilter
   appendQueryValue(params, 'q', filters.q);
   appendQueryValue(params, 'tribunal', filters.tribunal);
   appendQueryValue(params, 'grau', filters.grau);
+  appendQueryValue(params, 'origem', filters.origem);
   appendQueryValue(params, 'state', filters.state);
   appendQueryValue(params, 'status', filters.status);
   appendQueryValue(params, 'monitored', filters.monitored);
@@ -470,16 +486,32 @@ function toDocumentos(m: BackendMovement): DocumentoMovimentacao[] {
     }));
 }
 
-const TIPOS_KEYWORDS = [
-  'Acórdão','Audiência','Certidão','Conclusão','Concluso',
-  'Despacho','Embargo','Intimação','Juntada','Publicação',
-  'Recurso','Sentença',
+/**
+ * Palavras-chave buscadas na descrição para classificar o tipo da movimentação,
+ * em ordem de prioridade (a 1ª que casar decide o tipo de uma descrição com
+ * mais de uma palavra-chave). "Concluso" é variante de grafia de "Conclusão" e
+ * cai no mesmo tipo canônico — por isso a lista de busca tem uma entrada a mais
+ * que `TIPOS_MOVIMENTACAO` (a lista canônica, usada no filtro da página).
+ */
+const TIPO_KEYWORDS: { match: string; tipo: (typeof TIPOS_MOVIMENTACAO)[number] }[] = [
+  { match: 'Acórdão', tipo: 'Acórdão' },
+  { match: 'Audiência', tipo: 'Audiência' },
+  { match: 'Certidão', tipo: 'Certidão' },
+  { match: 'Conclusão', tipo: 'Conclusão' },
+  { match: 'Concluso', tipo: 'Conclusão' },
+  { match: 'Despacho', tipo: 'Despacho' },
+  { match: 'Embargo', tipo: 'Embargo' },
+  { match: 'Intimação', tipo: 'Intimação' },
+  { match: 'Juntada', tipo: 'Juntada' },
+  { match: 'Publicação', tipo: 'Publicação' },
+  { match: 'Recurso', tipo: 'Recurso' },
+  { match: 'Sentença', tipo: 'Sentença' },
 ];
 
 function extractTipo(descricao: string): string {
   const lower = descricao.toLowerCase();
-  for (const kw of TIPOS_KEYWORDS) {
-    if (lower.includes(kw.toLowerCase())) return kw === 'Concluso' ? 'Conclusão' : kw;
+  for (const { match, tipo } of TIPO_KEYWORDS) {
+    if (lower.includes(match.toLowerCase())) return tipo;
   }
   return descricao.trim().split(/\s+/)[0] || 'Movimentação';
 }
@@ -517,17 +549,19 @@ type MovimentacoesResult = {
 
 export type MovimentacaoFilters = {
   q?: string;
-  /** tipo canônico (ex.: "Intimação") — "" = todas */
-  tipo?: string;
-  /** nome do tribunal — "" = todos */
-  tribunal?: string;
-  /** "enviados" | "nao-enviados" | "erro" — "" = todos */
-  status?: string;
-  /** "antigas" | "tribunal" | "whats" — "" = mais recentes */
-  sort?: string;
+  /** Tribunal(is) em CSV ou lista (ex.: "TRF1,TJDFT"). Filtrado no backend. */
+  tribunal?: CsvFilter;
+  /**
+   * Tipo(s) canônico(s) (ex.: "Intimação") — sem campo próprio no banco, é
+   * inferido da descrição no frontend (`extractTipo`), então é aplicado sobre
+   * a página carregada, não no backend.
+   */
+  tipo?: readonly string[];
+  /** "" = mais recentes | "antigas" | "tribunal" — "tribunal" exige reordenar no frontend. */
+  sort?: MovimentacaoSort | string;
 };
 
-/** Movimentação + data de ocorrência, para filtrar/ordenar antes de agrupar. */
+/** Movimentação + data de ocorrência, para ordenar antes de agrupar. */
 type MovEntry = { item: Movimentacao; ocorrido: Date; isNew: boolean };
 
 function sortMovEntries(entries: MovEntry[], sort?: string): void {
@@ -540,26 +574,36 @@ function sortMovEntries(entries: MovEntry[], sort?: string): void {
         a.item.tribunal.localeCompare(b.item.tribunal) || b.ocorrido.getTime() - a.ocorrido.getTime(),
       );
       break;
-    case 'whats':
-      entries.sort((a, b) =>
-        Number(b.item.whats.sent) - Number(a.item.whats.sent) || b.ocorrido.getTime() - a.ocorrido.getTime(),
-      );
-      break;
     default: // mais recentes
       entries.sort((a, b) => b.ocorrido.getTime() - a.ocorrido.getTime());
   }
 }
 
+/**
+ * `/movements` filtra e ordena no banco por `q`, `tribunal` e direção de
+ * `ocorridoEm` — nesse caso a página vem pronta do backend. `tipo` (inferido
+ * da descrição) e a ordenação por tribunal não são suportados lá, então esses
+ * dois casos buscam um conjunto amplo (limit=100) e resolvem aqui, colapsando
+ * em 1 página — mesma técnica de `getPrazos` para os "contém" que o backend
+ * não filtra.
+ */
 export async function getMovimentacoes(page = 1, limit = 20, filters: MovimentacaoFilters = {}): Promise<MovimentacoesResult> {
-  const { q, tipo, tribunal, status, sort } = filters;
-  const term = q?.trim().toLowerCase();
-  const hasFilter = Boolean(term || tipo || tribunal || status || sort);
+  const { q, tribunal, sort } = filters;
+  const tipo = filters.tipo ?? [];
+  const needsClientSide = tipo.length > 0 || sort === 'tribunal';
 
-  // com filtro/busca ativos, trazemos um conjunto amplo e colapsamos em 1 página
-  const fetchPage = hasFilter ? 1 : page;
-  const fetchLimit = hasFilter ? 100 : limit;
+  const fetchPage = needsClientSide ? 1 : page;
+  const fetchLimit = needsClientSide ? 100 : limit;
 
-  const movBody = await backendGet(`/movements?page=${fetchPage}&limit=${fetchLimit}`) as {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, Math.trunc(fetchPage))),
+    limit: String(Math.max(1, Math.trunc(fetchLimit))),
+    sort: sort === 'antigas' ? 'asc' : 'desc',
+  });
+  appendQueryValue(params, 'q', q);
+  appendQueryValue(params, 'tribunal', tribunal);
+
+  const movBody = await backendGet(`/movements?${params.toString()}`) as {
     data: BackendMovement[];
     total: number;
     page: number;
@@ -576,36 +620,22 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       tribunal: proc ? proc.tribunal.replace(/G[12]$/, '') : '—',
       cnj: proc ? proc.numero : '—',
       orgaoJulgador: proc?.orgaoJulgador?.trim() || '—',
+      // parte e assunto são independentes — um não faz fallback pro outro,
+      // pra UI poder mostrar os dois (mesma convenção de `toPrazo`).
       parte: processParte(proc),
-      assunto: proc?.assunto?.trim() || processParte(proc),
+      assunto: proc?.assunto?.trim() || '',
       tipo: extractTipo(m.descricao),
       detail: m.descricao,
       time: timeStr,
-      whats: { sent: false, reason: '—' },
       state: isNew ? 'signal' : 'quiet',
     };
     return { item, ocorrido, isNew };
   });
 
-  // "novas (48h)" reflete o conjunto trazido, antes de aplicar filtros
+  // "novas (48h)" reflete o conjunto trazido do backend, antes do filtro de tipo
   const newToday = entries.filter(e => e.isNew).length;
 
-  if (term) {
-    entries = entries.filter(({ item }) =>
-      item.parte.toLowerCase().includes(term) ||
-      item.assunto.toLowerCase().includes(term) ||
-      item.cnj.toLowerCase().includes(term) ||
-      item.orgaoJulgador.toLowerCase().includes(term) ||
-      item.tipo.toLowerCase().includes(term) ||
-      item.detail.toLowerCase().includes(term) ||
-      item.tribunal.toLowerCase().includes(term),
-    );
-  }
-  if (tipo)     entries = entries.filter(e => e.item.tipo === tipo);
-  if (tribunal) entries = entries.filter(e => e.item.tribunal === tribunal);
-  if (status === 'erro')         entries = entries.filter(e => e.item.state === 'alert');
-  else if (status === 'enviados')     entries = entries.filter(e => e.item.whats.sent);
-  else if (status === 'nao-enviados') entries = entries.filter(e => !e.item.whats.sent);
+  if (tipo.length) entries = entries.filter(({ item }) => tipo.includes(item.tipo));
 
   sortMovEntries(entries, sort);
 
@@ -621,9 +651,9 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
 
   return {
     groups: Array.from(groupMap.values()),
-    total: hasFilter ? entries.length : movBody.total,
-    totalPages: hasFilter ? 1 : movBody.totalPages,
-    page: hasFilter ? 1 : movBody.page,
+    total: needsClientSide ? entries.length : movBody.total,
+    totalPages: needsClientSide ? 1 : movBody.totalPages,
+    page: needsClientSide ? 1 : movBody.page,
     newToday,
   };
 }
@@ -635,7 +665,6 @@ export type MovimentacaoDetail = {
   link: string | null;
   detectedAt: string;
   processData?: (BackendProcess & {
-    grau: number;
     summary: {
       link?: string | null;
       partes?: string | null;
@@ -665,8 +694,6 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
   const processData = proc
     ? {
         ...proc,
-        // grau derivado do sufixo G1/G2 do tribunal (não vem como campo no banco)
-        grau: /G2$/.test(proc.tribunal) ? 2 : 1,
         summary: {
           link: proc.link ?? null,
           partes: processParte(proc),
@@ -701,6 +728,8 @@ type BackendDeadline = {
   process?: {
     numero: string;
     tribunal: string;
+    grau: string;
+    origem: 'scraper' | 'djen';
     orgaoJulgador: string | null;
     assunto?: string | null;
     poloAtivo: BackendParte[] | null;
@@ -763,7 +792,8 @@ function toPrazo(d: BackendDeadline): Prazo {
   return {
     id: d.id,
     tribunal: d.process ? d.process.tribunal.replace(/G[12]$/, '') : '—',
-    grau: d.process ? (d.process.tribunal.endsWith('G2') ? '2º' : '1º') : '',
+    grau: d.process ? grauLabel(d.process.grau) : '',
+    origem: d.process?.origem ?? '',
     cnj: d.process?.numero ?? '—',
     orgaoJulgador: d.process?.orgaoJulgador?.trim() || '—',
     parte,
@@ -784,6 +814,8 @@ export type PrazoFilters = {
   /** Tribunais em CSV ou lista (ex.: "TRF1,TJDFT"). */
   tribunal?: CsvFilter;
   grau?: '1' | '2' | string;
+  /** `scraper` (robô autenticado) ou `djen` (descoberta pública). Aplicado sobre a página carregada — ver `filtraPrazos`. */
+  origem?: 'scraper' | 'djen' | string;
   /** Faixa de dias até o fatal: crítico ≤3, urgente ≤7, atenção ≤14, normal >14. */
   urgencia?: string;
   /** Janela da data da pauta: "atrasada" | "hoje" | "semana". */
@@ -828,7 +860,11 @@ function filtraPrazos(list: Prazo[], f: PrazoFilters): Prazo[] {
 
   return list.filter(p => {
     if (tribunais.length && !tribunais.includes(p.tribunal)) return false;
-    if (f.grau && p.grau !== `${f.grau}º`) return false;
+    if (f.grau) {
+      const grauEsperado = f.grau === 'djen' ? 'DJEN' : `${f.grau}º`;
+      if (p.grau !== grauEsperado) return false;
+    }
+    if (f.origem && p.origem !== f.origem) return false;
 
     const exigeData = Boolean(f.urgencia || f.pauta || f.fatalFrom || f.fatalTo || f.pautaFrom || f.pautaTo);
     if (exigeData && (p.diasRestantes === null || p.diasParaPauta === null || !p.vencimentoISO || !p.pautaISO)) {
@@ -1001,4 +1037,25 @@ export async function getSupportedTribunals(): Promise<TribunalOption[]> {
   }
 
   return [...FALLBACK_TRIBUNALS];
+}
+
+export type { ScraperSecretView } from '@/lib/credenciais';
+import type { ScraperSecretView } from '@/lib/credenciais';
+
+/**
+ * Credenciais do usuário (`GET /users/me/secrets`). Sem dataset de fallback:
+ * uma credencial inventada faria a tela de cobertura mentir sobre o que está
+ * realmente cadastrado.
+ */
+export async function getScraperSecrets(): Promise<ScraperSecretView[]> {
+  try {
+    const body = await backendGet('/users/me/secrets');
+    return Array.isArray(body) ? body as ScraperSecretView[] : [];
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message?.includes('NEXT_REDIRECT')) {
+      throw err;
+    }
+    console.error('Falha ao buscar credenciais no backend:', err);
+    return [];
+  }
 }

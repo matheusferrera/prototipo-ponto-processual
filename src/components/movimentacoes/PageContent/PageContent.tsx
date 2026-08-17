@@ -4,6 +4,7 @@ import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { buttonVariants } from '@/components/ui/button';
 import { cn, buildQuery } from '@/lib/utils';
+import { clienteMovimentacao, assuntoSecundario, descricaoMovimentacao } from '@/lib/movimentacao';
 import type { Movimentacao } from '@/types';
 import styles from './PageContent.module.css';
 
@@ -83,62 +84,46 @@ function MovItem({ m }: { m: Movimentacao }) {
     m.state === 'alert'  ? styles.itemAlert  :
     styles.itemQuiet;
 
+  const cliente = clienteMovimentacao(m);
+  const assunto = assuntoSecundario(m, cliente);
+
   return (
-    <div className={`${styles.item} ${itemStateClass}`}>
-      <div className={styles.itemInner}>
-
-        <div className={styles.timeCol}>
-          <div className={`${styles.time} ${m.state === 'signal' ? styles.timeSignal : styles.timeNormal}`}>
-            {m.time}
-          </div>
-        </div>
-
-        <div className={styles.bodyCol}>
-          <div className={styles.bodyHeader}>
-            <TribTag label={m.tribunal} />
-            <span className={`${styles.tipoLabel} ${m.state === 'signal' ? styles.tipoSignal : styles.tipoNormal}`}>
-              {m.tipo}
-            </span>
-            {m.state === 'signal' && <Seal variant="nova" />}
-            {m.state === 'alert'  && <Seal variant="erro" />}
-          </div>
-          <div className={styles.parte}>{m.assunto}</div>
-          <div className={styles.detail}>{m.detail}</div>
-          <div className={styles.processMeta}>
-            <span className={styles.cnj}>{m.cnj}</span>
-            {m.orgaoJulgador !== '—' && (
-              <>
-                <span className={styles.metaSep} aria-hidden="true">·</span>
-                <span className={styles.orgaoJulgador}>{m.orgaoJulgador}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.whatsCol}>
-          <div className={styles.whatsRow}>
-            <span className={`${styles.whatsIcon} ${m.whats.sent ? styles.whatsIconSent : styles.whatsIconUnsent}`}>
-              W
-            </span>
-            <span className={`${styles.whatsLabel} ${m.whats.sent ? styles.whatsLabelSent : styles.whatsLabelUnsent}`}>
-              {m.whats.sent ? 'Enviado' : 'Não enviado'}
-            </span>
-          </div>
-          <div className={styles.whatsStatus}>
-            {m.whats.sent ? `às ${m.whats.time} · entregue ✓✓` : m.whats.reason}
-          </div>
-        </div>
-
-        <div className={styles.actionCol}>
-          <Link
-            href={`/movimentacoes/${m.id}`}
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--paper-2)]')}
-          >
-            Visualizar →
-          </Link>
-        </div>
-
+    <Link href={`/movimentacoes/${m.id}`} className={`${styles.item} ${itemStateClass}`}>
+      <div className={styles.timeCol}>
+        <span className={styles.timeLabel}>horário</span>
+        <span className={`${styles.time} ${m.state === 'signal' ? styles.timeSignal : styles.timeNormal}`}>
+          {m.time}
+        </span>
       </div>
-    </div>
+
+      <div className={styles.bodyCol}>
+        <div className={styles.bodyHeader}>
+          <TribTag label={m.tribunal} />
+          <span className={`${styles.tipoLabel} ${m.state === 'signal' ? styles.tipoSignal : styles.tipoNormal}`}>
+            {m.tipo}
+          </span>
+          {m.state === 'signal' && <Seal variant="nova" />}
+          {m.state === 'alert'  && <Seal variant="erro" />}
+        </div>
+
+        {/* Título — o cliente, o que o advogado procura ao varrer o feed */}
+        <div className={styles.cliente}>{cliente}</div>
+        {/* Subtítulo — a movimentação em si: o que aconteceu no processo */}
+        <div className={styles.detail}>{descricaoMovimentacao(m)}</div>
+        {assunto && <div className={styles.assunto}>{assunto}</div>}
+
+        <div className={styles.processMeta}>
+          <span className={styles.cnj}>autos nº {m.cnj}</span>
+          {m.orgaoJulgador !== '—' && (
+            <>
+              <span className={styles.metaSep} aria-hidden="true">·</span>
+              <span className={styles.orgaoJulgador}>{m.orgaoJulgador}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <span className={styles.go} aria-hidden="true">→</span>
+    </Link>
   );
 }

@@ -1,0 +1,407 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px 24px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbarTitle {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.toolbarDesc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  max-width: 52ch;
+}
+
+.unavailableBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--alert-soft);
+  border: 1px solid var(--alert);
+  color: var(--alert);
+  padding: 10px 14px;
+  font-family: var(--ui);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ---- Painel de cobertura por sistema ---- */
+.coverageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.coverageCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.coverageCardDisabled {
+  opacity: 0.6;
+}
+
+.coverageHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.coverageTitle {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.coverageCount {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.coverageDesc {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+.coverageChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.coverageChipDone,
+.coverageChipPending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink-3);
+}
+
+.coverageChipDone {
+  border-color: var(--brick);
+  background: var(--brick-soft);
+  color: var(--brick-deep);
+  cursor: default;
+}
+
+.coverageChipPending {
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.coverageChipPending:hover {
+  border-color: var(--signal);
+  background: var(--signal-soft);
+  color: var(--ink);
+}
+
+/* ---- Lista de credenciais ---- */
+.sistemaSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sistemaSectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardHeadMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cardLabel {
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardOab {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.statusAtiva { background: var(--brick-soft); color: var(--brick-deep); border-color: var(--brick); }
+.dot.statusAtiva { background: var(--brick); border-color: var(--brick); }
+
+.statusPausada { background: var(--paper-2); color: var(--ink-3); border-color: var(--line); }
+.dot.statusPausada { background: var(--ink-4); border-color: var(--line); }
+
+.statusErro { background: var(--alert-soft); color: var(--alert); border-color: var(--alert); }
+.dot.statusErro { background: var(--alert); border-color: var(--alert); }
+
+.statusPendente { background: var(--signal-soft); color: var(--signal); border-color: var(--signal); }
+.dot.statusPendente { background: var(--signal); border-color: var(--signal); }
+
+.cardChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tribChip {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line-soft);
+}
+
+.cardMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.cardMetaAbs {
+  font-family: var(--mono);
+  color: var(--ink-4);
+}
+
+.cardError {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--alert-soft);
+  color: var(--alert);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cardError svg { flex-shrink: 0; margin-top: 1px; }
+
+.totpPanel {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+}
+
+.totpCode {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
+
+.totpExpires,
+.totpLoading,
+.totpErrorText {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.totpErrorText { color: var(--alert); }
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.actionBtn,
+.actionBtnDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+.actionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actionBtnDanger {
+  color: var(--alert);
+  border-color: transparent;
+  margin-left: auto;
+}
+
+.actionBtnDanger:hover {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+}
+
+.confirmDelete {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.confirmDeleteBtn {
+  padding: 5px 9px;
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--alert);
+  color: #fff;
+  border: 1px solid var(--alert);
+  cursor: pointer;
+}
+
+.confirmCancelBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* ---- Empty state ---- */
+.emptyState {
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  padding: 48px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 768px) {
+  .container {
+    flex: none;
+    min-height: auto;
+    overflow-y: visible;
+    padding: 0 16px 16px 16px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .coverageGrid,
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+}

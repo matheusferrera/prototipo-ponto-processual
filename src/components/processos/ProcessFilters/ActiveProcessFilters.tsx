@@ -9,6 +9,7 @@ const LABELS = {
   state: { signal: 'Com novidade', alert: 'Com erro', quiet: 'Sem novidade' },
   monitored: { true: 'Monitorados', false: 'Não monitorados' },
   status: { active: 'Ativo', archived: 'Arquivado' },
+  origem: { scraper: 'Robô (scraper)', djen: 'DJEN' },
 } as const;
 
 interface Chip {
@@ -56,7 +57,12 @@ function buildChips(filters: ProcessFilterState): Chip[] {
   const chips: Chip[] = [];
   if (filters.q) chips.push({ id: 'q', label: `Busca: ${filters.q}`, remove: current => ({ ...current, q: '' }) });
   filters.tribunal.forEach(value => chips.push({ id: `tribunal-${value}`, label: value, remove: current => ({ ...current, tribunal: current.tribunal.filter(item => item !== value) }) }));
-  if (filters.grau) chips.push({ id: 'grau', label: `${filters.grau}º grau`, remove: current => ({ ...current, grau: '' }) });
+  if (filters.grau) chips.push({
+    id: 'grau',
+    label: filters.grau === 'djen' ? 'DJEN' : `${filters.grau}º grau`,
+    remove: current => ({ ...current, grau: '' }),
+  });
+  if (filters.origem) chips.push({ id: 'origem', label: LABELS.origem[filters.origem], remove: current => ({ ...current, origem: '' }) });
   if (filters.state) chips.push({ id: 'state', label: LABELS.state[filters.state], remove: current => ({ ...current, state: '' }) });
   filters.status.forEach(value => chips.push({ id: `status-${value}`, label: LABELS.status[value as keyof typeof LABELS.status] ?? value, remove: current => ({ ...current, status: current.status.filter(item => item !== value) }) }));
   if (filters.monitored) chips.push({ id: 'monitored', label: LABELS.monitored[filters.monitored], remove: current => ({ ...current, monitored: '' }) });

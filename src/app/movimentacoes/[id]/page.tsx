@@ -5,7 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
-import { getMovimentacao } from '@/lib/api.server';
+import { getMovimentacao, grauLabel } from '@/lib/api.server';
 import { getAbsoluteUrl } from '@/lib/site-url';
 import styles from './page.module.css';
 
@@ -53,7 +53,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
   const cnj = proc?.numero ?? '—';
   const partes = proc?.summary?.partes?.split(';')[0].trim() ?? '—';
   const vara = proc?.summary?.vara ?? '—';
-  const grau = proc?.grau === 2 ? '2º' : '1º';
+  const grau = grauLabel(proc?.grau);
   const distribuicao = proc?.summary?.distribuicao ?? '—';
 
   const detectedAt = new Date(mov.detectedAt);

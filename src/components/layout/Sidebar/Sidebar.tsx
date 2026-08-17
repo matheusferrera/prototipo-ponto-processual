@@ -60,6 +60,11 @@ export function Sidebar({ active, onClose }: SidebarProps) {
 
       <div className={styles.spacer} />
 
+      <SectionLabel>Conta</SectionLabel>
+      <NavItem label="Credenciais" href="/credenciais" active={active === 'Credenciais'} />
+
+      <div className={styles.spacer} />
+
       <SectionLabel>Produto</SectionLabel>
       <NavItem label="Design System" href="/design-system" active={active === 'Design System'} />
 

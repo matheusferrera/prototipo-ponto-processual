@@ -14,6 +14,7 @@ export const PRAZO_FILTER_KEYS = [
   'q',
   'tribunal',
   'grau',
+  'origem',
   'urgencia',
   'pauta',
   'situacao',
@@ -48,7 +49,9 @@ export type PrazoView = 'lista' | 'kanban' | 'calendario';
 export type PrazoFilterState = {
   q: string;
   tribunal: string[];
-  grau: '' | '1' | '2';
+  grau: '' | '1' | '2' | 'djen';
+  /** Origem do dado: `scraper` (robô autenticado) ou `djen` (descoberta pública). */
+  origem: '' | 'scraper' | 'djen';
   urgencia: PrazoUrgencia;
   pauta: PrazoPautaJanela;
   situacao: PrazoSituacao;
@@ -72,6 +75,7 @@ export const DEFAULT_PRAZO_FILTERS: PrazoFilterState = {
   q: '',
   tribunal: [],
   grau: '',
+  origem: '',
   urgencia: '',
   pauta: '',
   situacao: '',
@@ -123,6 +127,7 @@ export function parsePrazoFilters(
   const sort = ALLOWED_SORT.has(sortValue) ? sortValue : DEFAULT_PRAZO_FILTERS.sort;
   const orderValue = cleanText(searchParams.order);
   const grauValue = cleanText(searchParams.grau);
+  const origemValue = cleanText(searchParams.origem);
   const urgenciaValue = cleanText(searchParams.urgencia);
   const pautaValue = cleanText(searchParams.pauta);
   const situacaoValue = cleanText(searchParams.situacao);
@@ -132,7 +137,8 @@ export function parsePrazoFilters(
   return {
     q: cleanText(searchParams.q),
     tribunal: cleanCsv(searchParams.tribunal, new Set(allowedTribunals)),
-    grau: grauValue === '1' || grauValue === '2' ? grauValue : '',
+    grau: grauValue === '1' || grauValue === '2' || grauValue === 'djen' ? grauValue : '',
+    origem: origemValue === 'scraper' || origemValue === 'djen' ? origemValue : '',
     urgencia: ALLOWED_URGENCIA.has(urgenciaValue) ? urgenciaValue as PrazoUrgencia : '',
     pauta: ALLOWED_PAUTA.has(pautaValue) ? pautaValue as PrazoPautaJanela : '',
     situacao: ALLOWED_SITUACAO.has(situacaoValue) ? situacaoValue as PrazoSituacao : '',
@@ -160,6 +166,7 @@ export function serializePrazoFilters(filters: PrazoFilterState): URLSearchParam
   set('q', filters.q);
   set('tribunal', filters.tribunal.join(','));
   set('grau', filters.grau);
+  set('origem', filters.origem);
   set('urgencia', filters.urgencia);
   set('pauta', filters.pauta);
   set('situacao', filters.situacao);
@@ -188,6 +195,7 @@ export function prazoFiltersToApi(filters: PrazoFilterState): PrazoFilters {
     q: filters.q || undefined,
     tribunal: filters.tribunal.length ? filters.tribunal : undefined,
     grau: filters.grau || undefined,
+    origem: filters.origem || undefined,
     urgencia: filters.urgencia || undefined,
     pauta: filters.pauta || undefined,
     situacao: filters.situacao || undefined,
@@ -213,6 +221,7 @@ export function defaultOrderFor(sort: PrazoSort): PrazoOrder {
 export function countActivePrazoFilters(filters: PrazoFilterState): number {
   return filters.tribunal.length +
     Number(Boolean(filters.grau)) +
+    Number(Boolean(filters.origem)) +
     Number(Boolean(filters.urgencia)) +
     Number(Boolean(filters.pauta)) +
     Number(Boolean(filters.situacao)) +
