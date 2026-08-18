@@ -1,6 +1,11 @@
+/* Mobile-first: base = celular, onde a tabela larga vira uma lista de
+   cards (.mobileCards) e o painel de config. de colunas ocupa a tela toda.
+   >=768px liga a tabela de verdade (.desktopTableWrap) com colunas
+   redimensionáveis e o painel de config. compacto ao lado. */
+
 .workspace {
   --row-block-padding: 14px;
-  border-top: 1px solid var(--line);
+  border-top: 0;
   color: var(--ink);
   font-size: var(--process-font-size, 14px);
 }
@@ -11,7 +16,7 @@
 
 .tableMeta {
   min-height: 38px;
-  padding: 8px 32px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--line-soft);
   background: var(--paper-2);
   color: var(--ink-3);
@@ -21,9 +26,10 @@
   font-size: 11px;
 }
 
-.tableMetaHint { margin-left: auto; }
+.tableMetaHint { margin-left: auto; display: none; }
 
 .desktopTableWrap {
+  display: none;
   width: 100%;
   overflow: visible;
   border-right: 1px solid var(--line);
@@ -273,9 +279,10 @@
   line-height: 1.5;
 }
 
+/* coluna única por padrão (celular e telas médias apertadas) */
 .rowDetailsPolos {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
@@ -339,14 +346,84 @@
 .rowDetailsLink svg { width: 14px; height: 14px; }
 .rowDetailsLink:hover { text-decoration: underline; }
 
-@media (max-width: 900px) {
-  .rowDetailsPolos { grid-template-columns: 1fr; }
+/* painel de detalhe da linha só ganha 2 colunas quando há espaço de verdade
+   (telas médias/largas) — independente do breakpoint principal de 768px */
+@media (min-width: 901px) {
+  .rowDetailsPolos { grid-template-columns: 1fr 1fr; }
 }
 
-.mobileCards { display: none; }
+.mobileCards { display: block; }
+
+.mobileCard {
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  color: inherit;
+  display: block;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: background-color 150ms ease, transform 100ms ease;
+}
+
+.mobileCard:hover { background: var(--paper-2); }
+.mobileCard:active { background: var(--paper-3); transform: scale(0.99); }
+.mobileCard:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.mobileCardHeader {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobileCardHeader .stateCell { width: 32px; height: 32px; flex: 0 0 auto; }
+.mobileCardHeader .cnj {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: max(13px, calc(var(--process-font-size, 14px) * 0.92));
+}
+
+.mobileCardFields {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.mobileCardFields > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(96px, 34%) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.mobileCardFields dt {
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mobileCardFields dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--process-font-size, 14px);
+}
+
+.mobileCardFields .ellipsis {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* Settings */
 .settingsTrigger {
+  min-width: 44px;
+  min-height: 44px;
   border-color: var(--line);
   border-radius: 0;
   background: transparent;
@@ -357,8 +434,8 @@
 .settingsTrigger:focus-visible { border-color: var(--brick); box-shadow: 0 0 0 2px var(--brick-soft); }
 
 .settingsSheet {
-  width: min(460px, 100vw) !important;
-  max-width: 460px !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
   gap: 0 !important;
   border-color: var(--line) !important;
   border-radius: 0 !important;
@@ -367,7 +444,7 @@
 }
 
 .settingsHeader {
-  padding: 24px !important;
+  padding: 20px 56px 20px 16px !important;
   border-bottom: 1px solid var(--line);
 }
 
@@ -376,13 +453,13 @@
 
 .settingsBody {
   min-height: 0;
-  padding: 0 24px 24px;
+  padding: 0 16px 24px;
   overflow-y: auto;
 }
 
 .settingsInline {
-  max-height: none;
-  padding: 20px 20px 24px;
+  max-height: 62dvh;
+  padding: 18px 16px 24px;
   display: block;
   overflow-y: auto;
 }
@@ -430,7 +507,7 @@
 }
 
 .columnItem {
-  min-height: 52px;
+  min-height: 56px;
   padding: 6px 6px 6px 10px;
   border-bottom: 1px solid var(--line-soft);
   background: var(--paper);
@@ -462,8 +539,8 @@
 .columnActions { display: flex; align-items: center; }
 .columnActions button,
 .fontControl button {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -491,7 +568,7 @@
 }
 
 .segmented button {
-  min-height: 42px;
+  min-height: 48px;
   padding: 8px;
   border: 0;
   border-right: 1px solid var(--line);
@@ -508,15 +585,15 @@
 .segmented .segmentActive { background: var(--brick-soft); color: var(--brick); font-weight: 700; }
 
 .fontControl {
-  width: 188px;
+  width: 212px;
   border: 1px solid var(--line);
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 52px 1fr 52px;
   align-items: center;
 }
 
 .fontControl output {
-  height: 36px;
+  height: 44px;
   border-right: 1px solid var(--line-soft);
   border-left: 1px solid var(--line-soft);
   color: var(--ink);
@@ -537,104 +614,35 @@
 
 .resetButton:hover { background: var(--paper-2) !important; }
 
-@media (max-width: 768px) {
-  .workspace { border-top: 0; }
-  .tableMeta { padding: 8px 16px; }
-  .tableMetaHint { display: none; }
-  .desktopTableWrap { display: none; }
-  .mobileCards { display: block; }
+/* Tablet / desktop: tabela de verdade em vez dos cards */
+@media (min-width: 768px) {
+  .workspace { border-top: 1px solid var(--line); }
+  .tableMeta { padding: 8px 32px; }
+  .tableMetaHint { display: block; }
+  .desktopTableWrap { display: block; }
+  .mobileCards { display: none; }
 
-  .settingsInline {
-    max-height: 62dvh;
-    padding: 18px 16px 24px;
-    display: block;
-  }
-
-  .settingsInline .settingsSection:first-child {
-    padding-right: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--line-soft);
-  }
-
-  .mobileCard {
-    padding: 16px;
-    border-bottom: 1px solid var(--line);
-    background: var(--paper);
-    color: inherit;
-    display: block;
-    text-decoration: none;
-    transition: background-color 150ms ease;
-  }
-
-  .mobileCard:hover,
-  .mobileCard:active { background: var(--paper-2); }
-  .mobileCard:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
-
-  .mobileCardHeader {
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .mobileCardHeader .stateCell { width: 32px; height: 32px; flex: 0 0 auto; }
-  .mobileCardHeader .cnj {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    white-space: normal;
-    font-size: max(13px, calc(var(--process-font-size, 14px) * 0.92));
-  }
-
-  .mobileCardFields {
-    margin: 0;
-    display: grid;
-    gap: 10px;
-  }
-
-  .mobileCardFields > div {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(96px, 34%) minmax(0, 1fr);
-    align-items: start;
-    gap: 12px;
-  }
-
-  .mobileCardFields dt {
-    color: var(--ink-3);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .mobileCardFields dd {
-    min-width: 0;
-    margin: 0;
-    color: var(--ink-2);
-    font-size: var(--process-font-size, 14px);
-  }
-
-  .mobileCardFields .ellipsis {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
+  .settingsTrigger { min-width: auto; min-height: auto; }
 
   .settingsSheet {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: min(460px, 100vw) !important;
+    max-width: 460px !important;
   }
 
-  .settingsHeader { padding: 20px 56px 20px 16px !important; }
-  .settingsBody { padding: 0 16px 24px; }
-  .columnItem { min-height: 56px; }
+  .settingsHeader { padding: 24px !important; }
+  .settingsBody { padding: 0 24px 24px; }
+
+  .settingsInline {
+    max-height: none;
+    padding: 20px 20px 24px;
+  }
+
+  .columnItem { min-height: 52px; }
   .columnActions button,
-  .fontControl button { width: 44px; height: 44px; }
-  .fontControl { width: 212px; grid-template-columns: 52px 1fr 52px; }
-  .fontControl output { height: 44px; }
-  .segmented button { min-height: 48px; }
-  .settingsTrigger { min-width: 44px; min-height: 44px; }
+  .fontControl button { width: 36px; height: 36px; }
+  .fontControl { width: 188px; grid-template-columns: 44px 1fr 44px; }
+  .fontControl output { height: 36px; }
+  .segmented button { min-height: 42px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

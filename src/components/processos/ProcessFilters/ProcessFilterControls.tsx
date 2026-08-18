@@ -282,7 +282,7 @@ export function ProcessFilterControls({
                       <FieldLabel htmlFor={`${variant}-origem`}>Origem</FieldLabel>
                       <NativeSelect id={`${variant}-origem`} value={draft.origem} onChange={event => changeDraft(current => ({ ...current, origem: event.target.value as ProcessFilterState['origem'] }), true)}>
                         <NativeSelectOption value="">Todas</NativeSelectOption>
-                        <NativeSelectOption value="scraper">Robô (scraper)</NativeSelectOption>
+                        <NativeSelectOption value="scraper">Sincronização Integrada</NativeSelectOption>
                         <NativeSelectOption value="djen">DJEN</NativeSelectOption>
                       </NativeSelect>
                     </Field>

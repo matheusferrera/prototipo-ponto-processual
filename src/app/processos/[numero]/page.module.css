@@ -1,13 +1,18 @@
+/* Mobile-first: base = celular pequeno (<391px). Sobe em 3 degraus:
+   >=391px (celular normal), >=768px (tablet — a capa vira acordeão em
+   coluna única), >=1025px (desktop — capa fixa lateral em 2 colunas). */
+
 .pageShell {
   flex: 1;
-  min-height: 0;
-  overflow: auto;
+  min-height: 100dvh;
+  overflow: visible;
   background: var(--paper);
   overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 .breadcrumb {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 12px;
   padding: 14px 32px;
@@ -41,6 +46,12 @@
   border-color: transparent;
   padding-inline: 0;
   color: var(--ink-3);
+}
+
+.actionButton {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .backLink:hover,
@@ -106,7 +117,7 @@
 
 .hero {
   flex-shrink: 0;
-  padding: 40px 48px;
+  padding: 22px 16px 24px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
@@ -115,19 +126,20 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 7px;
+  margin-bottom: 12px;
   min-width: 0;
 }
 
 .heroMetaText,
 .statusPill {
   color: var(--ink-3);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
 .metaSeparator {
+  display: none;
   color: var(--ink-3);
   font-size: 11px;
 }
@@ -136,37 +148,52 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--paper-2);
 }
 
 .cnj {
   overflow-wrap: anywhere;
   font-family: var(--mono);
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.45;
 }
 
 .title {
   max-width: 1120px;
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--ink);
   /* o título é um confronto ("A × B"): encolhe conforme cresce, sem truncar */
-  font-size: clamp(24px, 2.6vw, 38px);
+  font-size: 25px;
   font-weight: 800;
   letter-spacing: 0;
-  line-height: 1.1;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .infoGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, max-content));
-  gap: 24px 32px;
+  grid-template-columns: 1fr;
+  gap: 0;
   margin: 18px 0 0;
+  border: 1px solid var(--line-soft);
+  background: var(--paper);
 }
 
 .infoItem {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  align-items: start;
+  padding: 12px;
   min-width: 0;
+}
+
+.infoItem + .infoItem {
+  border-top: 1px solid var(--line-soft);
 }
 
 .infoItem dt {
@@ -179,11 +206,12 @@
 }
 
 .infoItem dd {
-  margin: 3px 0 0;
+  margin: 0;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.45;
+  text-align: left;
   overflow-wrap: anywhere;
 }
 
@@ -211,10 +239,11 @@
 
 .syncErrorBanner svg { flex-shrink: 0; margin-top: 2px; }
 
-/* ---- Corpo em duas colunas: histórico à esquerda, capa fixa à direita ---- */
+/* ---- Corpo: no celular/tablet é uma coluna só (histórico, depois a capa
+   recolhível); no desktop vira 2 colunas com a capa fixa ao lado ---- */
 .body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 0;
 }
@@ -224,9 +253,13 @@
 .tabs {
   display: flex;
   gap: 4px;
-  padding: 0 48px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
   border-bottom: 1px solid var(--line);
 }
+
+.tabs::-webkit-scrollbar { display: none; }
 
 .tab {
   display: inline-flex;
@@ -241,6 +274,7 @@
   letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
+  white-space: nowrap;
   transition: color 150ms ease, border-color 150ms ease;
 }
 
@@ -263,25 +297,39 @@
 .tabActive .tabCount { color: var(--brick); }
 
 .panel {
-  padding: 32px 48px 48px;
+  padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
 }
 
 /* ---- Capa do processo ---- */
 .capa {
-  position: sticky;
-  top: 0;
+  position: static;
   align-self: start;
-  padding: 32px 32px 48px;
-  border-left: 1px solid var(--line);
+  padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+  border-left: 0;
 }
 
-/* no desktop a capa está sempre aberta; o acordeão só existe no mobile */
-.capaSummary { display: none; }
+/* no desktop a capa está sempre aberta; o acordeão só existe até 1024px */
+.capaSummary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.capaSummary:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
 
 .capaBody {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding-top: 18px;
 }
 
 .polo { min-width: 0; }
@@ -458,14 +506,14 @@
 }
 
 .timeline {
-  padding: 32px 48px 48px;
+  padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
 }
 
 .sectionHeader {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 22px;
 }
 
 .sectionHeader h2 {
@@ -482,10 +530,12 @@
 .sectionRule {
   flex: 1;
   height: 1px;
+  margin-top: 7px;
   background: var(--line);
 }
 
 .sectionHeader span {
+  display: none;
   color: var(--ink-3);
   font-size: 11px;
   line-height: 1.4;
@@ -493,24 +543,38 @@
 
 .timelineItem {
   display: grid;
-  grid-template-columns: 90px 20px minmax(0, 1fr);
-  padding-bottom: 28px;
+  grid-template-columns: minmax(0, 1fr);
+  position: relative;
+  padding: 0 0 24px 20px;
 }
 
 .timelineItemLast {
   padding-bottom: 0;
 }
 
+.timelineItem::before {
+  content: "";
+  position: absolute;
+  top: 23px;
+  bottom: 0;
+  left: 5px;
+  width: 1px;
+  background: var(--line);
+}
+
+.timelineItemLast::before {
+  display: none;
+}
+
 .timelineDate {
   flex-shrink: 0;
-  padding-top: 2px;
-  padding-right: 16px;
+  padding: 0 0 8px;
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.25;
-  text-align: right;
+  text-align: left;
 }
 
 .timelineDateNew {
@@ -518,10 +582,12 @@
 }
 
 .timelineTime {
+  display: inline;
   margin-top: 2px;
+  margin-left: 6px;
   color: var(--ink-3);
   font-family: var(--ui);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -529,13 +595,17 @@
   display: flex;
   align-items: center;
   flex-direction: column;
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 12px;
 }
 
 .timelineMarker {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: 0;
   border: 2px solid var(--ink-3);
   border-radius: 999px;
   background: var(--paper);
@@ -547,6 +617,7 @@
 }
 
 .timelineLine {
+  display: none;
   width: 1px;
   flex: 1;
   margin-top: 6px;
@@ -555,8 +626,7 @@
 
 .timelineContent {
   min-width: 0;
-  padding-bottom: 4px;
-  padding-left: 16px;
+  padding: 0;
 }
 
 .timelineMeta {
@@ -564,7 +634,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .timelineCode {
@@ -578,7 +648,7 @@
 .timelineTitle {
   margin: 0;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.35;
@@ -587,7 +657,7 @@
 
 .timelineBody {
   margin-top: 12px;
-  padding: 16px;
+  padding: 14px;
   border-left: 3px solid var(--brick);
   background: var(--brick-soft);
 }
@@ -595,14 +665,14 @@
 .timelineBody p {
   margin: 0;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
 .inlineActions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 14px;
 }
@@ -614,279 +684,141 @@
   font-size: 13px;
 }
 
-@media (max-width: 1024px) {
-  .hero {
-    padding: 32px;
-  }
-
-  .title {
-    font-size: clamp(22px, 3.4vw, 32px);
-  }
-
-  .infoGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .timeline,
-  .panel {
-    padding-inline: 32px;
-  }
-
-  .tabs { padding-inline: 32px; }
-
-  /* uma coluna: o histórico primeiro, a capa logo abaixo e recolhível */
-  .body { grid-template-columns: minmax(0, 1fr); }
-
-  .capa {
-    position: static;
-    padding: 0 32px 40px;
-    border-left: 0;
-  }
-
-  .capaSummary {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0;
-    border-top: 1px solid var(--line);
-    color: var(--ink);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .capaSummary:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
-
-  .capaBody { padding-top: 18px; }
-
-  .capaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 768px) {
-  .pageShell {
-    min-height: 100dvh;
-    overflow: visible;
-    overscroll-behavior-y: auto;
-  }
-
-  .breadcrumb {
-    display: none;
-  }
-
-  .hero {
-    padding: 22px 16px 24px;
-  }
-
-  .heroMeta {
-    gap: 7px;
-    margin-bottom: 12px;
-  }
-
-  .metaSeparator {
-    display: none;
-  }
-
-  .heroMetaText,
-  .statusPill {
-    font-size: 12px;
-  }
-
-  .statusPill {
-    min-height: 28px;
-    padding: 0 8px;
-    border: 1px solid var(--line-soft);
-    background: var(--paper-2);
-  }
-
-  .cnj {
-    font-size: 16px;
-    line-height: 1.45;
-  }
-
-  .title {
-    margin-top: 8px;
-    font-size: 22px;
-    line-height: 1.2;
-  }
-
-  .infoGrid {
-    grid-template-columns: 1fr;
-    gap: 0;
-    margin-top: 18px;
-    border: 1px solid var(--line-soft);
-    background: var(--paper);
-  }
+/* Celular "normal" (>=391px) — só o título e o dt/dd do infoItem ganham
+   mais espaço; o resto do layout de celular continua igual. */
+@media (min-width: 391px) {
+  .title { font-size: 22px; }
 
   .infoItem {
-    display: grid;
     grid-template-columns: minmax(96px, 36%) minmax(0, 1fr);
     gap: 12px;
-    align-items: start;
-    padding: 12px;
   }
 
-  .infoItem + .infoItem {
-    border-top: 1px solid var(--line-soft);
-  }
-
-  .infoItem dt {
-    font-size: 10px;
-    line-height: 1.35;
-  }
-
-  .infoItem dd {
-    margin-top: 0;
-    font-size: 14px;
-    line-height: 1.45;
-    text-align: right;
-  }
-
-  .timeline,
-  .panel {
-    padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
-  }
-
-  .tabs {
-    padding-inline: 16px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .tabs::-webkit-scrollbar { display: none; }
-
-  .tab { white-space: nowrap; }
-
-  .capa {
-    padding: 0 16px calc(32px + env(safe-area-inset-bottom));
-  }
-
-  .capaGrid { grid-template-columns: 1fr; }
-
-  .sectionHeader {
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 22px;
-  }
-
-  .sectionHeader h2 {
-    font-size: 11px;
-  }
-
-  .sectionRule {
-    margin-top: 7px;
-  }
+  .infoItem dd { text-align: right; }
 
   .sectionHeader span {
+    display: block;
     flex: 0 1 auto;
     max-width: 108px;
     text-align: right;
   }
+}
 
-  .timelineItem {
-    grid-template-columns: minmax(0, 1fr);
-    position: relative;
-    padding: 0 0 24px 20px;
+/* Tablet (>=768px): breadcrumb volta, capa em acordeão de largura total */
+@media (min-width: 768px) {
+  .pageShell {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
 
-  .timelineItem::before {
-    content: "";
-    position: absolute;
-    top: 23px;
-    bottom: 0;
-    left: 5px;
-    width: 1px;
-    background: var(--line);
-  }
+  .breadcrumb { display: flex; }
 
-  .timelineItemLast::before {
-    display: none;
-  }
-
-  .timelineDate {
-    padding: 0 0 8px;
-    font-size: 13px;
-    text-align: left;
-  }
-
-  .timelineTime {
-    display: inline;
-    margin-left: 6px;
+  .actionButton {
+    min-height: 36px;
+    padding: 0 11px;
     font-size: 12px;
   }
 
-  .timelineRail {
-    position: absolute;
-    top: 4px;
-    left: 0;
-    width: 12px;
-  }
+  .hero { padding: 32px; }
 
-  .timelineMarker {
-    width: 11px;
-    height: 11px;
-    margin-top: 0;
-  }
+  .heroMeta { gap: 8px; margin-bottom: 14px; }
 
-  .timelineLine {
-    display: none;
-  }
+  .heroMetaText,
+  .statusPill { font-size: 11px; }
 
-  .timelineContent {
+  .metaSeparator { display: inline; }
+
+  .statusPill {
+    min-height: auto;
     padding: 0;
+    border: none;
+    background: transparent;
   }
 
-  .timelineMeta {
-    margin-bottom: 6px;
+  .cnj { font-size: 22px; line-height: 1.25; }
+
+  .title {
+    margin-top: 6px;
+    font-size: clamp(22px, 3.4vw, 32px);
+    line-height: 1.1;
   }
 
-  .timelineTitle {
-    font-size: 17px;
-    line-height: 1.35;
+  .infoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 32px;
+    border: none;
+    background: transparent;
   }
 
-  .timelineBody {
-    margin-top: 12px;
-    padding: 14px;
+  .infoItem { display: block; padding: 0; }
+  .infoItem + .infoItem { border-top: 0; }
+  .infoItem dd { margin-top: 3px; font-size: 13px; line-height: 1.4; text-align: left; }
+
+  .tabs { padding-inline: 32px; overflow-x: visible; }
+
+  .panel { padding-inline: 32px; }
+  .timeline { padding-inline: 32px; }
+
+  .capa {
+    padding: 0 32px 40px;
   }
 
-  .timelineBody p {
-    font-size: 14px;
-    line-height: 1.6;
-  }
+  .capaBody { padding-top: 18px; }
 
-  .inlineActions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    margin-top: 14px;
-  }
+  .capaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  .actionButton {
-    min-height: 44px;
-    padding: 0 12px;
-    font-size: 13px;
+  .sectionHeader { align-items: center; gap: 12px; margin-bottom: 24px; }
+  .sectionRule { margin-top: 0; }
+
+  .timelineItem {
+    grid-template-columns: 90px 20px minmax(0, 1fr);
+    position: static;
+    padding: 0 0 28px;
   }
+  .timelineItemLast { padding-bottom: 0; }
+  .timelineItem::before { content: none; }
+
+  .timelineDate { padding: 2px 16px 0 0; font-size: 14px; text-align: right; }
+  .timelineTime { display: block; margin-left: 0; font-size: 11px; }
+
+  .timelineRail { position: static; top: auto; left: auto; width: auto; }
+  .timelineMarker { width: 12px; height: 12px; margin-top: 4px; }
+  .timelineLine { display: block; }
+
+  .timelineContent { padding: 0 0 4px 16px; }
+  .timelineMeta { margin-bottom: 4px; }
+  .timelineTitle { font-size: 16px; }
+  .timelineBody { padding: 16px; }
+  .timelineBody p { font-size: 13px; }
+
+  .inlineActions { display: flex; }
 }
 
-@media (max-width: 390px) {
-  .title {
-    font-size: 25px;
+/* Desktop (>=1025px): corpo em 2 colunas, capa fixa lateral */
+@media (min-width: 1025px) {
+  .hero { padding: 40px 48px; }
+
+  .title { font-size: clamp(24px, 2.6vw, 38px); }
+
+  .infoGrid { grid-template-columns: repeat(4, minmax(0, max-content)); }
+
+  .tabs { padding-inline: 48px; }
+  .panel { padding-inline: 48px; }
+  .timeline { padding-inline: 48px; }
+
+  .body { grid-template-columns: minmax(0, 1fr) 340px; }
+
+  .capa {
+    position: sticky;
+    top: 0;
+    padding: 32px 32px 48px;
+    border-left: 1px solid var(--line);
   }
 
-  .infoItem {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  .infoItem dd {
-    text-align: left;
-  }
-
-  .sectionHeader span {
-    display: none;
-  }
+  .capaSummary { display: none; }
+  .capaBody { padding-top: 0; }
+  .capaGrid { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

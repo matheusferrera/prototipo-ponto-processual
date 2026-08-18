@@ -27,6 +27,8 @@ export function PageContent({ movimentacoes, pageInfo, total, totalPages, curren
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * 20 + 1;
   const rangeEnd = (currentPage - 1) * 20 + itemsOnPage;
   const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
+  const hasFilters = ['q', 'tribunal', 'tipo', 'sort'].some(key => Boolean(listParams[key]));
+  const isEmpty = total === 0;
 
   return (
     <>
@@ -34,23 +36,28 @@ export function PageContent({ movimentacoes, pageInfo, total, totalPages, curren
         {pageInfo}
 
         <div className={`px-page ${styles.content}`}>
-          {movimentacoes.map((g, gi) => (
-            <div key={gi} className={styles.dateGroup}>
-              <div className={styles.dateHeader}>
-                <span className={`${styles.dateLabel}${gi === 0 ? ` ${styles.dateLabelFirst}` : ''}`}>
-                  § {g.date} — {g.day}
-                </span>
-                <div className={styles.dateDivider} />
-                <span className={styles.dateCount}>
-                  {g.items.length} {g.items.length === 1 ? 'movimentação' : 'movimentações'}
-                </span>
+          {isEmpty ? (
+            <EmptyState hasFilters={hasFilters} />
+          ) : (
+            movimentacoes.map((g, gi) => (
+              <div key={gi} className={styles.dateGroup}>
+                <div className={styles.dateHeader}>
+                  <span className={`${styles.dateLabel}${gi === 0 ? ` ${styles.dateLabelFirst}` : ''}`}>
+                    § {g.date} — {g.day}
+                  </span>
+                  <div className={styles.dateDivider} />
+                  <span className={styles.dateCount}>
+                    {g.items.length} {g.items.length === 1 ? 'movimentação' : 'movimentações'}
+                  </span>
+                </div>
+                {g.items.map(m => <MovItem key={m.id} m={m} />)}
               </div>
-              {g.items.map(m => <MovItem key={m.id} m={m} />)}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
+      {!isEmpty && (
       <div className={`px-page ${styles.pagination}`}>
         <span className={styles.paginationInfo}>{rangeStart}–{rangeEnd} de {total}</span>
         <div className={styles.spacer} />
@@ -74,7 +81,35 @@ export function PageContent({ movimentacoes, pageInfo, total, totalPages, curren
           )}
         >→</Link>
       </div>
+      )}
     </>
+  );
+}
+
+function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+  return (
+    <div className={styles.empty}>
+      <div className={styles.emptyMark} aria-hidden="true" />
+      {hasFilters ? (
+        <>
+          <p className={styles.emptyTitle}>Nenhuma movimentação encontrada</p>
+          <p className={styles.emptyText}>Nenhuma movimentação corresponde aos filtros ou à busca atual.</p>
+          <Link
+            href="/movimentacoes"
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-[var(--line)] text-[var(--ink)] hover:bg-[var(--paper-2)]')}
+          >
+            Limpar filtros
+          </Link>
+        </>
+      ) : (
+        <>
+          <p className={styles.emptyTitle}>Nenhuma movimentação ainda</p>
+          <p className={styles.emptyText}>
+            Assim que a plataforma identificar uma movimentação nova em algum dos seus processos, ela aparece aqui.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 

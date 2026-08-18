@@ -1,12 +1,49 @@
+/* Mobile-first: base = celular (feed em fluxo normal, cards empilhados em
+   coluna única). >=768px liga a coluna com scroll próprio e a grade de 3
+   colunas (horário · corpo · seta) de cada item. */
+
 .scrollArea {
-  overflow: auto;
-  flex: 1;
-  min-height: 0;
+  overflow: visible;
+  flex: none;
+  min-height: auto;
 }
 
-.content { padding: 20px 32px; }
+.content { padding: 16px; }
 
 .dateGroup { margin-bottom: 24px; }
+
+/* ---- Empty state ---- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding-top: 56px;
+  padding-bottom: 56px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.emptyMark {
+  width: 32px;
+  height: 3px;
+  background: var(--brick);
+  margin-bottom: 4px;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.emptyText {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
 
 .dateHeader {
   display: flex;
@@ -31,20 +68,22 @@
 /* MovItem — cartão inteiro é o link (mesma linguagem visual da Pauta de Prazos) */
 .item {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 10px;
   border: 1px solid var(--line);
   border-left-width: 3px;
   background: var(--paper);
-  padding: 14px 16px;
+  padding: 12px 14px;
   margin-bottom: 8px;
   color: inherit;
   text-decoration: none;
-  transition: background 160ms ease-out;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, transform 100ms ease;
 }
 
 .item:hover { background: var(--paper-2); }
+.item:active { background: var(--paper-3); transform: scale(0.99); }
 .item:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .itemSignal { border-left-color: var(--brick); }
@@ -54,10 +93,12 @@
 /* Coluna esquerda — o horário, sempre rotulado */
 .timeCol {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-right: 14px;
-  border-right: 1px solid var(--line-soft);
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 0 8px;
+  border-right: 0;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .timeLabel {
@@ -151,6 +192,7 @@
 }
 
 .go {
+  display: none;
   align-self: center;
   font-family: var(--mono);
   font-size: 15px;
@@ -158,10 +200,6 @@
 }
 
 .item:hover .go { color: var(--brick); }
-
-@media (prefers-reduced-motion: reduce) {
-  .item { transition: none; }
-}
 
 .pagination {
   padding: 14px 32px;
@@ -176,27 +214,31 @@
 .spacer         { flex: 1; }
 .paginationPage { font-size: 11px; color: var(--ink-3); margin: 0 12px; }
 
-@media (max-width: 768px) {
-  .scrollArea {
-    flex: none;
-    overflow: visible;
-    min-height: auto;
-  }
+@media (min-width: 768px) {
+  .scrollArea { overflow: auto; flex: 1; min-height: 0; }
+
+  .content { padding: 20px 32px; }
+
+  .empty { padding-top: 72px; padding-bottom: 72px; }
 
   .item {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    padding: 12px 14px;
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+    gap: 16px;
+    padding: 14px 16px;
   }
 
   .timeCol {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 8px;
-    padding: 0 0 8px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line-soft);
+    flex-direction: column;
+    align-items: normal;
+    gap: 2px;
+    padding: 0 14px 0 0;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 0;
   }
 
-  .go { display: none; }
+  .go { display: inline; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item { transition: none; }
 }

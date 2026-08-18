@@ -71,7 +71,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
         {/* Breadcrumb */}
         <div
           className={styles.breadcrumb}
-          style={{ padding: '14px 32px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}
+          style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}
         >
           <Link href="/movimentacoes" style={{ fontSize: 11, color: 'var(--ink-3)', textDecoration: 'none' }}>← Movimentações</Link>
           <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>/</span>
@@ -82,7 +82,8 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
               href={mov.link}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer', textDecoration: 'none' }}
+              className={styles.pillBtn}
+              style={{ display: 'inline-flex', alignItems: 'center', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, cursor: 'pointer', textDecoration: 'none' }}
             >
               Abrir documento ↗
             </a>
@@ -92,7 +93,8 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
               href={proc.summary.link}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 0, cursor: 'pointer', textDecoration: 'none' }}
+              className={styles.pillBtn}
+              style={{ display: 'inline-flex', alignItems: 'center', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 0, cursor: 'pointer', textDecoration: 'none' }}
             >
               Abrir no tribunal ↗
             </a>
@@ -102,7 +104,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
         {/* Hero */}
         <div
           className={styles.hero}
-          style={{ padding: '40px 48px', background: 'var(--paper)', borderBottom: '1px solid var(--line)', flexShrink: 0 }}
+          style={{ background: 'var(--paper)', borderBottom: '1px solid var(--line)', flexShrink: 0 }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <TribTag label={tribunal} />
@@ -117,11 +119,11 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
           <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 600 }}>{cnj}</div>
           <div
             className={styles.title}
-            style={{ fontWeight: 800, fontSize: 44, lineHeight: 1.05, letterSpacing: '-0.03em', marginTop: 6 }}
+            style={{ fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', marginTop: 6 }}
           >
             {partes}
           </div>
-          <div className={styles.infoRow} style={{ display: 'flex', gap: 32, marginTop: 18 }}>
+          <div className={styles.infoRow} style={{ display: 'flex', marginTop: 18 }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)' }}>Detectada em</div>
               <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{dateStr} às {timeStr}</div>
@@ -143,7 +145,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
 
         {/* Detalhe + sidebar */}
         <div className={styles.main} style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <div className={styles.timeline} style={{ flex: 1, padding: '32px 48px', overflow: 'auto' }}>
+          <div className={styles.timeline} style={{ flex: 1, overflow: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
               <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--brick)', letterSpacing: '0.05em' }}>§ DETALHE DA MOVIMENTAÇÃO</span>
               <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
@@ -171,14 +173,16 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
                     href={mov.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 0, textDecoration: 'none' }}
+                    className={styles.pillBtn}
+                    style={{ display: 'inline-flex', alignItems: 'center', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, border: '1px solid var(--ink)', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 0, textDecoration: 'none' }}
                   >
                     Baixar documento ↗
                   </a>
                 )}
                 <Link
                   href={`/processos/${encodeURIComponent(cnj)}`}
-                  style={{ fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, padding: '6px 10px', border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, textDecoration: 'none' }}
+                  className={styles.pillBtn}
+                  style={{ display: 'inline-flex', alignItems: 'center', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, textDecoration: 'none' }}
                 >
                   Ver processo →
                 </Link>
@@ -189,7 +193,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
           {/* Sidebar */}
           <div
             className={styles.sidebar}
-            style={{ width: 320, padding: 32, borderLeft: '1px solid var(--line)', background: 'var(--paper-2)', overflow: 'auto' }}
+            style={{ background: 'var(--paper-2)', overflow: 'auto' }}
           >
             <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)', marginBottom: 12 }}>§ Processo</div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{partes}</div>

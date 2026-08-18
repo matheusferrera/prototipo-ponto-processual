@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { Check, ExternalLink, FileText, Menu, Search, SlidersHorizontal } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
@@ -115,7 +116,7 @@ function ButtonSample({
 
 function ProcessCard({ state }: { state: StatusType }) {
   return (
-    <a className={`${styles.processCard} ${state === 'signal' ? styles.processCardSignal : ''}`} href="/processos">
+    <Link className={`${styles.processCard} ${state === 'signal' ? styles.processCardSignal : ''}`} href="/processos">
       <span className={`${styles.processEdge} ${state === 'signal' ? styles.processEdgeSignal : state === 'alert' ? styles.processEdgeAlert : ''}`} />
       <div className={styles.processGrid}>
         <StatusDot state={state} />
@@ -127,7 +128,7 @@ function ProcessCard({ state }: { state: StatusType }) {
         </div>
         {state === 'signal' ? <Seal variant="nova" /> : <span className={styles.muted}>Monitorado</span>}
       </div>
-    </a>
+    </Link>
   );
 }
 

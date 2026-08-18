@@ -28,6 +28,9 @@ export interface CredentialSheetTarget {
   /** Preenchidos quando o Sheet é aberto a partir de um chip "pendente" do painel de cobertura. */
   presetSistema?: string;
   presetTribunalId?: string;
+  /** Preenchidos quando o Sheet é aberto a partir da prévia do DJEN no onboarding — poupa redigitar a OAB. */
+  presetOabNumero?: string;
+  presetOabUf?: string;
 }
 
 interface CredentialSheetProps {
@@ -78,7 +81,7 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
   // "flash" de um Effect nem o risco de recriar o Sheet inteiro com `key`
   // (que cortaria a animação de fechamento).
   const targetKey = target
-    ? `${target.mode}:${target.secret?.id ?? ''}:${target.presetSistema ?? ''}:${target.presetTribunalId ?? ''}`
+    ? `${target.mode}:${target.secret?.id ?? ''}:${target.presetSistema ?? ''}:${target.presetTribunalId ?? ''}:${target.presetOabNumero ?? ''}:${target.presetOabUf ?? ''}`
     : null;
   const [seededKey, setSeededKey] = useState<string | null>(null);
 
@@ -106,8 +109,8 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
       setStep('acesso');
     } else {
       setLabel('');
-      setOabNumero('');
-      setOabUf('');
+      setOabNumero(target.presetOabNumero ?? '');
+      setOabUf(target.presetOabUf ?? '');
       if (target.presetSistema) {
         setSistema(target.presetSistema);
         setSelecionados(new Set(target.presetTribunalId ? [target.presetTribunalId] : []));
@@ -247,7 +250,7 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
             <div className={styles.title}>{mode === 'create' ? 'Nova credencial' : `Editar · ${editing?.label}`}</div>
             <p className={styles.subtitle}>
               {mode === 'create'
-                ? 'O robô usa este login para entrar no tribunal e sincronizar seus processos.'
+                ? 'A plataforma usa este login para acessar o tribunal e sincronizar seus processos.'
                 : 'Deixe login, senha e MFA em branco para manter os valores atuais.'}
             </p>
           </div>

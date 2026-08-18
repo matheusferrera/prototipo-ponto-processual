@@ -174,7 +174,7 @@ export function CredenciaisPageContent({
         <div>
           <h2 className={styles.toolbarTitle}>Suas credenciais</h2>
           <p className={styles.toolbarDesc}>
-            Cada credencial é um login que o robô usa para entrar em um ou mais tribunais.
+            Cada credencial é um login usado pela plataforma para sincronizar um ou mais tribunais.
           </p>
         </div>
         <Button type="button" onClick={() => setSheetTarget({ mode: 'create' })}>
@@ -231,7 +231,7 @@ export function CredenciaisPageContent({
         <div className={styles.emptyState}>
           <KeyRound size={32} />
           <strong>Nenhuma credencial cadastrada</strong>
-          <p>Cadastre um login de tribunal para o robô começar a monitorar seus processos.</p>
+          <p>Cadastre um login de tribunal para a plataforma começar a monitorar seus processos.</p>
           <Button type="button" onClick={() => setSheetTarget({ mode: 'create' })}>
             <Plus size={14} /> Nova credencial
           </Button>

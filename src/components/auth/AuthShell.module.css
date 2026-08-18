@@ -1,0 +1,208 @@
+/* Mobile-first: base = coluna única do celular (só o painel de conteúdo,
+   com uma marca compacta no topo). >=768px liga o split 45/55 com o painel
+   verde de marca. >=1024px dá mais respiro ao painel de conteúdo. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  font-family: var(--ui);
+  background: var(--paper-2);
+}
+
+/* ===== Painel esquerdo (marca) — só desktop ===== */
+.left {
+  display: none;
+}
+
+/* ===== Marca compacta — só celular/tablet ===== */
+.mobileBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding-top: max(4px, env(safe-area-inset-top));
+  padding-bottom: 28px;
+  color: var(--brick);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mobileBrandMark {
+  width: 14px;
+  height: 14px;
+  background: var(--brick);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ===== Painel direito (conteúdo) ===== */
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 20px max(24px, env(safe-area-inset-bottom));
+}
+
+.formPanel {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .page {
+    flex-direction: row;
+  }
+
+  .left {
+    display: flex;
+    flex-direction: column;
+    width: 45%;
+    min-width: 320px;
+    background: var(--brick);
+    color: #fff;
+    padding: 40px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobileBrand {
+    display: none;
+  }
+
+  .right {
+    justify-content: center;
+    padding: 40px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .left {
+    padding: 48px 52px;
+  }
+
+  .right {
+    padding: 48px 40px;
+  }
+}
+
+/* ===== Conteúdo do painel esquerdo ===== */
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandMark {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.pitch {
+  margin-top: auto;
+  padding-bottom: 8px;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 14px;
+}
+
+.headline {
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: #fff;
+  max-width: 340px;
+}
+
+.description {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 320px;
+}
+
+.features {
+  display: flex;
+  flex-direction: column;
+  margin-top: 32px;
+}
+
+.feature {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.featureIcon {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+  margin-top: 1px;
+  width: 18px;
+}
+
+.featureTitle {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  margin-bottom: 3px;
+}
+
+.featureDesc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.ornamentA,
+.ornamentB {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ornamentA {
+  bottom: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  border: 40px solid rgba(255, 255, 255, 0.05);
+}
+
+.ornamentB {
+  top: 80px;
+  right: -90px;
+  width: 200px;
+  height: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 1024px) {
+  .headline {
+    font-size: 32px;
+  }
+}

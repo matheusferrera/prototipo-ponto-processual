@@ -1,9 +1,11 @@
+/* Mobile-first: base = celular (número menor, menos respiro). >=768px volta
+   ao tratamento editorial grande de desktop. */
 .page {
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 64px 48px;
+  padding: 32px 20px;
   background: var(--paper);
 }
 
@@ -20,23 +22,23 @@
   letter-spacing: 0.16em;
   color: var(--brick);
   text-transform: uppercase;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .code {
   font-family: var(--mono);
-  font-size: 128px;
+  font-size: 72px;
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.04em;
   color: var(--ink);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .rule {
   height: 1px;
   background: var(--line);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .brand {
@@ -50,12 +52,12 @@
 
 .title {
   font-family: var(--ui);
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--ink);
   margin: 0 0 14px;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .body {
@@ -63,7 +65,7 @@
   font-size: 14px;
   line-height: 1.7;
   color: var(--ink-3);
-  margin: 0 0 36px;
+  margin: 0 0 32px;
   max-width: 400px;
 }
 
@@ -74,18 +76,24 @@
   flex-wrap: wrap;
 }
 
-.ctaPrimary {
-  display: inline-block;
+.ctaPrimary,
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-family: var(--ui);
   font-size: 13px;
   font-weight: 600;
-  padding: 10px 20px;
+  padding: 0 20px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ctaPrimary {
   background: var(--ink);
   color: var(--paper);
-  text-decoration: none;
   border: 1px solid var(--ink);
   transition: background 150ms, border-color 150ms;
-  cursor: pointer;
 }
 
 .ctaPrimary:hover {
@@ -94,17 +102,10 @@
 }
 
 .ctaSecondary {
-  display: inline-block;
-  font-family: var(--ui);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 20px;
   background: transparent;
   color: var(--ink);
-  text-decoration: none;
   border: 1px solid var(--line);
   transition: border-color 150ms, color 150ms;
-  cursor: pointer;
 }
 
 .ctaSecondary:hover {
@@ -118,7 +119,22 @@
   letter-spacing: 0.14em;
   color: var(--ink-4);
   text-transform: uppercase;
-  margin-top: 56px;
+  margin-top: 40px;
   padding-top: 16px;
   border-top: 1px solid var(--line-soft);
+}
+
+@media (min-width: 768px) {
+  .page { padding: 64px 48px; }
+
+  .stamp { margin-bottom: 28px; }
+  .code { font-size: 128px; margin-bottom: 28px; }
+  .rule { margin-bottom: 28px; }
+  .title { font-size: 30px; line-height: 1.1; }
+  .body { margin-bottom: 36px; }
+
+  .ctaPrimary,
+  .ctaSecondary { min-height: auto; padding: 10px 20px; }
+
+  .footer { margin-top: 56px; }
 }

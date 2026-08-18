@@ -1,32 +1,40 @@
+/* Mobile-first: base = celular, onde a linha vira um card empilhado
+   (.card) com alvo de toque de 44px. >=768px liga a grade de colunas
+   (.rowGrid) de desktop. */
+
 .row {
-  padding: 14px 32px;
+  padding: 16px;
+  min-height: 44px;
   border-bottom: 1px solid var(--line-soft);
   position: relative;
   text-decoration: none;
   color: inherit;
   display: block;
-  transition: background-color 150ms ease;
+  touch-action: manipulation;
+  transition: background-color 150ms ease, transform 100ms ease;
 }
 
 .rowNormal { background: transparent; }
 .rowSignal { background: var(--paper-2); }
 
 .row:hover { background: var(--paper-2); }
-.row:active { background: var(--paper-3); }
+.row:active { background: var(--paper-3); transform: scale(0.99); }
 
 .rowGrid {
-  display: grid;
+  display: none;
   gap: 16px;
   align-items: center;
 }
 
+/* barra de status ocupa a altura do card no celular */
 .leftBar {
   width: 3px;
-  height: 28px;
+  height: auto;
   position: absolute;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  transform: none;
 }
 
 .leftBarHidden  { background: transparent; }
@@ -67,7 +75,11 @@
 .statusEmpty { font-size: 11px; color: var(--ink-3); }
 
 /* ---- Card mobile ---- */
-.card { display: none; }
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .cardCnj {
   font-family: var(--mono);
@@ -115,26 +127,17 @@
   line-height: 1.35;
 }
 
-@media (max-width: 768px) {
-  .row {
-    padding: 16px;
-    /* alvo de toque confortável */
-    min-height: 44px;
-  }
+/* Tablet / desktop: grade de colunas em vez do card */
+@media (min-width: 768px) {
+  .row { padding: 14px 32px; min-height: 0; }
 
-  .rowGrid { display: none; }
+  .rowGrid { display: grid; }
 
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  .leftBar { height: 28px; top: 50%; bottom: auto; transform: translateY(-50%); }
 
-  /* barra de status ocupa a altura do card */
-  .leftBar {
-    height: auto;
-    top: 0;
-    bottom: 0;
-    transform: none;
-  }
+  .card { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row { transition: none; }
 }

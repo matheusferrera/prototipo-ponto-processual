@@ -9,7 +9,7 @@ import { agruparPorSistema } from '@/lib/credenciais';
 
 export const metadata: Metadata = {
   title: 'Credenciais — Ponto Processual',
-  description: 'Cadastre os logins usados pelo robô para sincronizar seus processos em cada tribunal.',
+  description: 'Cadastre os logins usados pela plataforma para centralizar e sincronizar seus processos de cada tribunal.',
 };
 
 export default async function CredenciaisPage() {

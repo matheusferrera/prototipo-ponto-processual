@@ -4,10 +4,11 @@
   justify-content: flex-end;
   gap: 10px;
   min-width: 0;
+  width: 100%;
 }
 
 .button {
-  min-height: 34px;
+  min-height: 44px;
   border-radius: 0;
   border-color: var(--ink);
   background: var(--paper);
@@ -19,9 +20,10 @@
 }
 
 .error {
+  margin-right: auto;
   color: var(--alert);
   font-size: 11px;
-  text-align: right;
+  text-align: left;
 }
 
 .spinner {
@@ -34,17 +36,8 @@
   }
 }
 
-@media (max-width: 768px) {
-  .root {
-    width: 100%;
-  }
-
-  .button {
-    min-height: 44px;
-  }
-
-  .error {
-    margin-right: auto;
-    text-align: left;
-  }
+@media (min-width: 768px) {
+  .root { width: auto; }
+  .button { min-height: 34px; }
+  .error { margin-right: 0; text-align: right; }
 }

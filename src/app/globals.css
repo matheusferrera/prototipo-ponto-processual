@@ -122,6 +122,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: 'ss01', 'cv11';
+  /* cards e linhas tocáveis já têm feedback próprio (:active, borda de
+     estado) — sem isto o Android/iOS ainda pisca o realce azul padrão por
+     cima */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Shared layout utilities — mobile horizontal padding/margin overrides */

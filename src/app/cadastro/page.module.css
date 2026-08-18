@@ -1,5 +1,0 @@
-@media (max-width: 768px) {
-  .page  { flex-direction: column; }
-  .left  { display: none; }
-  .right { padding: 32px 20px; flex: unset; width: 100%; }
-}

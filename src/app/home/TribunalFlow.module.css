@@ -1,0 +1,90 @@
+/* Diagrama "tribunais → Ponto Processual → WhatsApp" — ver TribunalFlow.tsx
+   para a mecânica (bézier convergentes + rastro de pontos via rAF). */
+
+.wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 800 / 420;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.baseLine {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+.shimmerLine {
+  fill: none;
+  stroke: var(--brick);
+  stroke-width: 1.5;
+  opacity: 0.12;
+  animation: flow-shimmer 3.2s ease-in-out infinite;
+}
+@keyframes flow-shimmer {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.55; }
+}
+
+.trailDot { fill: var(--brick); }
+
+.sourceLabel {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  fill: var(--ink-3);
+}
+
+.hubMark { fill: var(--brick); }
+.hubRing {
+  fill: none;
+  stroke: var(--brick);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hub-ping 2.4s ease-out infinite;
+}
+@keyframes hub-ping {
+  0% { transform: scale(0.4); opacity: 0.6; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+.hubLabel {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  fill: var(--brick);
+}
+
+.phoneGroup {
+  color: var(--ink-2); /* lucide-react uses currentColor by default, so color cascades if SVG supports it, or we can use fill/stroke */
+  stroke: var(--ink-2);
+}
+.phoneLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  fill: var(--ink-2);
+  stroke: none;
+}
+
+@media (max-width: 767px) {
+  .sourceLabel { font-size: 15px; }
+  .hubLabel { font-size: 13px; }
+  .phoneLabel { font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmerLine { animation: none; opacity: 0.22; }
+  .hubRing { animation: none; opacity: 0.35; transform: scale(1); }
+  .trailDot { display: none; }
+}

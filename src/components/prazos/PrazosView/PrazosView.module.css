@@ -1,18 +1,22 @@
-.root { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* Mobile-first: base = celular (pauta em cards empilhados, kanban em
+   carrossel horizontal com snap, calendário compacto). >=768px liga a
+   grade de colunas de desktop em cada view. */
+
+.root { display: block; flex: none; min-height: auto; }
 
 .exportBar {
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 10px 32px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
   flex-shrink: 0;
 }
 
 /* container de scroll único: alerta crítico + view rolam juntos */
-.scrollArea { flex: 1; min-height: 0; overflow: auto; }
+.scrollArea { overflow: visible; min-height: auto; }
 
 /* ── Cal nav (barra acima do calendário) ── */
 .calNavBar {
@@ -20,7 +24,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 32px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
   flex-shrink: 0;
@@ -36,7 +40,8 @@
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 600;
-  min-width: 110px;
+  min-width: 0;
+  flex: 1;
   text-align: center;
 }
 
@@ -44,7 +49,7 @@
 .alert {
   /* sobrescreve o w-full do shadcn: com margem lateral, 100% estoura o container */
   width: auto;
-  margin: 16px 32px 0;
+  margin: 12px 16px 0;
   padding: 12px 16px;
   background: var(--alert-soft);
   border-top: none;
@@ -61,11 +66,11 @@
 .alertDesc  { font-size: 13px; color: var(--ink-2); }
 
 /* ── Expedientes sem data ── */
-.semDataSection { padding: 24px 32px 0; }
+.semDataSection { padding: 18px 16px 0; }
 
 .semDataHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 12px;
@@ -109,28 +114,31 @@
 
 .semDataItem {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
-  padding: 14px 16px;
+  gap: 9px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--quiet);
   background: var(--paper);
   color: inherit;
   text-decoration: none;
-  transition: background 160ms ease-out;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, transform 100ms ease;
 }
 
 .semDataItem:hover { background: var(--paper-2); }
+.semDataItem:active { background: var(--paper-3); transform: scale(0.99); }
 .semDataItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .semDataBadge {
-  align-self: stretch;
+  align-self: auto;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-right: 14px;
-  border-right: 1px solid var(--line-soft);
+  justify-content: flex-start;
+  padding: 0 0 8px;
+  border-right: 0;
+  border-bottom: 1px solid var(--line-soft);
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
@@ -146,10 +154,10 @@
 .semDataAssunto { margin-top: 2px; font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
 .semDataMeta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; font-size: 11px; color: var(--ink-3); }
 .semDataMeta span:first-child { font-family: var(--mono); }
-.semDataGo { color: var(--ink-3); font-size: 16px; }
+.semDataGo { display: none; color: var(--ink-3); font-size: 16px; }
 
 /* ── Pauta (lista) ── */
-.listView { padding: 24px 32px; }
+.listView { padding: 16px; }
 
 .emptyState {
   padding: 32px 0;
@@ -186,7 +194,7 @@
   line-height: 1.5;
   color: var(--ink-3);
   max-width: 72ch;
-  margin: -10px 0 22px;
+  margin: -6px 0 18px;
 }
 
 .pautaNota strong { font-weight: 600; color: var(--ink-2); }
@@ -235,20 +243,22 @@
 /* ── Linha da pauta ── */
 .pautaItem {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 10px;
   border: 1px solid var(--line);
   border-left-width: 3px;
   background: var(--paper);
-  padding: 14px 16px;
+  padding: 12px 14px;
   margin-bottom: 8px;
   color: inherit;
   text-decoration: none;
-  transition: background 160ms ease-out;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, transform 100ms ease;
 }
 
 .pautaItem:hover { background: var(--paper-2); }
+.pautaItem:active { background: var(--paper-3); transform: scale(0.99); }
 .pautaItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .pautaItemSignal { border-left-color: var(--brick); }
@@ -258,10 +268,12 @@
 /* Coluna esquerda — o prazo fatal, sempre rotulado */
 .pautaFatal {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-right: 14px;
-  border-right: 1px solid var(--line-soft);
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 0 8px;
+  border-right: 0;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .pautaFatalLabel {
@@ -276,7 +288,7 @@
 .pautaFatalData {
   font-family: var(--mono);
   font-weight: 700;
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
@@ -351,6 +363,7 @@
 }
 
 .pautaGo {
+  display: none;
   align-self: center;
   font-family: var(--mono);
   font-size: 15px;
@@ -358,10 +371,6 @@
 }
 
 .pautaItem:hover .pautaGo { color: var(--brick); }
-
-@media (prefers-reduced-motion: reduce) {
-  .pautaItem { transition: none; }
-}
 
 /* Parte do expediente — linha secundária rotulada, para não se confundir com o assunto */
 .prazoParte {
@@ -402,15 +411,27 @@
   overflow-wrap: anywhere;
 }
 
-/* ── Kanban ── */
+/* ── Kanban — carrossel horizontal com snap no celular ── */
 .kanbanWrap {
   padding: 24px 32px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 24px;
 }
 
-.kanbanCol { flex: 1; min-width: 180px; }
+.kanbanWrap::-webkit-scrollbar { display: none; }
+
+.kanbanCol {
+  flex: 0 0 82vw;
+  min-width: unset;
+  scroll-snap-align: start;
+}
 
 .kanbanColHead {
   display: flex;
@@ -477,8 +498,8 @@
 
 /* ── Calendário ──
    Grade compacta (dias tocáveis com dots) + agenda do dia/mês abaixo.
-   Mesmo padrão em todas as larguras; só a densidade muda no mobile. */
-.calView { padding: 24px 32px; }
+   Mesmo padrão em todas as larguras; só a densidade muda no celular. */
+.calView { padding: 16px; }
 
 .calDayNames { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-bottom: 1px; }
 .calDayName  { padding: 6px; text-align: center; font-size: 10px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; background: var(--paper-2); }
@@ -491,20 +512,27 @@
   border: 1px solid var(--line-soft);
 }
 
+/* células compactas no celular (ainda ≥44px de alvo de toque) */
 .calCell {
-  min-height: 72px;
-  padding: 8px 4px 6px;
+  min-height: 52px;
+  padding: 6px 2px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   border: 0;
   font: inherit;
 }
 
-.calCellFilled { background: var(--paper); cursor: pointer; }
+.calCellFilled {
+  background: var(--paper);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, transform 100ms ease;
+}
 .calCellFilled:hover { background: var(--paper-2); }
+.calCellFilled:active:not(.calCellSelected) { background: var(--paper-3); transform: scale(0.96); }
 .calCellFilled:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .calCellSelected,
@@ -540,7 +568,7 @@
 .calMore { font-family: var(--mono); font-size: 9px; color: var(--ink-3); line-height: 1; }
 
 /* ── Agenda (abaixo da grade) ── */
-.agenda { margin-top: 24px; }
+.agenda { margin-top: 20px; }
 
 .agendaHead {
   display: flex;
@@ -582,9 +610,12 @@
   margin-bottom: 8px;
   color: inherit;
   text-decoration: none;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, transform 100ms ease;
 }
 
 .agendaItem:hover { background: var(--paper-2); }
+.agendaItem:active { background: var(--paper-3); transform: scale(0.99); }
 .agendaItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .agendaItemHead {
@@ -629,73 +660,68 @@
 
 .agendaCnj { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 2px; }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .root {
-    display: block;
-    flex: none;
-    min-height: auto;
-  }
+/* ── Tablet / desktop ── */
+@media (min-width: 768px) {
+  .root { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
-  .scrollArea {
-    overflow: visible;
-    min-height: auto;
-  }
+  .exportBar { padding: 10px 32px; }
 
-  .exportBar { padding: 8px 16px; }
+  .scrollArea { flex: 1; min-height: 0; overflow: auto; }
 
-  /* Pauta — coluna do fatal vira faixa no topo da linha */
-  .listView  { padding: 16px; }
-  .pautaNota { margin: -6px 0 18px; }
+  .calNavBar { padding: 12px 32px; }
+  .calNavLabel { min-width: 110px; flex: initial; }
+
+  .alert { margin: 16px 32px 0; }
+
+  .semDataSection { padding: 24px 32px 0; }
+  .semDataHeader { align-items: flex-end; }
+  .semDataItem { grid-template-columns: 92px minmax(0, 1fr) auto; gap: 16px; padding: 14px 16px; }
+  .semDataBadge { align-self: stretch; justify-content: center; padding: 0 14px 0 0; border-right: 1px solid var(--line-soft); border-bottom: 0; }
+  .semDataGo { display: inline; }
+
+  .listView  { padding: 24px 32px; }
+  .pautaNota { margin: -10px 0 22px; }
 
   .pautaItem {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    padding: 12px 14px;
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+    gap: 16px;
+    padding: 14px 16px;
   }
 
   .pautaFatal {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 8px;
-    padding: 0 0 8px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line-soft);
+    flex-direction: column;
+    align-items: normal;
+    gap: 2px;
+    padding: 0 14px 0 0;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 0;
   }
 
-  .pautaFatalData { font-size: 17px; }
-  .pautaGo { display: none; }
+  .pautaFatalData { font-size: 20px; }
+  .pautaGo { display: inline; }
 
-  .calNavBar { padding: 10px 16px; }
-  .calNavLabel { min-width: 0; flex: 1; }
-
-  .alert { margin: 12px 16px 0; }
-
-  .semDataSection { padding: 18px 16px 0; }
-  .semDataHeader { align-items: flex-start; }
-  .semDataItem { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 12px 14px; }
-  .semDataBadge { align-self: auto; justify-content: flex-start; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
-  .semDataGo { display: none; }
-
-  /* Kanban — scroll horizontal com snap */
   .kanbanWrap {
-    overflow-x: auto;
+    overflow-x: visible;
     overflow-y: visible;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 24px;
-    gap: 10px;
+    scroll-snap-type: none;
+    -webkit-overflow-scrolling: auto;
+    scrollbar-width: auto;
+    gap: 12px;
   }
-  .kanbanWrap::-webkit-scrollbar { display: none; }
   .kanbanCol {
-    flex: 0 0 82vw;
-    min-width: unset;
-    scroll-snap-align: start;
+    flex: 1;
+    min-width: 180px;
+    scroll-snap-align: none;
   }
 
-  /* Calendário — células compactas (≥44px de alvo de toque) */
-  .calView { padding: 16px; }
-  .calCell { min-height: 52px; padding: 6px 2px 4px; gap: 4px; }
-  .agenda  { margin-top: 20px; }
+  .calView { padding: 24px 32px; }
+  .calCell { min-height: 72px; padding: 8px 4px 6px; gap: 6px; }
+  .agenda  { margin-top: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pautaItem,
+  .semDataItem,
+  .agendaItem,
+  .calCellFilled { transition: none; }
 }

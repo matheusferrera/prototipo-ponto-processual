@@ -9,7 +9,7 @@ const LABELS = {
   state: { signal: 'Com novidade', alert: 'Com erro', quiet: 'Sem novidade' },
   monitored: { true: 'Monitorados', false: 'Não monitorados' },
   status: { active: 'Ativo', archived: 'Arquivado' },
-  origem: { scraper: 'Robô (scraper)', djen: 'DJEN' },
+  origem: { scraper: 'Sincronização Integrada', djen: 'DJEN' },
 } as const;
 
 interface Chip {

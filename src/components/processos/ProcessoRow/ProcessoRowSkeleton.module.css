@@ -1,19 +1,21 @@
-.list { min-width: 1040px; }
+/* Espelha o toggle card/grade de ProcessoRow.module.css — mobile-first. */
+
+.list { min-width: 0; }
 
 .row {
-  padding: 14px 32px;
+  padding: 16px;
   border-bottom: 1px solid var(--line-soft);
   position: relative;
 }
 
 .rowGrid {
-  display: grid;
+  display: none;
   gap: 16px;
   align-items: center;
 }
 
 .card {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 8px;
 }
@@ -44,25 +46,25 @@
   100% { transform: translateX(100%); }
 }
 
-.trib  { width: 42px; height: 16px; }
-.cnj   { width: 160px; }
+.trib  { width: 90px; height: 16px; }
+.cnj   { width: 62%; }
 .md    { width: 70%; }
 .lg    { width: 85%; }
-.orgao { width: 72%; }
-.parte { width: 65%; height: 14px; }
-.mov   { width: 90%; }
+.orgao { width: 88%; }
+.parte { width: 78%; height: 16px; }
+.mov   { width: 55%; }
 
-@media (max-width: 768px) {
-  .list { min-width: 0; }
-  .row { padding: 16px; }
-  .rowGrid { display: none; }
-  .card { display: flex; }
+@media (min-width: 768px) {
+  .list { min-width: 1040px; }
+  .row { padding: 14px 32px; }
+  .rowGrid { display: grid; }
+  .card { display: none; }
 
-  .cnj   { width: 62%; }
-  .trib  { width: 90px; }
-  .orgao { width: 88%; }
-  .parte { width: 78%; height: 16px; }
-  .mov   { width: 55%; }
+  .trib  { width: 42px; }
+  .cnj   { width: 160px; }
+  .orgao { width: 72%; }
+  .parte { width: 65%; height: 14px; }
+  .mov   { width: 90%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -3,15 +3,16 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 24px 24px 24px;
+  flex: none;
+  min-height: auto;
+  overflow-y: visible;
+  padding: 0 16px 16px 16px;
 }
 
 .toolbar {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
@@ -48,7 +49,7 @@
 /* ---- Painel de cobertura por sistema ---- */
 .coverageGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -151,7 +152,7 @@
 
 .cardGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -387,21 +388,24 @@
   color: var(--ink-3);
 }
 
-@media (max-width: 768px) {
+@media (min-width: 768px) {
   .container {
-    flex: none;
-    min-height: auto;
-    overflow-y: visible;
-    padding: 0 16px 16px 16px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 24px 24px 24px;
   }
 
   .toolbar {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-start;
   }
 
-  .coverageGrid,
+  .coverageGrid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+
   .cardGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   }
 }

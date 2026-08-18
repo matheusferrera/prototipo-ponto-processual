@@ -1,0 +1,235 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-2);
+  font-family: var(--ui);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.brandMark {
+  width: 14px;
+  height: 14px;
+  background: var(--brick);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.logout {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.logout:hover { color: var(--ink); }
+.logout:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brick-soft);
+  color: var(--brick);
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+.iconDone {
+  background: var(--quiet-soft);
+  color: var(--quiet);
+}
+.iconAlert {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+.title {
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 380px;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cardWide {
+  max-width: 560px;
+}
+
+.oabFieldSet {
+  width: 100%;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.oabRow {
+  display: flex;
+  gap: 12px;
+}
+
+.oabUfField {
+  max-width: 96px;
+  flex-shrink: 0;
+}
+
+.spin {
+  animation: onboarding-spin 0.8s linear infinite;
+}
+
+@keyframes onboarding-spin {
+  to { transform: rotate(360deg); }
+}
+
+.resultList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-top: 8px;
+  text-align: left;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--paper);
+  flex-wrap: wrap;
+}
+
+.resultInfo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.resultSigla {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.resultNome {
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.resultCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.badgeSuportado,
+.badgeDjen {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+.badgeSuportado {
+  background: var(--quiet-soft);
+  color: var(--quiet);
+}
+
+.badgeDjen {
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+
+@media (max-width: 640px) {
+  .topbar { padding: 16px 20px; }
+  .card { padding: 32px 24px; }
+  .actions { flex-direction: column-reverse; align-items: stretch; }
+  .oabRow { flex-wrap: wrap; }
+  .resultRow { flex-direction: column; align-items: flex-start; }
+  .resultRight { width: 100%; justify-content: space-between; }
+}

@@ -5,16 +5,17 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 24px 24px 24px;
+  flex: none;
+  min-height: auto;
+  overflow-y: visible;
+  padding: 0 16px 16px 16px;
 }
 
 .controlsBar {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
   gap: 16px;
   background: var(--paper);
@@ -25,6 +26,7 @@
 .filterGroup {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -56,13 +58,15 @@
 
 .actionGroup {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 16px;
 }
 
 .autoBadge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-family: var(--ui);
   font-size: 12px;
@@ -72,12 +76,13 @@
   padding: 6px 12px;
   border: 1px solid var(--signal);
   border-radius: 0;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .idleBadge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-family: var(--ui);
   font-size: 12px;
@@ -87,7 +92,7 @@
   padding: 6px 12px;
   border: 1px solid var(--line);
   border-radius: 0;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .pulseIcon {
@@ -97,7 +102,7 @@
 
 .searchBox {
   position: relative;
-  min-width: 260px;
+  min-width: 100%;
 }
 
 .searchInput {
@@ -434,29 +439,30 @@
   color: var(--ink-3);
 }
 
-@media (max-width: 768px) {
-  /* No mobile o AppLayout volta a rolar a página inteira. */
+@media (min-width: 768px) {
+  /* Do tablet pra cima, a área de conteúdo rola sozinha (o AppLayout trava
+     o resto da página em 100vh). */
   .container {
-    flex: none;
-    min-height: auto;
-    overflow-y: visible;
-    padding: 0 16px 16px 16px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 24px 24px 24px;
   }
 
   .controlsBar {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
   }
   .actionGroup {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
   }
   .searchBox {
-    min-width: 100%;
+    min-width: 260px;
   }
   .autoBadge,
   .idleBadge {
-    justify-content: center;
-    white-space: normal;
+    justify-content: flex-start;
+    white-space: nowrap;
   }
 }

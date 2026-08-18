@@ -1,8 +1,14 @@
+/* Mobile-first: base = celular. O header desktop (.root) fica oculto — os
+   mesmos controles (busca/filtro/ordenação/abas) renderizam de novo na barra
+   do menu do AppLayout (variant="mobile"), com alvos de toque de 44px e o
+   painel de filtro/ordenação como bottom sheet. >=768px liga o header fixo
+   no topo da página e os controles voltam ao tamanho compacto de desktop,
+   com o filtro/ordenação como dropdown flutuante. */
 .root {
+  display: none;
   position: relative;
   padding: 10px 32px;
   border-bottom: 1px solid var(--line);
-  display: flex;
   align-items: center;
   gap: 16px;
   background: var(--paper);
@@ -68,6 +74,14 @@
   color: var(--ink-2);
   text-decoration: none;
   border-right: 1px solid var(--line);
+  flex: 1;
+  justify-content: center;
+  /* sem isto o mínimo automático do item flex (a largura do texto, ex.:
+     "Calendário") trava o encolhimento e a aba estoura a largura da tela */
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .tab:last-child { border-right: none; }
@@ -147,7 +161,7 @@
   left: 0;
   top: 0;
   height: 100%;
-  width: 36px;
+  width: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -167,10 +181,11 @@
 
 .searchIcon { display: block; }
 
+/* tamanhos confortáveis para toque por padrão (celular) */
 .search input {
   width: 100%;
-  min-height: 36px;
-  padding: 0 12px 0 36px;
+  min-height: 42px;
+  padding: 0 12px 0 38px;
   border: 1px solid var(--line);
   border-radius: 0;
   background: var(--paper);
@@ -223,8 +238,8 @@
 }
 
 .iconControl {
-  width: 36px;
-  min-height: 36px;
+  width: 44px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -258,30 +273,78 @@
 .optionLink {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 44px;
   text-decoration: none;
+}
+
+.optionLink > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 10px;
 }
 
 .filter summary::-webkit-details-marker { display: none; }
 
-.filterPanel {
-  position: absolute;
-  top: calc(100% + 10px);
+/* scrim atrás do painel de filtro/ordenação quando ele vira bottom sheet */
+.filter[open]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgba(20, 26, 21, 0.34);
+  pointer-events: none;
+}
+
+/* painel de filtro/ordenação: bottom sheet fixo no rodapé da tela */
+.filterPanel,
+.sortPanel {
+  position: fixed;
+  top: auto;
   right: 0;
-  z-index: 20;
-  width: min(420px, calc(100vw - 64px));
-  padding: 14px;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  width: 100%;
+  max-height: min(76dvh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
   background: var(--paper);
   border: 1px solid var(--line);
-  box-shadow: 0 18px 40px rgba(20, 26, 21, 0.14);
+  border-width: 1px 0 0;
+  box-shadow: 0 -18px 48px rgba(20, 26, 21, 0.22);
 }
 
 .filterPanelHeader {
-  display: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .filterDragHandle {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin: -4px 0 10px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.filterDragHandle:active {
+  cursor: grabbing;
+}
+
+.filterDragHandle span {
+  display: block;
+  width: 36px;
+  height: 4px;
+  background: var(--line);
 }
 
 .filterPanelTitle {
@@ -302,6 +365,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .filterClear,
@@ -309,7 +373,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 0 10px;
   border: 1px solid var(--line);
   background: var(--paper);
@@ -341,28 +406,24 @@
 }
 
 .filterGroup + .filterGroup {
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 18px;
+  padding-top: 18px;
   border-top: 1px solid var(--line-soft);
 }
 
 .filterLabel {
-  margin-bottom: 8px;
-  font-size: 10px;
+  margin-bottom: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   color: var(--ink-3);
 }
 
 .filterOptions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-}
-
-.sortPanel {
-  width: min(240px, calc(100vw - 64px));
+  gap: 8px;
 }
 
 /* ── Barra do menu (mobile): controles injetados no AppLayout ── */
@@ -395,119 +456,78 @@
   display: none;
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  /* o header desktop some no mobile — os controles migram para a barra do menu
-     (AppLayout), junto do título; ver .mobileActions / .mobileTabsRow */
-  .root { display: none; }
+/* Desktop / tablet largo: header fixo no topo, controles compactos, filtro
+   e ordenação viram dropdown flutuante em vez de bottom sheet. */
+@media (min-width: 768px) {
+  .root { display: flex; }
 
-  /* tamanhos confortáveis para toque (aplicam-se às instâncias na barra do menu) */
-  .search input {
-    min-height: 42px;
-    padding-left: 38px;
-    font-size: 13px;
+  .tab {
+    flex: 0 1 auto;
+    justify-content: flex-start;
   }
-  .searchSubmit { width: 38px; }
 
-  .tab { flex: 1; justify-content: center; }
+  .searchSubmit { width: 36px; }
+
+  .search input {
+    min-height: 36px;
+    padding: 0 12px 0 36px;
+  }
 
   .iconControl {
-    width: 44px;
-    min-height: 44px;
+    width: 36px;
+    min-height: 36px;
   }
 
-  .filter[open]::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 29;
-    background: rgba(20, 26, 21, 0.34);
-    pointer-events: none;
+  .optionLink { min-height: 28px; }
+
+  .optionLink > span {
+    display: contents;
   }
+
+  .filter[open]::before { content: none; }
 
   .filterPanel,
   .sortPanel {
-    position: fixed;
-    top: auto;
+    position: absolute;
+    top: calc(100% + 10px);
     right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 30;
-    width: 100%;
-    max-height: min(76dvh, 560px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
-    border-width: 1px 0 0;
-    box-shadow: 0 -18px 48px rgba(20, 26, 21, 0.22);
+    bottom: auto;
+    left: auto;
+    z-index: 20;
+    width: min(420px, calc(100vw - 64px));
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    padding: 14px;
+    border-width: 1px;
+    box-shadow: 0 18px 40px rgba(20, 26, 21, 0.14);
   }
 
-  .filterDragHandle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 24px;
-    margin: -4px 0 10px;
-    cursor: grab;
-    touch-action: none;
+  .sortPanel {
+    width: min(240px, calc(100vw - 64px));
   }
 
-  .filterDragHandle:active {
-    cursor: grabbing;
-  }
-
-  .filterDragHandle span {
-    display: block;
-    width: 36px;
-    height: 4px;
-    background: var(--line);
-  }
-
-  .filterPanelHeader {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 14px;
-    margin-bottom: 14px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-
-  .filterPanelActions {
-    flex-shrink: 0;
-  }
+  .filterPanelHeader { display: none; }
+  .filterDragHandle { display: none; }
 
   .filterClear,
   .filterClose {
-    min-width: 44px;
-    min-height: 44px;
+    min-height: 36px;
+    min-width: 0;
   }
 
   .filterGroup + .filterGroup {
-    margin-top: 18px;
-    padding-top: 18px;
+    margin-top: 14px;
+    padding-top: 14px;
   }
 
   .filterLabel {
-    margin-bottom: 10px;
-    font-size: 11px;
-    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
   }
 
-  .filterOptions {
-    gap: 8px;
-  }
-
-  .optionLink {
-    min-height: 44px;
-  }
-
-  .optionLink > span {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 10px;
-  }
+  .filterOptions { gap: 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

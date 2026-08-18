@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/cadastro'];
+const PUBLIC_ROUTES = ['/login', '/cadastro', '/home'];
 const API_AUTH_PREFIX = '/api/auth';
 
 export function middleware(req: NextRequest) {

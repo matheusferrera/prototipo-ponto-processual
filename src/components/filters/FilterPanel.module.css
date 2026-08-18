@@ -1,7 +1,15 @@
+/* Mobile-first: base = celular (alvos de toque de 44px, painéis em
+   tela cheia). >=768px compacta os controles pro tamanho de mouse/desktop.
+   O painel lateral fixo (.sidePanelHost) é um caso à parte: ele só faz
+   sentido com espaço de sobra, então fica atrás de um `max-width: 1099px`
+   supplementar (ver fim do arquivo) em vez de entrar na escada mobile-first
+   principal — abaixo de 1100px o filtro sempre usa o Sheet (.sidePanelSheet),
+   documentado ali. */
+
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-left: auto;
 }
 
@@ -31,8 +39,8 @@
 
 .iconButton {
   position: relative;
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   border-color: var(--ink);
   color: var(--ink);
   background: var(--paper);
@@ -44,7 +52,7 @@
 }
 
 .panelButton {
-  min-height: 36px;
+  min-height: 44px;
   border-color: var(--ink);
   background: var(--paper);
   color: var(--ink);
@@ -64,17 +72,20 @@
 }
 
 .filterWorkspace {
-  flex: 1;
+  flex: none;
   min-width: 0;
-  min-height: 0;
+  min-height: auto;
   display: flex;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .filterWorkspaceMain {
-  flex: 1;
+  /* .filterWorkspace é row-flex: flex-shrink precisa ficar ligado aqui,
+     senão o conteúdo intrínseco (tabela, grade de cards) força o item a
+     estourar a largura da viewport em vez de encolher pra caber. */
+  flex: 1 1 auto;
   min-width: 0;
-  min-height: 0;
+  min-height: auto;
   display: flex;
   flex-direction: column;
 }
@@ -114,15 +125,16 @@
 }
 
 .sidePanelSheet {
-  width: min(420px, 100vw) !important;
+  width: 100% !important;
   max-width: none !important;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .inlineFilterForm { height: 100%; }
 
 .inlineFilterForm .sheetBody {
-  max-height: none;
-  padding: 20px 20px 24px;
+  max-height: 62dvh;
+  padding: 18px 16px 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -148,7 +160,7 @@
 }
 
 .panelStatus {
-  min-width: 120px;
+  min-width: 0;
   margin-left: auto;
   align-self: center;
   color: var(--brick);
@@ -217,10 +229,42 @@
   font-weight: 700;
 }
 
+/* variante compacta usada na barra do menu mobile — só o ícone, sem texto */
+.controlsMobile .sortControl {
+  min-width: 44px;
+  width: 44px;
+}
+
+.controlsMobile:has([data-search-open]) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  min-width: 0;
+  padding: 8px 16px;
+  background: var(--paper);
+}
+
+.controlsMobile .sortControl [data-slot="native-select"] {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: transparent;
+}
+
+.controlsMobile .sortControl > svg {
+  left: 14px;
+}
+
+.controlsMobile .sortControl [data-slot="native-select-icon"] {
+  display: none;
+}
+
 .filterSheet {
-  width: min(560px, 100vw);
+  width: 100%;
+  max-height: min(88dvh, 760px);
   max-width: none !important;
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
   gap: 0;
   background: var(--paper);
   color: var(--ink);
@@ -229,12 +273,13 @@
 .filterForm {
   min-height: 0;
   height: 100%;
+  max-height: min(88dvh, 760px);
   display: flex;
   flex-direction: column;
 }
 
 .sheetHeader {
-  padding: 20px 24px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -263,14 +308,13 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 22px 24px 40px;
+  padding: 22px 16px 40px;
 }
 
 .sheetFooter {
-  padding: 16px 24px;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   border-top: 1px solid var(--line);
   background: var(--paper-2);
 }
@@ -338,7 +382,7 @@
 .fieldGrid,
 .rangeGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -350,7 +394,7 @@
 
 .sheetBody [data-slot="input"],
 .sheetBody [data-slot="native-select"] {
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 0;
   border-color: var(--line);
   background: var(--paper);
@@ -358,15 +402,17 @@
 
 .activeBar {
   min-height: 46px;
-  padding: 8px 32px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--line);
   background: var(--paper-2);
 }
 
 .activeLabel {
+  width: 100%;
   flex: 0 0 auto;
   color: var(--ink-3);
   font-size: 10px;
@@ -377,6 +423,7 @@
 
 .chips {
   min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -385,7 +432,7 @@
 }
 
 .chip {
-  min-height: 30px;
+  min-height: 44px;
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
@@ -412,7 +459,7 @@
 }
 
 .clearAll {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 4px;
   flex: 0 0 auto;
   border: 0;
@@ -424,135 +471,73 @@
   cursor: pointer;
 }
 
-@media (max-width: 768px) {
-  .controls {
-    gap: 6px;
+/* Tablet / desktop: controles voltam ao tamanho de mouse */
+@media (min-width: 768px) {
+  .controls { gap: 8px; }
+
+  .iconButton { min-width: 36px; min-height: 36px; }
+  .panelButton { min-height: 36px; }
+
+  .filterWorkspace { flex: 1; min-height: 0; overflow: hidden; }
+  .filterWorkspaceMain { flex: 1; min-height: 0; }
+
+  .sidePanelSheet {
+    width: min(420px, 100vw) !important;
+    padding-bottom: 0;
   }
 
-  .panelButton {
-    min-height: 44px;
-  }
-
-  .inlineFilterGrid {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .inlineFilterForm .sheetBody {
+    max-height: none;
+    padding: 20px 20px 24px;
   }
 
   .inlineFilterGrid > .filterSection {
     padding: 0 0 20px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line-soft);
   }
 
-  .inlineFilterForm .sheetBody {
-    max-height: 62dvh;
-    padding: 18px 16px 24px;
-    overflow-y: auto;
-  }
-
-  .panelStatus { min-width: 0; }
-
-  .controlsMobile .sortControl {
-    min-width: 44px;
-    width: 44px;
-  }
-
-  .controlsMobile:has([data-search-open]) {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    min-width: 0;
-    padding: 8px 16px;
-    background: var(--paper);
-  }
-
-  .controlsMobile .sortControl [data-slot="native-select"] {
-    width: 44px;
-    min-height: 44px;
-    padding: 0;
-    color: transparent;
-  }
-
-  .controlsMobile .sortControl > svg {
-    left: 14px;
-  }
-
-  .controlsMobile .sortControl [data-slot="native-select-icon"] {
-    display: none;
-  }
-
-  .iconButton {
-    min-width: 44px;
-    min-height: 44px;
-  }
+  .panelStatus { min-width: 120px; }
 
   .filterSheet {
-    width: 100%;
-    max-height: min(88dvh, 760px);
-    padding-bottom: env(safe-area-inset-bottom);
+    width: min(560px, 100vw);
+    max-height: none;
+    padding-bottom: 0;
   }
 
-  .filterForm {
-    max-height: min(88dvh, 760px);
-  }
+  .filterForm { max-height: none; }
 
   .sheetHeader,
   .sheetBody,
   .sheetFooter {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
   .sheetFooter {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    justify-content: flex-end;
   }
 
-  .checkboxGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .checkboxGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .fieldGrid,
-  .rangeGrid {
-    grid-template-columns: 1fr;
+  .rangeGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .sheetBody [data-slot="input"],
+  .sheetBody [data-slot="native-select"] {
+    min-height: 42px;
   }
 
-  .activeBar {
-    padding-top: 8px;
-    padding-bottom: 8px;
-    flex-wrap: wrap;
-  }
-
-  .activeLabel {
-    width: 100%;
-  }
-
-  .chips {
-    flex: 1;
-  }
+  .activeBar { padding: 8px 32px; flex-wrap: nowrap; }
+  .activeLabel { width: auto; }
 
   .chip,
-  .clearAll {
-    min-height: 44px;
-  }
-
-  .filterWorkspace {
-    flex: none;
-    min-height: auto;
-    overflow: visible;
-  }
-
-  .filterWorkspaceMain {
-    flex: none;
-    min-height: auto;
-  }
-
-  .sidePanelSheet {
-    width: 100% !important;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  .clearAll { min-height: 30px; }
+  .clearAll { min-height: 32px; }
 }
 
+/* Painel lateral fixo — só existe espaço pra ele docado a partir de 1100px;
+   abaixo disso o filtro sempre vira Sheet, tanto no celular quanto no
+   tablet/notebook estreito. */
 @media (max-width: 1099px) {
   .sidePanelHost { display: none; }
 

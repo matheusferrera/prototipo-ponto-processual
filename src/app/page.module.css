@@ -1,7 +1,11 @@
-/* ===== Topbar ===== */
+/* Mobile-first: base = celular (topbar própria some, cards em grade 2×2,
+   painel único empilhado). >=768px liga a topbar com badge de sincronização,
+   4 cards numa linha e a grade de 2 colunas (feed + coluna lateral). */
+
+/* ===== Topbar (desktop) — no celular o header vem do AppLayout ===== */
 .topbar {
+  display: none;
   padding: 18px 32px;
-  display: flex;
   align-items: center;
   gap: 16px;
 }
@@ -18,75 +22,128 @@
 
 /* ===== Alerta crítico ===== */
 .dashAlert {
-  margin: 24px 32px 0;
-  padding: 12px 20px;
-  gap: 12px;
+  margin: 16px 16px 0;
+  padding: 10px 14px;
+  gap: 6px 8px;
+  flex-wrap: wrap;
 }
+.dashAlertPart { display: none; }
 
 /* ===== Stat cards ===== */
 .statCards {
-  margin: 24px 32px 0;
+  margin: 16px 16px 0;
+  flex-wrap: wrap;
 }
 .statCard {
-  flex: 1;
-  padding: 20px 24px;
+  flex: 0 0 50%;
+  padding: 14px 16px;
   text-decoration: none;
   display: block;
-  border-right: 1px solid var(--line-soft);
-}
-.statCard:last-child {
   border-right: none;
+  border-bottom: 1px solid var(--line-soft);
 }
+.statCard:nth-child(odd)    { border-right: 1px solid var(--line-soft); }
+.statCard:last-child        { border-bottom: none; }
+.statCard:nth-last-child(2) { border-bottom: none; }
 .statNum {
   font-weight: 800;
-  font-size: 48px;
+  font-size: 28px;
   line-height: 0.9;
   letter-spacing: -0.04em;
 }
 
+/* ===== Empty state (onboarding) ===== */
+.dashEmpty {
+  margin: 16px;
+  border: 1px dashed var(--line);
+  background: var(--paper);
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+.dashEmptyIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brick-soft);
+  color: var(--brick);
+  flex-shrink: 0;
+}
+.dashEmptyTitle {
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.dashEmptyDesc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 440px;
+}
+.dashEmptyCta {
+  margin-top: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  background: var(--brick);
+  padding: 11px 24px;
+}
+
 /* ===== Grade principal ===== */
 .dashGrid {
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 20px;
-  margin: 20px 32px 32px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 16px;
 }
 
 /* ===== Painéis (movimentações · prazos · carteira) ===== */
-.panelHead    { padding: 14px 20px; }
-.movRow       { padding: 12px 20px; gap: 12px; }
-.prazoRow     { padding: 10px 20px; gap: 12px; }
-.carteiraBody { padding: 16px 20px; }
+.panelHead    { padding: 12px 14px; }
+.movRow       { padding: 11px 14px; gap: 10px; }
+.movTipo      { display: none; }
+.prazoRow     { padding: 10px 14px; gap: 10px; }
+.carteiraBody { padding: 14px; }
+.syncBadge    { display: none; }
 
-/* ===== Mobile ===== */
-@media (max-width: 768px) {
-  /* topbar própria some no mobile — o header único fica no AppLayout */
-  .topbar { display: none; }
+/* ===== Tablet / desktop ===== */
+@media (min-width: 768px) {
+  .topbar { display: flex; }
 
-  .syncBadge { display: none; }
-  .movTipo   { display: none; }
+  .syncBadge { display: block; }
+  .movTipo   { display: inline; }
 
-  .dashAlert     { margin: 16px 16px 0; padding: 10px 14px; gap: 6px 8px; flex-wrap: wrap; }
-  .dashAlertPart { display: none; }
+  .dashAlert     { margin: 24px 32px 0; padding: 12px 20px; gap: 12px; flex-wrap: nowrap; }
+  .dashAlertPart { display: inline; }
 
-  /* stat cards → 2×2 compactos */
-  .statCards { margin: 16px 16px 0; flex-wrap: wrap; }
+  /* stat cards → 4 numa linha só */
+  .statCards { margin: 24px 32px 0; flex-wrap: nowrap; }
   .statCard {
-    flex: 0 0 50%;
-    padding: 14px 16px;
-    border-right: none;
-    border-bottom: 1px solid var(--line-soft);
+    flex: 1;
+    padding: 20px 24px;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: none;
   }
-  .statCard:nth-child(odd)    { border-right: 1px solid var(--line-soft); }
-  .statCard:last-child        { border-bottom: none; }
-  .statCard:nth-last-child(2) { border-bottom: none; }
-  .statNum { font-size: 28px; }
+  .statCard:last-child { border-right: none; }
+  .statNum { font-size: 48px; }
 
-  /* painéis mais justos — menos espaço desperdiçado, menos corte */
-  .panelHead    { padding: 12px 14px; }
-  .movRow       { padding: 11px 14px; gap: 10px; }
-  .prazoRow     { padding: 10px 14px; gap: 10px; }
-  .carteiraBody { padding: 14px; }
+  .dashEmpty { margin: 24px 32px 32px; padding: 64px 32px; }
 
-  /* grade → coluna única */
-  .dashGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 16px; }
+  /* grade → feed + coluna lateral */
+  .dashGrid { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; margin: 20px 32px 32px; }
+
+  /* painéis com mais respiro */
+  .panelHead    { padding: 14px 20px; }
+  .movRow       { padding: 12px 20px; gap: 12px; }
+  .prazoRow     { padding: 10px 20px; gap: 12px; }
+  .carteiraBody { padding: 16px 20px; }
 }

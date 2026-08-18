@@ -1,0 +1,275 @@
+/* Primitivos de formulário compartilhados por /login, /cadastro (e qualquer
+   outra tela fora do AppLayout). Mobile-first: inputs em 16px/44px no
+   celular (evita zoom automático do iOS e cumprem o alvo de toque mínimo),
+   compactam a partir de `md`, onde o mouse é o padrão. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formHeader {
+  margin-bottom: 24px;
+}
+
+.formEyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+
+.formTitle {
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+@media (min-width: 768px) {
+  .formHeader { margin-bottom: 32px; }
+  .formTitle { font-size: 26px; }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-2);
+}
+
+.labelLink {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brick);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  letter-spacing: 0.01em;
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+}
+
+.input {
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 12px 12px;
+  min-height: 46px;
+  outline: none;
+  width: 100%;
+}
+
+.input:disabled { opacity: 0.6; }
+.input::placeholder { color: var(--ink-4); }
+
+.input:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 1px;
+}
+
+.inputError { border-color: var(--alert); }
+
+.inputWithToggle { padding-right: 44px; }
+
+.toggleBtn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.fieldError {
+  font-size: 11px;
+  color: var(--alert);
+  font-weight: 500;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.dividerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.errorBanner {
+  font-size: 12px;
+  color: var(--alert);
+  background: var(--alert-soft);
+  border-left: 3px solid var(--alert);
+  padding: 10px 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.successBanner {
+  padding: 18px 16px;
+  background: var(--brick-soft);
+  border-left: 3px solid var(--brick);
+  font-size: 14px;
+  color: var(--brick);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.successBannerSub {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* ===== Botões ===== */
+.btnPrimary {
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  background: var(--brick);
+  border: none;
+  min-height: 46px;
+  padding: 0 24px;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.btnPrimary:disabled {
+  background: var(--ink-3);
+  cursor: not-allowed;
+}
+
+.btnOutline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  min-height: 46px;
+  padding: 0 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btnOutline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnLink {
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--brick);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.footer {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footerLine {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.footerNote {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-4);
+  margin: 0;
+}
+
+.footerSupport {
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+}
+
+@media (min-width: 768px) {
+  .input {
+    font-size: 14px;
+    min-height: 40px;
+    padding: 9px 12px;
+  }
+
+  .inputWithToggle { padding-right: 40px; }
+
+  .toggleBtn { width: 40px; }
+
+  .btnPrimary,
+  .btnOutline {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .btnOutline { font-size: 13px; }
+}

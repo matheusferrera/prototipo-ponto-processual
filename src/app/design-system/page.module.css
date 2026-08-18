@@ -1,14 +1,18 @@
+/* Mobile-first: base = celular pequeno (<391px). Sobe em 3 degraus:
+   >=391px (celular normal), >=768px (tablet), >=1025px (desktop). */
+
 .pageShell {
   flex: 1;
-  min-height: 0;
-  overflow: auto;
+  min-height: 100dvh;
+  overflow: visible;
   background: var(--paper);
   color: var(--ink);
   overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 .cover {
-  padding: 56px 64px 48px;
+  padding: 28px 16px 30px;
   border-bottom: 1px solid var(--ink);
   background: var(--paper);
 }
@@ -39,8 +43,8 @@
 
 .coverGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 48px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
   align-items: end;
   margin-top: 28px;
 }
@@ -48,17 +52,17 @@
 .cover h1 {
   max-width: 780px;
   margin: 0;
-  font-size: 64px;
+  font-size: 32px;
   font-weight: 800;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 1.05;
 }
 
 .cover p {
   max-width: 680px;
   margin: 22px 0 0;
   color: var(--ink-2);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.65;
 }
 
@@ -72,9 +76,9 @@
 
 .coverFacts div {
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 12px;
 }
 
 .coverFacts div + div {
@@ -98,7 +102,7 @@
 }
 
 .section {
-  padding: 48px 64px;
+  padding: 32px 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -129,7 +133,7 @@
 
 .section h2 {
   margin: 0;
-  font-size: 42px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.08;
@@ -144,7 +148,7 @@
 }
 
 .sectionBody {
-  margin-top: 32px;
+  margin-top: 24px;
 }
 
 .label {
@@ -153,7 +157,7 @@
 
 .panel {
   min-width: 0;
-  padding: 20px;
+  padding: 16px;
   border: 1px solid var(--line);
   background: var(--paper);
 }
@@ -180,27 +184,14 @@
 .ruleGrid,
 .componentGrid,
 .patternGrid,
-.twoCol {
+.twoCol,
+.swatchGrid {
   display: grid;
   gap: 20px;
-}
-
-.ruleGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.componentGrid,
-.twoCol {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.patternGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .swatchGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -253,13 +244,14 @@
 .controlStack,
 .listPreview {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
 .typeRow {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 150px;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 4px;
   align-items: baseline;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line-soft);
@@ -287,7 +279,7 @@
 
 .spacingRow {
   display: grid;
-  grid-template-columns: 56px 52px minmax(0, 1fr);
+  grid-template-columns: 48px 52px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   min-height: 48px;
@@ -303,12 +295,20 @@
   background: var(--brick);
 }
 
+.controlRow {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
 .controlRow,
+.statusGrid {
+  gap: 8px;
+}
+
 .statusGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .buttonSample {
@@ -316,7 +316,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--ink);
   background: var(--paper);
@@ -418,6 +418,10 @@
   align-items: center;
 }
 
+.processGrid > span:last-child {
+  justify-self: start;
+}
+
 .processCopy {
   display: grid;
   gap: 3px;
@@ -446,23 +450,36 @@
 }
 
 .timelineExample {
+  position: relative;
   display: grid;
-  grid-template-columns: 76px 20px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 20px;
+}
+
+.timelineExample::before {
+  content: "";
+  position: absolute;
+  top: 23px;
+  bottom: 0;
+  left: 5px;
+  width: 1px;
+  background: var(--line);
 }
 
 .timelineDate {
-  padding-right: 12px;
-  text-align: right;
+  padding: 0 0 8px;
+  text-align: left;
 }
 
 .timelineDate strong {
-  display: block;
+  display: inline;
   color: var(--brick);
   font-family: var(--mono);
   font-size: 13px;
 }
 
 .timelineDate span {
+  margin-left: 6px;
   color: var(--ink-3);
   font-size: 11px;
 }
@@ -470,12 +487,16 @@
 .timelineRail {
   display: flex;
   justify-content: center;
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 12px;
 }
 
 .timelineRail span {
-  width: 12px;
-  height: 12px;
-  margin-top: 4px;
+  width: 11px;
+  height: 11px;
+  margin-top: 0;
   border: 2px solid var(--brick);
   border-radius: 999px;
   background: var(--brick);
@@ -483,7 +504,7 @@
 
 .timelineContent {
   min-width: 0;
-  padding-left: 12px;
+  padding-left: 0;
 }
 
 .timelineMeta {
@@ -515,8 +536,8 @@
 }
 
 .timelineActions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 12px;
 }
@@ -541,6 +562,7 @@
   grid-template-columns: 20px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
+  min-height: 44px;
   padding: 12px 14px;
   border: 1px solid var(--line-soft);
   background: var(--paper);
@@ -556,9 +578,9 @@
 
 .footer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 32px 64px;
+  padding: 24px 16px calc(28px + env(safe-area-inset-bottom));
   background: var(--ink);
   color: var(--paper);
 }
@@ -573,171 +595,91 @@
   text-transform: uppercase;
 }
 
-@media (max-width: 1024px) {
-  .cover,
-  .section,
-  .footer {
-    padding-inline: 32px;
+/* Celular "normal" (>=391px) */
+@media (min-width: 391px) {
+  .cover h1 { font-size: 36px; }
+
+  .controlRow {
+    display: flex;
+    flex-wrap: wrap;
   }
 
-  .coverGrid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-  }
+  .statusGrid { align-items: center; }
 
-  .cover h1 {
-    font-size: 52px;
-  }
-
-  .swatchGrid,
-  .patternGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .processGrid > span:last-child { justify-self: auto; }
 }
 
-@media (max-width: 768px) {
+/* Tablet (>=768px) */
+@media (min-width: 768px) {
   .pageShell {
-    min-height: 100dvh;
-    overflow: visible;
-    overscroll-behavior-y: auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
 
-  .cover {
-    padding: 28px 16px 30px;
-  }
+  .cover { padding: 56px 32px 48px; }
+  .cover h1 { font-size: 52px; line-height: 1; }
+  .cover p { font-size: 15px; }
 
-  .cover h1 {
-    font-size: 36px;
-    line-height: 1.05;
-  }
+  .coverFacts div { grid-template-columns: 108px minmax(0, 1fr); gap: 12px; padding: 12px 14px; }
 
-  .cover p {
-    font-size: 14px;
-  }
-
-  .coverFacts div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-    padding: 12px;
-  }
-
-  .section {
-    padding: 32px 16px;
-  }
-
-  .section h2 {
-    font-size: 30px;
-  }
-
-  .sectionBody {
-    margin-top: 24px;
-  }
+  .section { padding: 48px 32px; }
+  .section h2 { font-size: 42px; }
+  .sectionBody { margin-top: 32px; }
 
   .ruleGrid,
   .componentGrid,
   .patternGrid,
   .twoCol,
   .swatchGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .panel {
-    padding: 16px;
-  }
+  .panel { padding: 20px; }
 
-  .typeRow {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
+  .typeRow { grid-template-columns: 72px minmax(0, 1fr) 150px; gap: 12px; }
+  .spacingRow { grid-template-columns: 56px 52px minmax(0, 1fr); }
 
-  .spacingRow {
-    grid-template-columns: 48px 52px minmax(0, 1fr);
-  }
-
-  .buttonSample {
-    min-height: 44px;
-    padding: 0 12px;
-  }
+  .buttonSample { min-height: 38px; }
 
   .timelineExample {
-    position: relative;
-    grid-template-columns: minmax(0, 1fr);
-    padding-left: 20px;
-  }
-
-  .timelineExample::before {
-    content: "";
-    position: absolute;
-    top: 23px;
-    bottom: 0;
-    left: 5px;
-    width: 1px;
-    background: var(--line);
-  }
-
-  .timelineDate {
-    padding: 0 0 8px;
-    text-align: left;
-  }
-
-  .timelineDate span {
-    margin-left: 6px;
-  }
-
-  .timelineDate strong,
-  .timelineDate span {
-    display: inline;
-  }
-
-  .timelineRail {
-    position: absolute;
-    top: 4px;
-    left: 0;
-    width: 12px;
-  }
-
-  .timelineRail span {
-    width: 11px;
-    height: 11px;
-    margin-top: 0;
-  }
-
-  .timelineContent {
+    position: static;
+    grid-template-columns: 76px 20px minmax(0, 1fr);
     padding-left: 0;
   }
+  .timelineExample::before { content: none; }
 
-  .timelineActions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
+  .timelineDate { padding: 0 12px 0 0; text-align: right; }
+  .timelineDate strong { display: block; }
+  .timelineDate span { margin-left: 0; }
 
-  .mobileList li {
-    min-height: 44px;
-  }
+  .timelineRail { position: static; top: auto; left: auto; width: auto; }
+  .timelineRail span { width: 12px; height: 12px; margin-top: 4px; }
 
-  .footer {
-    align-items: flex-start;
-    padding: 24px 16px calc(28px + env(safe-area-inset-bottom));
-  }
+  .timelineContent { padding-left: 12px; }
+
+  .timelineActions { display: flex; flex-wrap: wrap; }
+
+  .mobileList li { min-height: auto; }
+
+  .footer { align-items: center; padding: 32px; }
 }
 
-@media (max-width: 390px) {
-  .cover h1 {
-    font-size: 32px;
+/* Desktop (>=1025px) */
+@media (min-width: 1025px) {
+  .cover { padding: 56px 64px 48px; }
+  .cover h1 { font-size: 64px; }
+
+  .coverGrid { grid-template-columns: minmax(0, 1fr) 320px; gap: 48px; }
+
+  .section { padding: 48px 64px; }
+
+  .patternGrid,
+  .swatchGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .controlRow {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .statusGrid {
-    align-items: flex-start;
-  }
-
-  .processGrid > span:last-child {
-    justify-self: start;
-  }
+  .footer { padding: 32px 64px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

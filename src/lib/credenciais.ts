@@ -102,7 +102,7 @@ export const SISTEMA_META: Record<string, SistemaMeta> = {
   },
   'e-Proc': {
     titulo: 'e-Proc · TRF2',
-    descricao: 'Catalogado, mas o robô ainda não sincroniza este sistema.',
+    descricao: 'Catalogado, mas a plataforma ainda não sincroniza este sistema.',
     exigeMfa: false,
     loginLabel: 'Usuário',
     loginPlaceholder: '',

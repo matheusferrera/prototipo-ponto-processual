@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Plus, RefreshCw, Scale } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
-import { getProcessos, getMovimentacoes, getPrazos } from '@/lib/api.server';
+import { getProcessos, getMovimentacoes, getPrazos, getScraperSecrets } from '@/lib/api.server';
 import { tituloPrazo } from '@/lib/prazo';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { Seal } from '@/components/ui/Seal/Seal';
@@ -14,9 +15,14 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const { processos } = await getProcessos();
-  const { groups: movimentacoes, newToday } = await getMovimentacoes(1, 50);
-  const { prazos } = await getPrazos();
+  const [{ processos }, { groups: movimentacoes, newToday }, { prazos }, secrets] = await Promise.all([
+    getProcessos(),
+    getMovimentacoes(1, 50),
+    getPrazos(),
+    getScraperSecrets(),
+  ]);
+  const semCredenciais = secrets.length === 0;
+  const sincronizandoPelaPrimeiraVez = !semCredenciais && processos.length === 0;
   const allMovs = movimentacoes.flatMap(g => g.items);
   const movsHoje = movimentacoes.find(g => g.date === 'HOJE')?.items ?? [];
   const novasHoje = newToday;
@@ -47,23 +53,31 @@ export default async function DashboardPage() {
           <div className={styles.topbarTitle}>Dashboard</div>
           <div className={styles.topbarBreadcrumb}>Início / Dashboard</div>
         </div>
-        <div
-          className={styles.syncBadge}
-          style={{
-            fontFamily: 'var(--mono)',
-            fontSize: 11,
-            color: 'var(--quiet)',
-            background: 'var(--quiet-soft)',
-            padding: '4px 12px',
-            border: '1px solid var(--quiet)',
-            flexShrink: 0,
-          }}
-        >
-          ● SINCRONIZADO · há 12 min
-        </div>
+        {!semCredenciais && !sincronizandoPelaPrimeiraVez && (
+          <div
+            className={styles.syncBadge}
+            style={{
+              fontFamily: 'var(--mono)',
+              fontSize: 11,
+              color: 'var(--quiet)',
+              background: 'var(--quiet-soft)',
+              padding: '4px 12px',
+              border: '1px solid var(--quiet)',
+              flexShrink: 0,
+            }}
+          >
+            ● SINCRONIZADO · há 12 min
+          </div>
+        )}
       </div>
 
       <div style={{ flex: 1, overflow: 'auto' }}>
+        {semCredenciais ? (
+          <DashboardEmptyState variant="no-credentials" />
+        ) : sincronizandoPelaPrimeiraVez ? (
+          <DashboardEmptyState variant="syncing" />
+        ) : (
+        <>
         {/* Alerta crítico */}
         {prazosCriticos.length > 0 && (
           <div
@@ -371,7 +385,48 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </AppLayout>
+  );
+}
+
+function DashboardEmptyState({ variant }: { variant: 'no-credentials' | 'syncing' }) {
+  if (variant === 'syncing') {
+    return (
+      <div className={styles.dashEmpty}>
+        <div className={styles.dashEmptyIcon}>
+          <RefreshCw size={22} />
+        </div>
+        <div className={styles.dashEmptyTitle}>Sincronizando seus processos</div>
+        <p className={styles.dashEmptyDesc}>
+          Sua credencial foi cadastrada — o sistema está buscando e centralizando seus processos pela OAB agora.
+          Isso pode levar alguns minutos na primeira vez.
+        </p>
+        <Link
+          href="/credenciais"
+          style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', textDecoration: 'none' }}
+        >
+          Ver status da credencial →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.dashEmpty}>
+      <div className={styles.dashEmptyIcon}>
+        <Scale size={22} />
+      </div>
+      <div className={styles.dashEmptyTitle}>Vamos monitorar seu primeiro processo</div>
+      <p className={styles.dashEmptyDesc}>
+        Cadastre o login que você usa no tribunal (PJe, CPE, Projudi…) e a gente cuida do resto:
+        descobrimos seus processos pela OAB e avisamos no WhatsApp a cada movimentação.
+      </p>
+      <Link href="/onboarding" className={styles.dashEmptyCta}>
+        <Plus size={14} /> Cadastrar meu primeiro tribunal
+      </Link>
+    </div>
   );
 }
