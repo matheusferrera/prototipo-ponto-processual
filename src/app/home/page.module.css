@@ -172,54 +172,52 @@
   .sectionLead { font-size: 17px; }
 }
 
-/* ===== Hero ===== */
+/* ===== Hero =====
+   Bloco alto só para dar percurso de scroll ao leque de faixas, que fica
+   grudado no fundo (.heroBg sticky) e reage ao scroll o tempo todo. Nada
+   troca nem some com o scroll: o texto fica centrado na primeira tela e o
+   único estado interativo é o hover do CTA. */
 .heroWrap {
   position: relative;
-  height: 300vh; /* Faz a seção ser 3x a altura da tela para ter bastante scroll */
+  /* Recorte por clip-path, não por `overflow: hidden`: overflow num ancestral
+     vira o scrollport do .heroBg e mata o sticky dele (o fundo passava a rolar
+     junto com a página e o pé do hero ficava chapado). Sem recorte nenhum,
+     porém, a camada grudada continua pintando 100vh além do fim do hero e
+     cobre a seção seguinte. clip-path corta o excedente sem criar scrollport,
+     então o sticky sobrevive. */
+  clip-path: inset(0);
+  background: var(--brick);
+  /* Só um pouco maior que uma tela: o excedente é o percurso de scroll que
+     o leque precisa pra se mover e abrir. Numa tela cheia exata não sobraria
+     curso nenhum e o efeito não aconteceria. */
+  min-height: 120vh;
 }
 
-.heroSticky {
+/* Camada de fundo grudada na viewport enquanto o hero passa, sem ocupar
+   espaço no fluxo (margin-bottom negativo). */
+.heroBg {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: hidden;
-  background: linear-gradient(160deg, var(--brick-deep), var(--brick) 70%);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-}
-
-.heroBg {
-  position: absolute;
-  inset: 0;
+  margin-bottom: -100vh;
   pointer-events: none;
+  /* O gradiente vive aqui, não no .heroWrap: grudado na viewport, ele mantém
+     a mesma relação com as faixas durante todo o percurso do hero — no
+     wrapper, o leque ia sumindo conforme o fundo ficava chapado embaixo. */
+  background: linear-gradient(160deg, var(--brick-deep), var(--brick) 70%);
 }
 
+/* Acima da camada de fundo grudada. */
 .heroContent {
   position: relative;
+  z-index: 1;
   max-width: 640px;
   width: 100%;
-}
-
-.heroInner {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  transform: translateY(-50%);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-  pointer-events: none; /* Previne interações nos invisíveis */
-}
-
-.heroInnerActive {
-  opacity: 1;
-  transform: translateY(-50%);
-  pointer-events: auto;
-}
-
-.heroInnerInactive {
-  opacity: 0;
-  transform: translateY(calc(-50% + 20px));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 96px 20px 72px;
 }
 
 .heroLead {
@@ -230,6 +228,7 @@
   margin: 0 0 32px;
 }
 .heroCta {
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   height: 44px;
@@ -242,11 +241,16 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.18);
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
-.heroCta:hover { background: #fff; }
+.heroCta:hover {
+  background: #fff;
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 rgba(0, 0, 0, 0.22);
+}
 
 @media (min-width: 768px) {
-  .heroSticky { padding: 0 40px; }
+  .heroContent { padding: 120px 40px 96px; }
 }
 
 /* ===== Seções genéricas =====

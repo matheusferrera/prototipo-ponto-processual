@@ -40,7 +40,6 @@ export default function CadastroPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   const values = { nome, email, senha, confirma };
   const errors = {
@@ -77,9 +76,9 @@ export default function CadastroPage() {
         setServerError(data.error ?? 'Erro ao criar conta.');
         return;
       }
-      setSuccess(true);
-      // Onboarding cuida do primeiro tribunal — login primeiro, pois /auth/register não autentica.
-      setTimeout(() => router.push('/login?next=/onboarding'), 1800);
+      // /auth/register agora faz login automático
+      router.push('/onboarding');
+      return;
     } catch {
       setServerError('Não foi possível conectar ao servidor.');
     } finally {
@@ -99,76 +98,69 @@ export default function CadastroPage() {
         <div className={styles.formTitle}>Comece gratuitamente</div>
       </div>
 
-      {success ? (
-        <div className={styles.successBanner}>
-          Conta criada com sucesso!
-          <span className={styles.successBannerSub}>Redirecionando para o login…</span>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} noValidate className={styles.form}>
-          <AuthField
-            id="nome"
-            label="Nome completo"
-            type="text"
-            autoComplete="name"
-            value={nome}
-            onChange={setNome}
-            onBlur={() => markTouched('nome')}
-            placeholder="João da Silva"
-            disabled={loading}
-            error={touched.nome ? errors.nome : ''}
-          />
-          <AuthField
-            id="email"
-            label="E-mail profissional"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={setEmail}
-            onBlur={() => markTouched('email')}
-            placeholder="voce@escritorio.com.br"
-            disabled={loading}
-            error={touched.email ? errors.email : ''}
-          />
-          <AuthField
-            id="senha"
-            label="Senha"
-            type={showSenha ? 'text' : 'password'}
-            autoComplete="new-password"
-            value={senha}
-            onChange={setSenha}
-            onBlur={() => markTouched('senha')}
-            placeholder="Mínimo 6 caracteres"
-            disabled={loading}
-            error={touched.senha ? errors.senha : ''}
-            toggle={{ visible: showSenha, onToggle: () => setShowSenha(v => !v) }}
-          />
-          <AuthField
-            id="confirma"
-            label="Confirmar senha"
-            type={showConfirma ? 'text' : 'password'}
-            autoComplete="new-password"
-            value={confirma}
-            onChange={setConfirma}
-            onBlur={() => markTouched('confirma')}
-            placeholder="Repita a senha"
-            disabled={loading}
-            error={touched.confirma ? errors.confirma : ''}
-            toggle={{ visible: showConfirma, onToggle: () => setShowConfirma(v => !v) }}
-          />
+      <form onSubmit={handleSubmit} noValidate className={styles.form}>
+        <AuthField
+          id="nome"
+          label="Nome completo"
+          type="text"
+          autoComplete="name"
+          value={nome}
+          onChange={setNome}
+          onBlur={() => markTouched('nome')}
+          placeholder="João da Silva"
+          disabled={loading}
+          error={touched.nome ? errors.nome : ''}
+        />
+        <AuthField
+          id="email"
+          label="E-mail profissional"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          onBlur={() => markTouched('email')}
+          placeholder="voce@escritorio.com.br"
+          disabled={loading}
+          error={touched.email ? errors.email : ''}
+        />
+        <AuthField
+          id="senha"
+          label="Senha"
+          type={showSenha ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={senha}
+          onChange={setSenha}
+          onBlur={() => markTouched('senha')}
+          placeholder="Mínimo 6 caracteres"
+          disabled={loading}
+          error={touched.senha ? errors.senha : ''}
+          toggle={{ visible: showSenha, onToggle: () => setShowSenha(v => !v) }}
+        />
+        <AuthField
+          id="confirma"
+          label="Confirmar senha"
+          type={showConfirma ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={confirma}
+          onChange={setConfirma}
+          onBlur={() => markTouched('confirma')}
+          placeholder="Repita a senha"
+          disabled={loading}
+          error={touched.confirma ? errors.confirma : ''}
+          toggle={{ visible: showConfirma, onToggle: () => setShowConfirma(v => !v) }}
+        />
 
-          {serverError && <div className={styles.errorBanner}>{serverError}</div>}
+        {serverError && <div className={styles.errorBanner}>{serverError}</div>}
 
-          <button type="submit" className={styles.btnPrimary} disabled={loading}>
-            {loading ? 'Criando conta…' : 'Criar conta'}
-          </button>
+        <button type="submit" className={styles.btnPrimary} disabled={loading}>
+          {loading ? 'Criando conta…' : 'Criar conta'}
+        </button>
 
-          <p className={styles.footerNote}>
-            Ao criar sua conta você também cria seu escritório no Ponto Processual (plano de teste,
-            sem custo) — dá para convidar colegas depois, em Configurações.
-          </p>
-        </form>
-      )}
+        <p className={styles.footerNote}>
+          Ao criar sua conta você também cria seu escritório no Ponto Processual (plano de teste,
+          sem custo) — dá para convidar colegas depois, em Configurações.
+        </p>
+      </form>
 
       <div className={styles.footer}>
         <div className={styles.footerLine}>

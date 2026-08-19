@@ -1,0 +1,19 @@
+
+> front-ofc@0.1.0 dev
+> next dev
+
+⚠ Port 3000 is in use by process 90759, using available port 3002 instead.
+▲ Next.js 16.2.5 (Turbopack)
+- Local:         http://localhost:3002
+- Network:       http://192.168.1.33:3002
+- Environments: .env
+✓ Ready in 292ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3001
+- PID:          60600
+- Dir:          /Users/touchbar/Codigos-Projetos/projeto-botPJE/prototipo-ponto-processual
+- Log:          .next/dev/logs/next-development.log
+
+Run kill 60600 to stop it.
+[?25h

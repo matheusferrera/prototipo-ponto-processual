@@ -1,59 +1,106 @@
-/* Leque de faixas diagonais — ver HeroRays.tsx para a mecânica de entrada +
-   paralaxe de scroll. Puramente decorativo (aria-hidden). */
+/* Leque de faixas diagonais — ver HeroRays.tsx para a mecânica de entrada,
+   progresso de scroll (--p) e paralaxe de mouse (--mx/--my). Puramente
+   decorativo (aria-hidden). */
 
 .field {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  mask-image: radial-gradient(ellipse 55% 75% at 80% 30%, #000 0%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse 55% 75% at 80% 30%, #000 0%, transparent 80%);
-  --scroll-y: 0;
+  /* Leque grande no canto direito, mas parando antes da coluna de texto. */
+  mask-image: radial-gradient(ellipse 72% 96% at 80% 34%, #000 0%, #000 22%, transparent 84%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 96% at 80% 34%, #000 0%, #000 22%, transparent 84%);
+  --p: 0;
+  --mx: 0;
+  --my: 0;
 }
 
 .ray {
   position: absolute;
-  top: calc(-22% + var(--i) * 9%);
-  left: calc(50% + var(--i) * 3.4%);
-  width: 15%;
-  height: 130%;
+  /* Começa acima da tela e passa dela: o corte diagonal do topo entra no
+     quadro (é ele que faz o desenho ler como leque), mas o pé nunca sobe o
+     bastante pra aparecer. */
+  top: calc(-30% + var(--i) * 8%);
+  left: calc(48% + var(--i) * 3.6%);
+  width: 19%;
+  height: 170%;
   background: var(--paper);
   mix-blend-mode: soft-light;
-  opacity: calc(0.05 + var(--i) * 0.02);
+  opacity: calc(0.045 + var(--i) * 0.016);
   transform-origin: top left;
-  transform: skewY(-31deg) translateY(calc(var(--scroll-y) * (0.046 + var(--i) * 0.016) * -1px));
+  /* Três forças somadas, todas escaladas pelo índice da camada:
+     1) subida com o scroll (paralaxe), 2) abertura lateral do leque,
+     3) deriva com o mouse. O skew abre junto, então o desenho se
+        transforma ao longo da seção em vez de só deslizar. */
+  transform:
+    translate3d(
+      calc(var(--i) * var(--p) * 17px + var(--mx) * (6px + var(--i) * 2.6px)),
+      calc(var(--p) * (12px + var(--i) * 19px) * -1 + var(--my) * (3px + var(--i) * 1.4px)),
+      0
+    )
+    skewY(calc(-31deg + var(--p) * 9deg));
   animation: ray-enter 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--i) * 65ms);
 }
 
+/* Depois da entrada, quem manda é o transform acima. Sem transition: as
+   variáveis já chegam suavizadas por frame do próprio JS, e uma transition
+   aqui atrasaria a resposta ao mouse. */
 .ray.settled {
   animation: none;
-  transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes ray-enter {
   from {
     opacity: 0;
-    transform: skewY(-31deg) translateY(72px);
+    transform: translate3d(0, 72px, 0) skewY(-31deg);
   }
   to {
-    opacity: calc(0.05 + var(--i) * 0.02);
-    transform: skewY(-31deg) translateY(0);
+    opacity: calc(0.045 + var(--i) * 0.016);
+    transform: translate3d(0, 0, 0) skewY(-31deg);
   }
 }
 
+/* Brilho que atravessa o leque conforme a seção rola — dá leitura de
+   material/vidro em cima das faixas. */
+.sheen {
+  position: absolute;
+  inset: -25% -40%;
+  background: linear-gradient(
+    100deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.34) 50%,
+    transparent 66%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0.72;
+  transform: translate3d(
+    calc((var(--p) - 0.3) * 78% + var(--mx) * 12px),
+    calc(var(--p) * -14%),
+    0
+  );
+}
+
 @media (max-width: 767px) {
-  .ray {
-    width: 28%;
-    left: calc(35% + var(--i) * 6%);
+  /* No mobile o leque fica no alto/direita: a coluna de texto ocupa a
+     largura inteira, então empurrar as faixas pra cima do texto derrubaria o
+     contraste. */
+  .field {
+    mask-image: radial-gradient(ellipse 92% 60% at 84% 20%, #000 0%, #000 16%, transparent 84%);
+    -webkit-mask-image: radial-gradient(ellipse 92% 60% at 84% 20%, #000 0%, #000 16%, transparent 84%);
   }
-  .ray:nth-child(n + 7) { display: none; }
+  .ray {
+    width: 38%;
+    left: calc(44% + var(--i) * 6.5%);
+  }
+  .ray:nth-child(n + 8) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ray {
     animation: none;
-    opacity: calc(0.05 + var(--i) * 0.02);
+    opacity: calc(0.045 + var(--i) * 0.016);
     transform: skewY(-31deg);
   }
+  .sheen { display: none; }
 }

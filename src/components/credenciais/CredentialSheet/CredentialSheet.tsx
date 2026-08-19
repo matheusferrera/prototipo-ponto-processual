@@ -28,6 +28,7 @@ export interface CredentialSheetTarget {
   /** Preenchidos quando o Sheet é aberto a partir de um chip "pendente" do painel de cobertura. */
   presetSistema?: string;
   presetTribunalId?: string;
+  presetTribunaisIds?: string[];
   /** Preenchidos quando o Sheet é aberto a partir da prévia do DJEN no onboarding — poupa redigitar a OAB. */
   presetOabNumero?: string;
   presetOabUf?: string;
@@ -64,14 +65,50 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /** `Tribunal` (enum do backend) → metadados de exibição, achatado a partir do catálogo por sistema. */
-  const tribunalIndex = useMemo(() => {
+  const { tribunalIndex, enrichedSistemas } = useMemo(() => {
+    // Adiciona tribunais mockados desabilitados para que a UI mostre todos os sistemas
+    // como pedido pelo usuário, mesmo aqueles que não têm implementação no backend ainda.
+    const MOCKS: any = {
+      PJe: [
+        { id: 'TJMG', codigo: 'TJMG', nome: 'Tribunal de Justiça de Minas Gerais', esfera: 'Estadual', uf: 'MG', sistema: 'PJe', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TJMGG1', codigo: 'TJMG', nome: 'TJMG', esfera: 'Estadual', uf: 'MG', sistema: 'PJe', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }, { id: 'TJMGG2', codigo: 'TJMG', nome: 'TJMG', esfera: 'Estadual', uf: 'MG', sistema: 'PJe', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '2º', disabled: true }] },
+      ],
+      'e-Proc': [
+        { id: 'TJSC', codigo: 'TJSC', nome: 'Tribunal de Justiça de Santa Catarina', esfera: 'Estadual', uf: 'SC', sistema: 'e-Proc', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TJSCG1', codigo: 'TJSC', nome: 'TJSC', esfera: 'Estadual', uf: 'SC', sistema: 'e-Proc', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }] },
+        { id: 'TJRS', codigo: 'TJRS', nome: 'Tribunal de Justiça do Rio Grande do Sul', esfera: 'Estadual', uf: 'RS', sistema: 'e-Proc', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TJRSG1', codigo: 'TJRS', nome: 'TJRS', esfera: 'Estadual', uf: 'RS', sistema: 'e-Proc', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }] },
+        { id: 'TRF4', codigo: 'TRF-4', nome: 'Tribunal Regional Federal da 4ª Região', esfera: 'Federal', uf: 'RS', sistema: 'e-Proc', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TRF4G1', codigo: 'TRF-4', nome: 'TRF-4', esfera: 'Federal', uf: 'RS', sistema: 'e-Proc', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }] },
+      ],
+      Projudi: [
+        { id: 'TJPR', codigo: 'TJPR', nome: 'Tribunal de Justiça do Paraná', esfera: 'Estadual', uf: 'PR', sistema: 'Projudi', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TJPRG1', codigo: 'TJPR', nome: 'TJPR', esfera: 'Estadual', uf: 'PR', sistema: 'Projudi', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }] },
+        { id: 'TJGO', codigo: 'TJGO', nome: 'Tribunal de Justiça de Goiás', esfera: 'Estadual', uf: 'GO', sistema: 'Projudi', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TJGOG1', codigo: 'TJGO', nome: 'TJGO', esfera: 'Estadual', uf: 'GO', sistema: 'Projudi', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }] },
+      ],
+      'e-SAJ': [
+        { id: 'TJSP', codigo: 'TJSP', nome: 'Tribunal de Justiça de São Paulo', esfera: 'Estadual', uf: 'SP', sistema: 'e-SAJ', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, successJobsLast24h: 0, totalJobsLast24h: 0, activeProcessesCount: 0, graus: [{ id: 'TJSPG1', codigo: 'TJSP', nome: 'TJSP', esfera: 'Estadual', uf: 'SP', sistema: 'e-SAJ', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '1º', disabled: true }, { id: 'TJSPG2', codigo: 'TJSP', nome: 'TJSP', esfera: 'Estadual', uf: 'SP', sistema: 'e-SAJ', status: 'nao_configurado', lastSyncAt: null, latencyMs: null, successRate: null, activeProcessesCount: 0, activeCredentialsCount: 0, grauLabel: '2º', disabled: true }] },
+      ],
+    };
+
+    const clone = structuredClone(sistemas);
+    for (const [sysName, fakeGroups] of Object.entries(MOCKS) as [string, any[]][]) {
+      let sys = clone.find(s => s.sistema === sysName);
+      if (!sys) {
+        sys = { sistema: sysName, grupos: [], cobertos: 0, totalGraus: 0 };
+        clone.push(sys);
+      }
+      for (const fakeGroup of fakeGroups) {
+        if (!sys.grupos.find(g => g.codigo === fakeGroup.codigo)) {
+          sys.grupos.push(fakeGroup);
+          sys.totalGraus += fakeGroup.graus.length;
+        }
+      }
+      sys.grupos.sort((a, b) => a.codigo.localeCompare(b.codigo, 'pt-BR'));
+    }
+
     const map = new Map<string, { sistema: string }>();
-    for (const s of sistemas) {
+    for (const s of clone) {
       for (const g of s.grupos) {
         for (const grau of g.graus) map.set(grau.id, { sistema: s.sistema });
       }
     }
-    return map;
+    return { tribunalIndex: map, enrichedSistemas: clone };
   }, [sistemas]);
 
   // Reseta/pré-popula o formulário sempre que o Sheet abre para um novo alvo.
@@ -113,7 +150,7 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
       setOabUf(target.presetOabUf ?? '');
       if (target.presetSistema) {
         setSistema(target.presetSistema);
-        setSelecionados(new Set(target.presetTribunalId ? [target.presetTribunalId] : []));
+        setSelecionados(new Set(target.presetTribunaisIds ?? (target.presetTribunalId ? [target.presetTribunalId] : [])));
         setStep('tribunais');
       } else {
         setSistema(null);
@@ -124,7 +161,7 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
   }
 
   const meta = sistema ? sistemaMeta(sistema) : null;
-  const grupo = sistema ? sistemas.find(s => s.sistema === sistema) : undefined;
+  const grupo = sistema ? enrichedSistemas.find(s => s.sistema === sistema) : undefined;
 
   const suggestedLabel = useMemo(() => {
     if (!meta) return '';
@@ -266,7 +303,7 @@ export function CredentialSheet({ target, onOpenChange, sistemas, onSaved }: Cre
         <div className={styles.body}>
           {mode === 'create' && step === 'sistema' && (
             <SistemaPicker
-              sistemas={sistemas}
+              sistemas={enrichedSistemas}
               onPick={sis => { setSistema(sis); setSelecionados(new Set()); setStep('tribunais'); }}
             />
           )}
@@ -405,6 +442,8 @@ function SistemaPicker({ sistemas, onPick }: { sistemas: SistemaGroup[]; onPick:
       <div className={styles.sistemaGrid}>
         {sistemas.map(s => {
           const meta = sistemaMeta(s.sistema);
+          const tribunaisList = Array.from(new Set(s.grupos.map(g => g.codigo))).join(', ');
+
           return (
             <button
               type="button"
@@ -414,7 +453,7 @@ function SistemaPicker({ sistemas, onPick }: { sistemas: SistemaGroup[]; onPick:
               onClick={() => onPick(s.sistema)}
             >
               <span className={styles.sistemaCardTitle}>{meta.titulo}</span>
-              <span className={styles.sistemaCardDesc}>{meta.descricao}</span>
+              <span className={styles.sistemaCardDesc}>{tribunaisList}</span>
               <span className={styles.sistemaCardStat}>
                 {meta.disponivel ? `${s.cobertos}/${s.totalGraus} tribunais já cadastrados` : 'Em breve'}
               </span>
@@ -450,13 +489,19 @@ function TribunalPicker({
               {g.graus.map(grau => {
                 const checked = selecionados.has(grau.id);
                 const coberto = showCoberto && !checked && grau.activeCredentialsCount > 0;
+                const isDisabled = (grau as any).disabled === true;
                 return (
-                  <label key={grau.id} className={`${styles.grauChip} ${checked ? styles.grauChipChecked : ''}`}>
-                    <Checkbox checked={checked} onCheckedChange={() => onToggle(grau.id)} />
+                  <label key={grau.id} className={`${styles.grauChip} ${checked ? styles.grauChipChecked : ''} ${isDisabled ? styles.grauChipDisabled : ''}`} style={isDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
+                    <Checkbox checked={checked} disabled={isDisabled} onCheckedChange={() => onToggle(grau.id)} />
                     <span>{grau.grauLabel ?? 'Único'}</span>
-                    {coberto && (
+                    {coberto && !isDisabled && (
                       <span className={styles.grauChipBadge} title="Já coberto por outra credencial">
                         já cadastrado
+                      </span>
+                    )}
+                    {isDisabled && (
+                      <span className={styles.grauChipBadge} title="Em breve">
+                        em breve
                       </span>
                     )}
                   </label>

@@ -7,7 +7,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith(API_AUTH_PREFIX)) return NextResponse.next();
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) return NextResponse.next();
+  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.endsWith('opengraph-image')) return NextResponse.next();
 
   const isPublic = PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
 

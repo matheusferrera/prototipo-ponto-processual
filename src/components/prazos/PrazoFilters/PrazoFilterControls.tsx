@@ -288,7 +288,7 @@ export function PrazoFilterControls({
                       >
                         <NativeSelectOption value="">Todas</NativeSelectOption>
                         <NativeSelectOption value="scraper">Sincronização Integrada</NativeSelectOption>
-                        <NativeSelectOption value="djen">DJEN</NativeSelectOption>
+                        <NativeSelectOption value="djen">Diário Oficial</NativeSelectOption>
                       </NativeSelect>
                     </Field>
                     <Field>

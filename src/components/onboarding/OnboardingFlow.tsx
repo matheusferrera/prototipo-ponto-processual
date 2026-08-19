@@ -18,10 +18,42 @@ interface DjenTribunalPreview {
 
 interface DjenPreview {
   totalProcessos: number;
+  /** `YYYY-MM-DD`: a contagem cobre só o que foi disponibilizado a partir daí. */
+  desde?: string;
   tribunais: DjenTribunalPreview[];
 }
 
 type Stage = 'oab' | 'resultado' | 'erro';
+
+function getNomeTribunalFallback(sigla: string): string {
+  const ufMap: Record<string, string> = {
+    AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia', CE: 'Ceará',
+    DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MT: 'Mato Grosso',
+    MS: 'Mato Grosso do Sul', MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná',
+    PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte',
+    RS: 'Rio Grande do Sul', RO: 'Rondônia', RR: 'Roraima', SC: 'Santa Catarina',
+    SP: 'São Paulo', SE: 'Sergipe', TO: 'Tocantins'
+  };
+
+  if (sigla.startsWith('TJ')) {
+    const uf = sigla.substring(2);
+    if (ufMap[uf]) return `Tribunal de Justiça - ${ufMap[uf]}`;
+  }
+  if (sigla.startsWith('TRE')) {
+    const uf = sigla.replace('TRE-', '').replace('TRE', '');
+    if (ufMap[uf]) return `Tribunal Regional Eleitoral - ${ufMap[uf]}`;
+  }
+  if (sigla.startsWith('TRT')) return `Tribunal Regional do Trabalho - ${sigla.replace('TRT', '')}ª Região`;
+  if (sigla.startsWith('TRF')) return `Tribunal Regional Federal - ${sigla.replace('TRF', '')}ª Região`;
+
+  if (sigla === 'STJ') return 'Superior Tribunal de Justiça';
+  if (sigla === 'STF') return 'Supremo Tribunal Federal';
+  if (sigla === 'TST') return 'Tribunal Superior do Trabalho';
+  if (sigla === 'TSE') return 'Tribunal Superior Eleitoral';
+  if (sigla === 'STM') return 'Superior Tribunal Militar';
+
+  return sigla;
+}
 
 export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
   const router = useRouter();
@@ -74,8 +106,21 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
         setStage('erro');
         return;
       }
-      setPreview(data as DjenPreview);
+      const djen = data as DjenPreview;
+      setPreview(djen);
       setStage('resultado');
+
+      // A prévia só conta — quem grava `Process`/`Deadline` na conta é o job do
+      // DJEN. Sem isto, "pular por agora" levava a um painel vazio. Roda em
+      // segundo plano: falhar aqui não deve derrubar o resultado já na tela, e
+      // o usuário reobtém o monitoramento cadastrando a credencial.
+      if (djen.totalProcessos > 0) {
+        void fetch('/api/scraper/monitorar-oab', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oabNumero: oabNumero.trim(), oabUf: oabUf.trim().toUpperCase() }),
+        }).catch(() => {});
+      }
     } catch {
       setErro('Falha ao conectar ao servidor.');
       setStage('erro');
@@ -89,6 +134,30 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
       mode: 'create',
       presetOabNumero: oabNumero.trim(),
       presetOabUf: oabUf.trim().toUpperCase(),
+    });
+  }
+
+  function abrirCredencialParaTribunal(sigla: string) {
+    let sistema: string | undefined;
+    const tribunalIds: string[] = [];
+
+    for (const s of sistemas) {
+      for (const g of s.grupos) {
+        const graus = g.graus.filter(grau => grau.id.replace(/G[12]$/, '') === sigla);
+        if (graus.length > 0) {
+          sistema = s.sistema;
+          tribunalIds.push(...graus.map(gr => gr.id));
+        }
+      }
+      if (sistema) break;
+    }
+
+    setSheetTarget({
+      mode: 'create',
+      presetOabNumero: oabNumero.trim(),
+      presetOabUf: oabUf.trim().toUpperCase(),
+      presetSistema: sistema,
+      presetTribunaisIds: tribunalIds.length > 0 ? tribunalIds : undefined,
     });
   }
 
@@ -132,8 +201,8 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
             <div className={styles.eyebrow}>Primeiro acesso</div>
             <div className={styles.title}>Vamos localizar seus processos</div>
             <p className={styles.desc}>
-              Informe sua OAB — a gente consulta o Diário de Justiça Eletrônico Nacional (DJEN) e mostra
-              quantos processos e em quais tribunais você tem atividade. Essa busca é pública: ainda não
+              Informe sua OAB — a gente faz uma busca nas bases públicas e mostra
+              quantos processos e em quais tribunais você tem atividade. Essa busca é pública e ainda não
               precisa de login nem senha de nenhum tribunal.
             </p>
 
@@ -178,7 +247,7 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
             <div className={`${styles.icon} ${styles.iconAlert}`}>
               <AlertTriangle size={22} />
             </div>
-            <div className={styles.title}>Não conseguimos consultar o DJEN agora</div>
+            <div className={styles.title}>Não conseguimos realizar a consulta pública agora</div>
             <p className={styles.desc}>{erro || 'Tente novamente em instantes, ou cadastre a credencial do tribunal direto.'}</p>
             <div className={styles.actions}>
               <Button type="button" variant="ghost" onClick={() => router.push('/')}>
@@ -197,10 +266,10 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
             <div className={styles.icon}>
               <Search size={22} />
             </div>
-            <div className={styles.title}>Não encontramos publicações recentes para essa OAB</div>
+            <div className={styles.title}>Não encontramos publicações dos últimos 6 meses para essa OAB</div>
             <p className={styles.desc}>
-              O DJEN nem sempre cobre tudo — pode ser uma OAB nova ou um tribunal que ainda não publica lá.
-              Você ainda pode cadastrar a credencial de um tribunal diretamente.
+              As consultas públicas nem sempre cobrem tudo — pode ser uma OAB nova ou processos em segredo de justiça.
+              Você ainda pode cadastrar a credencial de um tribunal diretamente para ter acesso completo.
             </p>
             <div className={styles.actions}>
               <Button type="button" variant="ghost" onClick={() => router.push('/')}>
@@ -225,8 +294,10 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
               {preview.tribunais.length} {preview.tribunais.length === 1 ? 'tribunal' : 'tribunais'}
             </div>
             <p className={styles.desc}>
-              Isso é só a contagem pública do DJEN. Para ver movimentações, prazos e receber alertas no
-              WhatsApp de um tribunal, faça login nele abaixo.
+              Já estamos trazendo esses processos e prazos para o seu painel — pode levar alguns
+              minutos. Esses são apenas os processos com publicação nos últimos 6 meses em consultas
+              públicas. Para puxar <strong>todos os seus processos</strong>, inclusive os{' '}
+              <strong>sigilosos</strong> e em segredo de justiça, faça o login no tribunal abaixo.
             </p>
 
             <div className={styles.resultList}>
@@ -234,15 +305,15 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
                 <div key={t.sigla} className={styles.resultRow}>
                   <div className={styles.resultInfo}>
                     <span className={styles.resultSigla}>{t.sigla}</span>
-                    <span className={styles.resultNome}>{nomePorSigla.get(t.sigla) ?? ''}</span>
+                    <span className={styles.resultNome}>{nomePorSigla.get(t.sigla) || getNomeTribunalFallback(t.sigla)}</span>
                   </div>
                   <div className={styles.resultRight}>
                     <span className={styles.resultCount}>
                       {t.processos} {t.processos === 1 ? 'processo' : 'processos'}
                     </span>
-                    <span className={t.suportado ? styles.badgeSuportado : styles.badgeDjen}>
-                      {t.suportado ? 'sincronização automática' : 'só publicações via DJEN'}
-                    </span>
+                    <Button type="button" size="sm" variant="outline" onClick={() => abrirCredencialParaTribunal(t.sigla)}>
+                      Conectar
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -253,7 +324,7 @@ export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
                 Pular por agora
               </Button>
               <Button type="button" onClick={abrirCredencial}>
-                <KeyRound size={14} /> Fazer login e ativar alertas
+                <KeyRound size={14} /> Conectar outro tribunal
               </Button>
             </div>
           </div>

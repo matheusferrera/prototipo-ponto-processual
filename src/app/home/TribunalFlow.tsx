@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { useFlowTrails } from './useFlowTrails';
 import styles from './TribunalFlow.module.css';
 
 const SOURCES = [
@@ -15,7 +16,6 @@ const SOURCES = [
 const HUB = { x: 400, y: 210 };
 const OUT_X = 740;
 const TRAIL_LEN = 5;
-const DURATION = 2400; // ms por volta de cada rastro
 
 function curveTo(y0: number) {
   const mid = (y0 + HUB.y) / 2;
@@ -30,53 +30,13 @@ const PATHS = [...SOURCES.map(s => curveTo(s.y)), `M ${HUB.x},${HUB.y} L ${OUT_X
  * usuário. Mecânica de referência: capconvert.com (hero) — bézier
  * convergentes com um rastro de pontos viajando por cada linha; aqui
  * adaptado pro domínio (tribunais → produto → celular) e à paleta do site.
+ *
+ * O motor dos rastros vive em `useFlowTrails` e é o mesmo usado pelos
+ * ícones dos pilares (LinedIcon.tsx).
  */
 export function TribunalFlow() {
   const svgRef = useRef<SVGSVGElement>(null);
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return; // fica só com as linhas estáticas + respiro em CSS desligado
-
-    const pathEls = PATHS.map((_, i) => svg.querySelector<SVGPathElement>(`[data-flow-path="${i}"]`));
-    const trailEls = PATHS.map((_, i) =>
-      [...svg.querySelectorAll<SVGCircleElement>(`[data-flow-trail="${i}"] circle`)],
-    );
-    const lengths = pathEls.map(p => p?.getTotalLength() ?? 0);
-
-    let visible = true;
-    const io = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }, { threshold: 0 });
-    io.observe(svg);
-
-    const start = performance.now();
-    let raf = 0;
-
-    const tick = (now: number) => {
-      raf = requestAnimationFrame(tick);
-      if (!visible) return;
-      const elapsed = now - start;
-      pathEls.forEach((path, i) => {
-        if (!path) return;
-        const len = lengths[i];
-        const phase = i / pathEls.length;
-        trailEls[i].forEach((dot, j) => {
-          const t = (((elapsed / DURATION) + phase - j * 0.02) % 1 + 1) % 1;
-          const pt = path.getPointAtLength(t * len);
-          dot.setAttribute('cx', String(pt.x));
-          dot.setAttribute('cy', String(pt.y));
-        });
-      });
-    };
-    raf = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      io.disconnect();
-    };
-  }, []);
+  useFlowTrails(svgRef, { duration: 2400 });
 
   return (
     <div className={styles.wrap}>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .mark { fill: #166534; }
+    @media (prefers-color-scheme: dark) { .mark { fill: #dcf0e3; } }
+  </style>
+  <rect class="mark" x="4" y="4" width="24" height="24" />
+</svg>

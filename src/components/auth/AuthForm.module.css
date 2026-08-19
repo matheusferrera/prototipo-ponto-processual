@@ -149,24 +149,6 @@
   line-height: 1.5;
 }
 
-.successBanner {
-  padding: 18px 16px;
-  background: var(--brick-soft);
-  border-left: 3px solid var(--brick);
-  font-size: 14px;
-  color: var(--brick);
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.successBannerSub {
-  display: block;
-  margin-top: 4px;
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--ink-2);
-}
-
 /* ===== Botões ===== */
 .btnPrimary {
   font-family: var(--ui);

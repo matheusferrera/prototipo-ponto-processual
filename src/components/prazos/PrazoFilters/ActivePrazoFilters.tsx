@@ -22,7 +22,7 @@ const LABELS = {
     semana: 'Pauta · próximos 7d',
   },
   situacao: { pendente: 'Expediente pendente', fechado: 'Expediente fechado' },
-  origem: { scraper: 'Sincronização Integrada', djen: 'DJEN' },
+  origem: { scraper: 'Sincronização Integrada', djen: 'Diário Oficial' },
 } as const;
 
 interface Chip {

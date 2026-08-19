@@ -32,7 +32,11 @@
   50% { opacity: 0.55; }
 }
 
-.trailDot { fill: var(--brick); }
+.trailDot {
+  fill: var(--brick);
+  visibility: hidden; /* só aparece quando useFlowTrails der a primeira posição */
+}
+:global(svg[data-flow-ready]) .trailDot { visibility: visible; }
 
 .sourceLabel {
   font-family: var(--mono);

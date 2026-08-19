@@ -35,7 +35,7 @@ export function tribunalTagLabel(tribunal: string, grau: string): string {
 /** Rótulo legível de `origem`: `scraper` → "Robô (scraper)"; `djen` → "DJEN"; vazio → "—". */
 export function origemLabel(origem: 'scraper' | 'djen' | ''): string {
   if (origem === 'scraper') return 'Sincronização Integrada';
-  if (origem === 'djen') return 'DJEN';
+  if (origem === 'djen') return 'Diário Oficial';
   return '—';
 }
 

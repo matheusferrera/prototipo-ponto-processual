@@ -1,3 +1,7 @@
+/* Ilustrações dos pilares — mesma linguagem do diagrama do hero
+   (TribunalFlow.module.css): linha fina, brilho lento, rastro de pontos
+   (posicionado via rAF em useFlowTrails) e nó com anel pulsando. */
+
 .svg {
   display: block;
   width: clamp(172px, 20vw, 210px);
@@ -8,132 +12,121 @@
   justify-self: center;
 }
 
-/* Base Drawing */
-.drawPath {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: drawIn 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+/* ── trajetos ───────────────────────────────────────────────────────────── */
+.baseLine {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
 }
 
-@keyframes drawIn {
-  to { stroke-dashoffset: 0; }
+.shimmerLine {
+  fill: none;
+  stroke: var(--brick);
+  stroke-width: 2;
+  opacity: 0.12;
+  animation: flow-shimmer 3.2s ease-in-out infinite;
+}
+@keyframes flow-shimmer {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.5; }
 }
 
-/* Continuous Linear Drawing Loop */
-.drawPathLoop {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: drawLoop 4s linear infinite;
+.trailDot {
+  fill: var(--brick);
+  visibility: hidden; /* só aparece quando useFlowTrails der a primeira posição */
 }
-@keyframes drawLoop {
-  0% { stroke-dashoffset: 100; }
-  50% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: -100; }
-}
+:global(svg[data-flow-ready]) .trailDot { visibility: visible; }
 
-/* Subtle, serious sway (linear vertical floating) */
-.sway {
+/* ── nós ────────────────────────────────────────────────────────────────── */
+.nodeMark { fill: var(--brick); }
+
+.ring {
+  fill: none;
+  stroke: var(--brick);
+  stroke-width: 2;
+  transform-box: fill-box;
   transform-origin: center;
-  animation: swayAnim 10s ease-in-out infinite alternate;
+  animation: node-ping 2.4s ease-out infinite;
 }
-@keyframes swayAnim {
-  0% { transform: translateY(-4px); }
-  100% { transform: translateY(4px); }
-}
-
-/* Pop in for nodes/ticks */
-.popIn {
-  transform: scale(0);
-  opacity: 0;
-  transform-origin: center;
-  animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-@keyframes popScale {
-  to { transform: scale(1); opacity: 1; }
+@keyframes node-ping {
+  0% { transform: scale(0.4); opacity: 0.6; }
+  100% { transform: scale(1.9); opacity: 0; }
 }
 
-/* Documento: Scanner line */
-.scanDown {
-  animation: scanDownAnim 5s ease-in-out infinite alternate;
-}
-@keyframes scanDownAnim {
-  0% { transform: translateY(40px); opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { transform: translateY(180px); opacity: 0; }
+/* ── trilho discreto (guia o rastro sem competir com o desenho) ─────────── */
+.rail {
+  fill: none;
+  stroke: var(--line-soft);
+  stroke-width: 1.2;
+  opacity: 0.85;
 }
 
-/* Prazo: Calendar hopping block */
-.calendarTick {
-  animation: calTickMove 6s steps(1, end) infinite;
-}
-@keyframes calTickMove {
-  0% { transform: translate(-70px, -70px); }
-  10% { transform: translate(-35px, -70px); }
-  20% { transform: translate(0px, -70px); }
-  30% { transform: translate(-70px, -35px); }
-  40% { transform: translate(-35px, -35px); }
-  50% { transform: translate(0px, -35px); }
-  60% { transform: translate(-70px, 0px); }
-  70% { transform: translate(-35px, 0px); }
-  80% { transform: translate(0px, 0px); }
-  100% { transform: translate(0px, 0px); }
+.frame {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
 }
 
-/* Elimination slash */
-.strikeThrough {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: strikeDraw 6s cubic-bezier(0.2, 0, 0, 1) infinite;
+.dataRow {
+  stroke: var(--brick);
+  stroke-width: 4;
+  stroke-linecap: square;
+  opacity: 0.2;
+  animation: row-fill 3.2s ease-in-out infinite;
 }
-@keyframes strikeDraw {
-  0% { stroke-dashoffset: 200; }
-  75% { stroke-dashoffset: 200; } /* Wait for the block to reach the end */
-  85% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: 0; }
-}
-
-/* Whatsapp: Close the Loop Circuit Signals */
-.signalOut {
-  stroke-dasharray: 25 100;
-  stroke-dashoffset: 25;
-  animation: sigOut 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-@keyframes sigOut {
-  0% { stroke-dashoffset: 25; }
-  35% { stroke-dashoffset: -100; }
-  100% { stroke-dashoffset: -100; }
+@keyframes row-fill {
+  0%, 100% { opacity: 0.18; }
+  45% { opacity: 1; }
 }
 
-.signalIn {
-  stroke-dasharray: 25 100;
-  stroke-dashoffset: 25;
-  animation: sigIn 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-@keyframes sigIn {
-  0% { stroke-dashoffset: 25; }
-  35% { stroke-dashoffset: 25; } /* Waits for the outgoing signal */
-  70% { stroke-dashoffset: -100; } /* Returns along the lower path */
-  100% { stroke-dashoffset: -100; }
+/* ── prazo: calendário ──────────────────────────────────────────────────── */
+.cellMark {
+  fill: var(--brick-soft);
+  stroke: var(--brick);
+  stroke-width: 2;
 }
 
-/* Gate de visibilidade para acionar a animação apenas ao dar scroll */
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .drawPath,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .drawPathLoop,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .sway,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .popIn,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .scanDown,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .calendarTick,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .strikeThrough,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .signalOut,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .signalIn {
+.tick {
+  stroke: var(--line);
+  stroke-width: 2;
+}
+.tickStrong {
+  stroke: var(--ink-4);
+  stroke-width: 2;
+}
+/* ── whatsapp: conversa no celular ──────────────────────────────────────── */
+.bubble {
+  fill: none;
+  stroke: var(--ink-4);
+  stroke-width: 2;
+}
+.bubbleAccent {
+  fill: var(--brick-soft);
+  stroke: var(--brick);
+  stroke-width: 2;
+}
+.bubbleText {
+  stroke: var(--ink-4);
+  stroke-width: 3;
+  stroke-linecap: square;
+}
+.bubbleTextAccent {
+  stroke: var(--brick);
+  stroke-width: 3;
+  stroke-linecap: square;
+}
+
+/* Gate de visibilidade: enquanto o pilar não entrou na viewport, as
+   animações de CSS ficam paradas (os rastros em rAF já pausam sozinhos). */
+:global(body.reveal-armed [data-reveal]:not(.is-visible)) .shimmerLine,
+:global(body.reveal-armed [data-reveal]:not(.is-visible)) .ring,
+:global(body.reveal-armed [data-reveal]:not(.is-visible)) .dataRow {
   animation-play-state: paused;
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .drawPath { stroke-dashoffset: 0; animation: none; }
-  .drawPathLoop { stroke-dashoffset: 0; animation: none; }
-  .sway, .scanDown, .calendarTick, .strikeThrough, .signalOut, .signalIn { animation: none; }
-  .popIn { transform: scale(1); opacity: 1; animation: none; }
+  .shimmerLine { animation: none; opacity: 0.22; }
+  .ring { animation: none; opacity: 0.35; }
+  .dataRow { animation: none; opacity: 1; }
+  .trailDot { display: none; }
 }
