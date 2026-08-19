@@ -29,9 +29,9 @@ export function HeroSection() {
           dos seus próprios processos.
         </h1>
         <p className={styles.heroLead}>
-          Cada tribunal tem o seu sistema, o seu login e o seu jeito de publicar — e alguém precisa
-          abrir todos, todo dia, só para ter certeza de que nada saiu. O Ponto Processual faz essa ronda
-          por você, lê cada publicação e te chama no WhatsApp quando alguma coisa muda.
+          Cada tribunal tem o seu sistema e o seu login. Alguém precisa abrir todos eles toda manhã só
+          para conferir se saiu alguma coisa, e hoje esse alguém é você. O Ponto Processual assume a
+          ronda e te chama no WhatsApp quando alguma coisa sai.
         </p>
 
         <OabSearch />

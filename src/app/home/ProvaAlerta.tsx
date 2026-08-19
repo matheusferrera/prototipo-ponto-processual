@@ -48,15 +48,14 @@ export function ProvaAlerta() {
       </div>
 
       <div className={styles.texto}>
-        <h3 className={styles.textoTitulo}>O alerta já vem decidido</h3>
+        <h3 className={styles.textoTitulo}>O alerta já vem lido</h3>
         <p className={styles.textoP}>
-          A mensagem não diz apenas &ldquo;houve movimentação&rdquo;. Ela diz qual processo, o que saiu, se
-          aquilo abre prazo, quantos dias e em que data vence — contado em dias úteis, com o feriado
-          do tribunal já descontado.
+          A mensagem traz o número do processo, o que saiu, se aquilo abre prazo e a data em que ele
+          vence, contada em dias úteis e com o feriado do tribunal já descontado.
         </p>
         <p className={styles.textoP}>
-          É a diferença entre receber um aviso e receber uma decisão pronta para tomar. Você abre o
-          sistema do tribunal quando escolher abrir, não para descobrir se precisa abrir.
+          Dá para decidir o que fazer sem abrir o sistema do tribunal. Quando você abrir, vai ser
+          porque escolheu abrir.
         </p>
       </div>
     </div>

@@ -143,7 +143,7 @@ export function OabSearch() {
         </p>
       ) : (
         <p className={styles.micro}>
-          Consulta em base pública. Não pedimos senha de tribunal, não pedimos cartão. Leva 30 segundos.
+          Consulta em base pública. Não pedimos senha de tribunal nem cartão.
         </p>
       )}
     </div>
@@ -172,8 +172,8 @@ function Resultado({
             Nenhuma publicação sua nos últimos 6 meses em base pública.
           </p>
           <p className={styles.resultadoDesc}>
-            Isso é comum em OAB nova, em processos que correm em segredo de justiça e em tribunais que
-            publicam pouco no diário nacional. Com login do tribunal, alcançamos também esses.
+            Acontece com OAB nova e com processos que correm em segredo de justiça. Com o login do
+            tribunal, a leitura alcança também esses.
           </p>
           <div className={styles.resultadoAcoes}>
             <button type="button" className={styles.voltar} onClick={onVoltar}>
@@ -215,8 +215,8 @@ function Resultado({
           {cobertos > 0
             ? `Sincronizamos ${cobertos === tribunais.length ? 'todos' : cobertos} desses tribunais automaticamente, várias vezes por dia. `
             : ''}
-          Esses são só os que publicaram nos últimos 6 meses em base pública — com login do tribunal
-          entram também os sigilosos e os em segredo de justiça.
+          Aqui aparecem só os que publicaram nos últimos 6 meses em base pública. Com o login do
+          tribunal entram também os que correm em segredo de justiça.
         </p>
 
         <div className={styles.resultadoAcoes}>
@@ -227,7 +227,7 @@ function Resultado({
             Consultar outra OAB
           </button>
         </div>
-        <p className={styles.micro}>Grátis para começar. Sem cartão. Sem senha de tribunal.</p>
+        <p className={styles.micro}>Grátis para começar, sem cartão.</p>
       </div>
     </div>
   );

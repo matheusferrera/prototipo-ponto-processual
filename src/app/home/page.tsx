@@ -26,9 +26,9 @@ import { Faq } from './Faq';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
-  title: 'Ponto Processual — Pare de ser o alarme dos seus processos',
+  title: 'Ponto Processual — a ronda nos sistemas dos tribunais, sem você',
   description:
-    'Monitoramento automático de processos judiciais com alertas no WhatsApp. Consulte pela sua OAB e veja seus processos agora, sem senha de tribunal e sem cartão.',
+    'Acompanhamento de processos no PJe, e-SAJ, Projudi e no diário nacional, com aviso no WhatsApp no dia da publicação. Consulte pela sua OAB, sem senha de tribunal.',
 };
 
 const TRIBUNAIS = ['PJe', 'e-SAJ', 'Projudi', 'CPE', 'TJSP', 'TJRJ', 'TJMG', 'TJRN', 'TJPI', 'TRF1', 'TRF3', 'TRT2', 'STJ', 'TST', 'DJEN'];
@@ -36,57 +36,57 @@ const TRIBUNAIS = ['PJe', 'e-SAJ', 'Projudi', 'CPE', 'TJSP', 'TJRJ', 'TJMG', 'TJ
 const PILARES = [
   {
     icon: 'documento' as const,
-    pain: 'Hoje: a publicação está em algum lugar entre o diário, o PJe, o e-SAJ, o Projudi e o CPE — cada um com login, layout e formato próprios.',
+    pain: 'A publicação pode estar no diário nacional ou dentro do PJe, do e-SAJ, do Projudi. Cada um com login e formato próprios.',
     title: 'A ronda deixa de ser sua',
-    desc: 'A plataforma abre os sistemas, lê publicações, intimações e despachos e joga tudo no processo certo. Você para de procurar.',
+    desc: 'A plataforma abre os sistemas, lê o que saiu e arquiva cada publicação no processo a que ela pertence.',
   },
   {
     icon: 'prazo' as const,
-    pain: 'Hoje: você descobre o prazo relendo a movimentação — e contando os dias úteis na mão.',
+    pain: 'Você descobre o prazo relendo a movimentação e contando os dias úteis na mão.',
     title: 'O prazo já vem contado',
-    desc: 'Onde a movimentação abre prazo, a data de vencimento entra no calendário sozinha, em dias úteis, com o feriado do tribunal descontado.',
+    desc: 'Quando a movimentação abre prazo, a data de vencimento entra no calendário já em dias úteis, com o feriado do tribunal descontado.',
   },
   {
     icon: 'whatsapp' as const,
-    pain: 'Hoje: o cliente liga perguntando status e a planilha de controle está desatualizada desde terça.',
-    title: 'Você sabe antes de perguntarem',
-    desc: 'O alerta chega no WhatsApp no dia da publicação. Quando o cliente liga, a resposta já está com você.',
+    pain: 'O cliente liga perguntando o andamento e a planilha de controle está parada desde terça.',
+    title: 'Quando o cliente liga, você já sabe',
+    desc: 'O alerta chega no WhatsApp no mesmo dia da publicação, com o número do processo e o que saiu.',
   },
 ];
 
 const NARRATIVA = [
-  'Você informa a OAB. A partir daí, a plataforma passa a acompanhar tudo que sai no seu nome — sem você abrir sistema nenhum.',
-  'Cada publicação é lida, classificada e ligada ao processo certo, venha ela do diário nacional ou do sistema do tribunal.',
-  'Quando aquilo abre prazo, a data entra no seu calendário já contada em dias úteis.',
-  'O alerta chega no seu WhatsApp no mesmo dia, dizendo o que saiu e o que aquilo exige de você.',
-  'No fim do mês, as horas que você gastava conferindo tribunal voltam para o que só você pode fazer: advogar.',
+  'Você informa a sua OAB. A partir daí a plataforma acompanha tudo que sai no seu nome, sem você abrir sistema nenhum.',
+  'Cada publicação é lida e ligada ao processo a que pertence, venha do diário nacional ou do sistema do tribunal.',
+  'Se aquilo abre prazo, a data entra no seu calendário contada em dias úteis.',
+  'O alerta chega no seu WhatsApp no mesmo dia, com o que saiu e o que aquilo exige de você.',
+  'No fim do mês sobram as horas que você gastava conferindo sistema de tribunal.',
 ];
 
 const EXCELENCIA = [
   {
     icon: ScanSearch,
-    title: 'Leitura que não cansa e não tira férias',
-    desc: 'Publicação vem em PDF, em texto corrido de diário e em tela de sistema. A plataforma lê os três formatos no mesmo ritmo, todo dia, inclusive naquele feriado em que você preferiu não olhar.',
+    title: 'Lê PDF, diário e tela de sistema',
+    desc: 'Publicação chega em PDF, em texto corrido de diário e em tela de sistema. A plataforma lê os três no mesmo ritmo, todo dia, feriado incluído.',
   },
   {
     icon: FileSearch,
-    title: 'Prazo com data, não com aviso genérico',
-    desc: 'Identificamos o que está pendente em cada processo, a data em que vence e quem precisa agir. E continuamos avisando até sair do vermelho.',
+    title: 'Prazo com data e com responsável',
+    desc: 'Identificamos o que está pendente em cada processo, a data em que vence e quem precisa agir. O aviso se repete enquanto o prazo estiver em aberto.',
   },
   {
     icon: Radar,
     title: 'Mudou de vara, de instância ou de sistema',
-    desc: 'Redistribuição e subida de instância são onde o processo some do radar. Detectamos a mudança e seguimos o processo até o novo lugar.',
+    desc: 'Redistribuição e subida de instância são onde o processo costuma se perder. A plataforma detecta a mudança e segue o processo até o novo juízo.',
   },
   {
     icon: MessageCircleMore,
     title: 'Alerta onde você já olha',
-    desc: 'Não é mais um painel para você lembrar de abrir. É o WhatsApp que já está na sua mão, com o resumo do dia e o que exige ação.',
+    desc: 'O aviso vai para o WhatsApp que já está na sua mão, com o resumo do dia e o que exige ação de você.',
   },
   {
     icon: Gauge,
-    title: 'Uma torre de controle da carteira inteira',
-    desc: 'O que está parado, o que precisa de ação hoje e o que vence esta semana — em uma tela, sem planilha paralela.',
+    title: 'A carteira inteira em uma tela',
+    desc: 'O que está parado, o que precisa de ação hoje e o que vence esta semana, sem planilha paralela.',
   },
 ];
 
@@ -101,7 +101,7 @@ const PARA_QUEM = [
   },
   {
     tag: 'Volume',
-    title: 'Prática de massa — trabalhista, previdenciário, consumidor — com processos em muitos tribunais ao mesmo tempo',
+    title: 'Prática de massa em trabalhista, previdenciário ou consumidor, com processos espalhados em muitos tribunais',
   },
 ];
 
@@ -109,17 +109,17 @@ const GARANTIAS = [
   {
     icon: Lock,
     title: 'Você começa sem entregar senha nenhuma',
-    desc: 'A consulta inicial usa a base pública do diário nacional — a mesma que qualquer pessoa pode consultar. Nenhuma credencial de tribunal é pedida para você ver o resultado.',
+    desc: 'A consulta inicial usa a base pública do diário nacional, a mesma que qualquer pessoa pode consultar. Para ver o resultado, nenhuma credencial de tribunal é pedida.',
   },
   {
     icon: EyeOff,
-    title: 'Se você cadastrar credencial, ela fica cega para nós',
-    desc: 'Guardada criptografada em repouso e em trânsito. Ninguém da nossa equipe consegue ler a sua senha — ela é usada exclusivamente pela máquina que lê as suas movimentações.',
+    title: 'Se você cadastrar credencial, nós não conseguimos ler',
+    desc: 'Ela fica criptografada em repouso e em trânsito. Ninguém da equipe tem como abrir a sua senha: quem usa é a máquina que lê as suas movimentações.',
   },
   {
     icon: ShieldCheck,
-    title: 'Somente leitura. Sempre.',
-    desc: 'Nada é protocolado, assinado, juntado ou respondido em seu nome. O ato processual continua sendo seu, inteiro. E você revoga o acesso com um clique, quando quiser.',
+    title: 'O acesso é só de leitura',
+    desc: 'Nada é protocolado nem assinado em seu nome. O ato processual continua inteiramente seu, e você revoga o acesso quando quiser.',
   },
 ];
 
@@ -166,8 +166,8 @@ export default function HomePage() {
             Faça a conta do seu plantão
           </h2>
           <p className={styles.sectionLead}>
-            Ninguém contrata você para abrir sistema de tribunal. Mas alguém tem que abrir — e hoje é
-            você, todo dia, de graça.
+            Ninguém contrata advogado para abrir sistema de tribunal. Mas alguém tem que abrir, e essa
+            hora sai do seu dia.
           </p>
         </div>
         <CustoRonda />
@@ -179,11 +179,11 @@ export default function HomePage() {
       <section className={`${styles.section} ${styles.sectionAlt}`} id="produto" data-nav-theme="light">
         <div className={styles.resumoGrid}>
           <div>
-            <h2 className={styles.h2}>Um lugar só, em vez de um por tribunal</h2>
+            <h2 className={styles.h2}>Um endereço só para o que hoje está espalhado</h2>
             <p className={styles.sectionLead}>
-              Cada tribunal do país tem o seu sistema, e nenhum deles conversa com o outro. A plataforma
-              fala com todos eles — PJe, e-SAJ, Projudi, CPE e o diário nacional — e devolve seus
-              processos, movimentações e prazos em um único lugar.
+              Cada tribunal do país tem o seu sistema e nenhum deles conversa com o outro. A plataforma
+              fala com todos: PJe, e-SAJ, Projudi, CPE e o diário nacional. Seus processos,
+              movimentações e prazos voltam reunidos em um lugar só.
             </p>
           </div>
           <TribunalFlow />
@@ -199,8 +199,8 @@ export default function HomePage() {
             Perde porque a informação não chega até você.
           </h2>
           <p className={styles.sectionLead}>
-            O problema nunca foi falta de cuidado. É que a informação está espalhada em sistemas que não
-            se falam, e alguém precisa ir buscar cada pedaço. O Ponto Processual é esse alguém.
+            A informação está espalhada em sistemas que não se falam, e alguém precisa ir buscar pedaço
+            por pedaço. É esse trabalho que a plataforma assume.
           </p>
         </div>
         <div className={styles.pillarsList}>
@@ -240,9 +240,9 @@ export default function HomePage() {
             Cobrimos o país inteiro
           </h2>
           <p className={styles.sectionLead}>
-            O diário nacional alcança todos os tribunais do Brasil. Sobre ele, sincronizamos direto
-            dentro dos sistemas — e essa lista cresce todo mês. Consulte pela sua OAB e veja quais dos
-            seus tribunais já entram na sincronização direta.
+            O diário nacional alcança todos os tribunais do Brasil. Acima dele, sincronizamos direto
+            dentro dos sistemas, e essa lista cresce a cada mês. Consulte pela sua OAB para ver quais
+            dos seus tribunais já entram na sincronização direta.
           </p>
         </div>
       </section>
@@ -287,8 +287,7 @@ export default function HomePage() {
         <div>
           <h2 className={`${styles.h2} ${styles.h2Light}`}>O que a plataforma faz enquanto você advoga</h2>
           <p className={`${styles.sectionLead} ${styles.sectionLeadLight}`}>
-            Tudo aqui é trabalho que hoje consome a sua manhã — e que ninguém está pagando para você
-            fazer.
+            Tudo aqui é trabalho que consome a sua manhã e que ninguém está pagando para você fazer.
           </p>
         </div>
         <div className={styles.excelenciaList}>
@@ -343,8 +342,7 @@ export default function HomePage() {
             Sim, vamos falar da sua senha do PJe
           </h2>
           <p className={styles.sectionLead}>
-            É a primeira pergunta de todo advogado que chega aqui, e ela merece resposta direta — não
-            três selos no rodapé.
+            É a primeira pergunta de todo advogado que chega aqui. Três selos no rodapé não respondem.
           </p>
         </div>
         <div className={styles.garantiasList}>
@@ -392,10 +390,10 @@ export default function HomePage() {
         <HeroRays />
         <div className={styles.finalCtaInner} data-reveal>
           <h2 className={`${styles.h2} ${styles.h2Light}`}>
-            Amanhã de manhã: a ronda de sempre, ou uma mensagem?
+            Amanhã de manhã ainda vai ser você abrindo os sistemas?
           </h2>
           <p className={styles.finalCtaLead}>
-            Consulte pela sua OAB e veja, agora, quantos processos seus estão publicando por aí.
+            Consulte pela sua OAB e veja quantos processos seus estão publicando neste momento.
           </p>
           <OabSearch />
         </div>

@@ -81,9 +81,9 @@ export function CustoRonda() {
       </div>
 
       <p className={styles.rodape}>
-        Isso é login, token e Ctrl+C — não é petição, não é audiência, não é cliente novo.
+        Isso é login, token e Ctrl+C. Não entra em nenhuma hora faturável.
         <br />
-        E nas outras horas do mês, quando ninguém está olhando, o tribunal continua publicando.
+        E o tribunal continua publicando nas horas em que ninguém está olhando.
       </p>
     </div>
   );
