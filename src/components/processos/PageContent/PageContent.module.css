@@ -80,9 +80,19 @@
 
 @media (min-width: 768px) {
   .contentColumn { flex: 1; min-height: 0; }
-  .scrollArea { overflow: auto; flex: 1; min-height: 0; }
+  /* A coluna não rola sozinha: ela só distribui a altura entre o resumo, os
+     controles e a tabela. Quem rola (nos dois eixos) é a própria tabela — assim
+     rolar a tabela para o lado não arrasta o resumo e a barra de filtros junto. */
+  .scrollArea {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
   .mobileControls { display: none; }
   .pagination { padding: 14px 32px; }
   .pageBtn { min-width: auto; min-height: auto; }
-  .empty { padding-top: 72px; padding-bottom: 72px; }
+  /* sem tabela para rolar, o vazio precisa do próprio scroll em telas baixas */
+  .empty { padding-top: 72px; padding-bottom: 72px; min-height: 0; overflow-y: auto; }
 }

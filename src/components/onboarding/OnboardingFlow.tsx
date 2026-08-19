@@ -55,12 +55,24 @@ function getNomeTribunalFallback(sigla: string): string {
   return sigla;
 }
 
-export function OnboardingFlow({ sistemas }: { sistemas: SistemaGroup[] }) {
+/**
+ * `oabInicial` vem da busca do hero da landing, carregada pela URL
+ * (`/cadastro?oab=…&uf=…` → `/onboarding?oab=…&uf=…`). Quem já digitou a OAB
+ * lá não digita de novo aqui — repetir a pergunta logo depois do cadastro é
+ * atrito gratuito, e é onde esta tela mais perde gente.
+ */
+export function OnboardingFlow({
+  sistemas,
+  oabInicial,
+}: {
+  sistemas: SistemaGroup[];
+  oabInicial?: { numero: string; uf: string };
+}) {
   const router = useRouter();
 
   const [stage, setStage] = useState<Stage>('oab');
-  const [oabNumero, setOabNumero] = useState('');
-  const [oabUf, setOabUf] = useState('');
+  const [oabNumero, setOabNumero] = useState(oabInicial?.numero ?? '');
+  const [oabUf, setOabUf] = useState(oabInicial?.uf ?? '');
   const [buscando, setBuscando] = useState(false);
   const [preview, setPreview] = useState<DjenPreview | null>(null);
   const [erro, setErro] = useState('');

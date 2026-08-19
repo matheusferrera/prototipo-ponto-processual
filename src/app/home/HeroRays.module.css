@@ -82,18 +82,60 @@
 }
 
 @media (max-width: 767px) {
-  /* No mobile o leque fica no alto/direita: a coluna de texto ocupa a
-     largura inteira, então empurrar as faixas pra cima do texto derrubaria o
-     contraste. */
+  /* No mobile o leque continua ancorado no alto/direita — a coluna de texto
+     ocupa a largura inteira e faixas por cima dela derrubariam o contraste —,
+     mas a máscara é bem maior e mais suave que a do desktop: o núcleo sólido
+     vai mais longe e a queda para transparente é lenta, então o leque ocupa o
+     terço superior inteiro em vez de um borrão no canto. */
   .field {
-    mask-image: radial-gradient(ellipse 92% 60% at 84% 20%, #000 0%, #000 16%, transparent 84%);
-    -webkit-mask-image: radial-gradient(ellipse 92% 60% at 84% 20%, #000 0%, #000 16%, transparent 84%);
+    mask-image: radial-gradient(ellipse 118% 66% at 79% 15%, #000 0%, #000 26%, transparent 90%);
+    -webkit-mask-image: radial-gradient(ellipse 118% 66% at 79% 15%, #000 0%, #000 26%, transparent 90%);
   }
+
+  /* Passo lateral menor por camada: assim as 11 faixas cabem na tela estreita
+     e nenhuma precisa ser escondida. Antes o passo de 6,5% jogava da oitava em
+     diante para fora do quadro, e o leque perdia justamente as camadas da
+     frente — as de maior amplitude, que são as que dão o movimento. */
   .ray {
-    width: 38%;
-    left: calc(44% + var(--i) * 6.5%);
+    width: 34%;
+    left: calc(30% + var(--i) * 5.2%);
+    top: calc(-34% + var(--i) * 6.5%);
+    /* Sem ponteiro fino não há paralaxe de mouse: no mobile o scroll é a
+       única força, então ele carrega sozinho a amplitude que no desktop é
+       dividida entre os dois. Deslocamento e abertura do skew crescem. */
+    opacity: calc(0.075 + var(--i) * 0.021);
+    transform:
+      translate3d(
+        calc(var(--i) * var(--p) * 23px),
+        calc(var(--p) * (16px + var(--i) * 27px) * -1),
+        0
+      )
+      skewY(calc(-31deg + var(--p) * 15deg));
   }
-  .ray:nth-child(n + 8) { display: none; }
+
+  @keyframes ray-enter-mobile {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 72px, 0) skewY(-31deg);
+    }
+    to {
+      opacity: calc(0.075 + var(--i) * 0.021);
+      transform: translate3d(0, 0, 0) skewY(-31deg);
+    }
+  }
+  .ray { animation-name: ray-enter-mobile; }
+
+  /* O brilho é o que mais se perde numa tela pequena: percurso maior e um
+     pouco mais de presença para ele atravessar o leque de ponta a ponta
+     dentro do curso de scroll do hero. */
+  .sheen {
+    opacity: 0.85;
+    transform: translate3d(
+      calc((var(--p) - 0.3) * 122%),
+      calc(var(--p) * -20%),
+      0
+    );
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -101,6 +143,11 @@
     animation: none;
     opacity: calc(0.045 + var(--i) * 0.016);
     transform: skewY(-31deg);
+  }
+  /* Quem pediu menos movimento não pediu um leque mais apagado: no mobile o
+     desenho parado mantém a presença da versão animada. */
+  @media (max-width: 767px) {
+    .ray { opacity: calc(0.075 + var(--i) * 0.021); }
   }
   .sheen { display: none; }
 }

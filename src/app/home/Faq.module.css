@@ -1,0 +1,61 @@
+/* FAQ como sumário: linhas cheias separadas por friso, no mesmo formato
+   "andamento" dos casos de uso. Sem caixas, sem raio. */
+
+.lista {
+  margin-top: 36px;
+  border-top: 1px solid var(--line);
+}
+
+.item { border-bottom: 1px solid var(--line); }
+
+.pergunta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--serif, Georgia, serif);
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.pergunta::-webkit-details-marker { display: none; }
+.pergunta:hover { color: var(--brick); }
+
+/* Marca de + / − desenhada em CSS: dois traços, o vertical some quando
+   aberto. Ícone importado aqui seria peso sem ganho. */
+.marca {
+  position: relative;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  align-self: center;
+}
+.marca::before,
+.marca::after {
+  content: '';
+  position: absolute;
+  background: var(--brick);
+  transition: opacity 0.18s ease;
+}
+.marca::before { top: 5px; left: 0; width: 12px; height: 2px; }
+.marca::after { left: 5px; top: 0; width: 2px; height: 12px; }
+.item[open] .marca::after { opacity: 0; }
+
+.resposta {
+  margin: 0;
+  padding: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+
+@media (min-width: 768px) {
+  .lista { margin-top: 48px; }
+  .pergunta { padding: 24px 0; font-size: 21px; }
+  .resposta { font-size: 15px; padding-bottom: 26px; }
+}

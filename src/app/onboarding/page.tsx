@@ -9,7 +9,12 @@ export const metadata: Metadata = {
   description: 'Cadastre seu primeiro tribunal para começar a monitorar seus processos.',
 };
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ oab?: string; uf?: string }>;
+}) {
+  const { oab, uf } = await searchParams;
   const [secrets, { tribunals }] = await Promise.all([
     getScraperSecrets(),
     getTribunaisStatus(),
@@ -22,5 +27,10 @@ export default async function OnboardingPage() {
 
   const sistemas = agruparPorSistema(tribunals);
 
-  return <OnboardingFlow sistemas={sistemas} />;
+  // Vem da busca por OAB da landing; sanitizado aqui porque a URL é do usuário.
+  const numero = (oab ?? '').replace(/\D/g, '').slice(0, 8);
+  const ufSigla = (uf ?? '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+  const oabInicial = numero && ufSigla.length === 2 ? { numero, uf: ufSigla } : undefined;
+
+  return <OnboardingFlow sistemas={sistemas} oabInicial={oabInicial} />;
 }

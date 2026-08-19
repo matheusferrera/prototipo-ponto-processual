@@ -20,6 +20,54 @@
   color: var(--ink-3);
 }
 
+/* ===== Aviso de cobertura (só dados públicos) =====
+   Não é um alerta de urgência: é um enquadramento do que a tela mostra, então
+   ganha ícone, título e corpo em vez da faixa de uma linha dos alertas. */
+.avisoCobertura {
+  margin: 16px 16px 0;
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--signal-soft);
+  border-left: 3px solid var(--signal);
+}
+.avisoIcone {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--signal);
+  border: 1px solid var(--signal);
+}
+.avisoTitulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--signal);
+}
+.avisoTexto {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 78ch;
+}
+.avisoCta {
+  flex-shrink: 0;
+  align-self: center;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  background: var(--signal);
+  padding: 9px 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 /* ===== Alerta crítico ===== */
 .dashAlert {
   margin: 16px 16px 0;
@@ -28,6 +76,14 @@
   flex-wrap: wrap;
 }
 .dashAlertPart { display: none; }
+.dashAlertLink {
+  margin-left: auto;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 12px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
 
 /* ===== Stat cards ===== */
 .statCards {
@@ -45,6 +101,14 @@
 .statCard:nth-child(odd)    { border-right: 1px solid var(--line-soft); }
 .statCard:last-child        { border-bottom: none; }
 .statCard:nth-last-child(2) { border-bottom: none; }
+.statLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
 .statNum {
   font-weight: 800;
   font-size: 28px;
@@ -100,15 +164,95 @@
   padding: 11px 24px;
 }
 
+/* ===== Faixa dos próximos dias =====
+   Uma coluna por dia: dia da semana, número, barra proporcional ao pico da
+   janela e contagem. No celular quebra em 2 linhas de 7 (uma semana cada). */
+.faixaPanel { margin: 16px 16px 0; }
+.faixa {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  padding: 12px 8px;
+}
+.faixaDia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  text-decoration: none;
+  border-right: 1px solid var(--line-soft);
+}
+.faixaDia:nth-child(7n) { border-right: none; }
+.faixaDia:hover              { background: var(--paper-2); }
+.faixaDia[data-fds]          { background: var(--paper-2); }
+.faixaDia[data-fds]:hover    { background: var(--paper-3); }
+.faixaDia[data-vazio]        { opacity: 0.55; }
+.faixaSemana {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--ink-4);
+}
+.faixaData {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-2);
+}
+.faixaBarraTrilho {
+  width: 100%;
+  max-width: 22px;
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.faixaBarra { width: 100%; min-height: 2px; }
+.faixaCount {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* ===== Grade principal ===== */
 .dashGrid {
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  margin: 16px;
+  margin: 16px 16px 0;
 }
+.dashGridLast { margin-bottom: 16px; }
 
 /* ===== Painéis (movimentações · prazos · carteira) ===== */
 .panelHead    { padding: 12px 14px; }
+.panelTitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brick);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.panelLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.panelLink:hover { color: var(--brick); }
+.panelFooterLink {
+  display: block;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.panelFooterLink:hover { color: var(--brick); }
 .movRow       { padding: 11px 14px; gap: 10px; }
 .movTipo      { display: none; }
 .prazoRow     { padding: 10px 14px; gap: 10px; }
@@ -122,7 +266,8 @@
   .syncBadge { display: block; }
   .movTipo   { display: inline; }
 
-  .dashAlert     { margin: 24px 32px 0; padding: 12px 20px; gap: 12px; flex-wrap: nowrap; }
+  .avisoCobertura { margin: 24px 32px 0; padding: 16px 20px; gap: 16px; flex-wrap: nowrap; }
+  .dashAlert      { margin: 24px 32px 0; padding: 12px 20px; gap: 12px; flex-wrap: nowrap; }
   .dashAlertPart { display: inline; }
 
   /* stat cards → 4 numa linha só */
@@ -138,12 +283,21 @@
 
   .dashEmpty { margin: 24px 32px 32px; padding: 64px 32px; }
 
+  /* faixa → os 14 dias numa linha só */
+  .faixaPanel { margin: 20px 32px 0; }
+  .faixa      { grid-template-columns: repeat(14, minmax(0, 1fr)); padding: 14px 12px; }
+  .faixaDia:nth-child(7n)  { border-right: 1px solid var(--line-soft); }
+  .faixaDia:nth-child(14n) { border-right: none; }
+  .faixaBarraTrilho { height: 44px; }
+
   /* grade → feed + coluna lateral */
-  .dashGrid { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; margin: 20px 32px 32px; }
+  .dashGrid     { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; margin: 20px 32px 0; }
+  .dashGridLast { margin-bottom: 32px; }
 
   /* painéis com mais respiro */
-  .panelHead    { padding: 14px 20px; }
-  .movRow       { padding: 12px 20px; gap: 12px; }
-  .prazoRow     { padding: 10px 20px; gap: 12px; }
-  .carteiraBody { padding: 16px 20px; }
+  .panelHead       { padding: 14px 20px; }
+  .panelFooterLink { padding: 10px 20px; }
+  .movRow          { padding: 12px 20px; gap: 12px; }
+  .prazoRow        { padding: 10px 20px; gap: 12px; }
+  .carteiraBody    { padding: 16px 20px; }
 }

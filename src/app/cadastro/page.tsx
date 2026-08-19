@@ -76,8 +76,17 @@ export default function CadastroPage() {
         setServerError(data.error ?? 'Erro ao criar conta.');
         return;
       }
-      // /auth/register agora faz login automático
-      router.push('/onboarding');
+      // /auth/register agora faz login automático.
+      // Preserva a OAB que veio da busca da landing (`/cadastro?oab=…&uf=…`)
+      // para o onboarding não repetir a pergunta. Lido de window aqui, e não
+      // via useSearchParams, para não obrigar a página a um boundary de
+      // Suspense só por causa de um valor usado uma vez, fora da renderização.
+      const entrada = new URLSearchParams(window.location.search);
+      const oab = (entrada.get('oab') ?? '').replace(/\D/g, '');
+      const uf = (entrada.get('uf') ?? '').replace(/[^a-zA-Z]/g, '').toUpperCase();
+      const repasse = oab && uf.length === 2 ? `?${new URLSearchParams({ oab, uf })}` : '';
+
+      router.push(`/onboarding${repasse}`);
       return;
     } catch {
       setServerError('Não foi possível conectar ao servidor.');

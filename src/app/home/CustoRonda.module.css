@@ -1,0 +1,117 @@
+/* Calculadora do custo da ronda — mesma gramática da landing: números em
+   serif fino grande, rótulos em mono tracked, zero border-radius. */
+
+.wrap {
+  margin-top: 36px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.controles {
+  display: grid;
+  gap: 26px;
+  padding: 24px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.controle { display: block; }
+
+.controleLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.controleValor {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brick);
+  letter-spacing: 0;
+}
+
+/* Slider quadrado: trilho de 4px e polegar retangular, sem raio nenhum —
+   o controle nativo arredondado destoaria de toda a página. */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--line);
+  outline: none;
+  cursor: pointer;
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 22px;
+  background: var(--brick);
+  border: 0;
+  cursor: pointer;
+}
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 22px;
+  background: var(--brick);
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+.range:focus-visible { box-shadow: 0 0 0 3px var(--brick-soft); }
+
+.saida {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 26px 20px;
+  background: var(--paper-3);
+}
+
+.saidaItem { display: flex; flex-direction: column; gap: 4px; }
+
+.saidaNumero {
+  font-family: var(--serif, Georgia, serif);
+  font-weight: 300;
+  font-size: 42px;
+  line-height: 1;
+  color: var(--brick);
+  letter-spacing: -0.02em;
+}
+
+.saidaLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.saidaDivisor { display: none; }
+
+.rodape {
+  margin: 0;
+  padding: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
+@media (min-width: 768px) {
+  .controles { grid-template-columns: 1fr 1fr; gap: 40px; padding: 30px 32px; }
+  .saida { flex-direction: row; align-items: center; gap: 40px; padding: 32px; }
+  .saidaDivisor { display: block; width: 1px; align-self: stretch; background: var(--line); }
+  .saidaNumero { font-size: 54px; }
+  .rodape { padding: 22px 32px; font-size: 14px; }
+}

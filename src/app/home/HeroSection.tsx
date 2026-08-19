@@ -1,11 +1,15 @@
 import styles from './page.module.css';
 import { HeroRays } from './HeroRays';
+import { OabSearch } from './OabSearch';
 
 /**
  * Hero alto (≈1,7 tela) com o leque de faixas grudado no fundo: a altura
  * extra existe só para dar percurso de scroll ao paralaxe do HeroRays — o
  * conteúdo fica centrado na primeira tela. Nenhum texto troca ou some com o
- * scroll; o único estado interativo é o hover do CTA.
+ * scroll.
+ *
+ * O CTA acima da dobra é a busca por OAB, não uma âncora de scroll: o
+ * visitante vê os próprios processos antes de decidir se dá o e-mail.
  */
 export function HeroSection() {
   return (
@@ -17,17 +21,20 @@ export function HeroSection() {
       <div className={styles.heroContent}>
         <p className={styles.eyebrow}>
           <span className={styles.eyebrowMark} aria-hidden="true" />
-          Processo certo. Prazo certo. Sempre.
+          PJe · e-SAJ · Projudi · CPE · DJEN
         </p>
-        <h1 className={styles.h1}>Fique à frente de cada prazo</h1>
+        <h1 className={styles.h1}>
+          Você não deveria ser o alarme{' '}
+          <br className={styles.brWide} />
+          dos seus próprios processos.
+        </h1>
         <p className={styles.heroLead}>
-          Ponto Processual é uma plataforma de monitoramento agêntico construída para escritórios que
-          não podem errar prazo. Acompanhamos seus processos em todos os tribunais, decodificamos cada
-          movimentação e avisamos você no WhatsApp — antes que vire prejuízo.
+          Cada tribunal tem o seu sistema, o seu login e o seu jeito de publicar — e alguém precisa
+          abrir todos, todo dia, só para ter certeza de que nada saiu. O Ponto Processual faz essa ronda
+          por você, lê cada publicação e te chama no WhatsApp quando alguma coisa muda.
         </p>
-        <a href="#como-funciona" className={styles.heroCta}>
-          VER COMO FUNCIONA
-        </a>
+
+        <OabSearch />
       </div>
     </section>
   );

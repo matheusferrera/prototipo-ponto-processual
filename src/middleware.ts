@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_ROUTES = ['/login', '/cadastro', '/home'];
 const API_AUTH_PREFIX = '/api/auth';
+/* Rotas de API anônimas usadas pela landing (busca por OAB do hero): existem
+   justamente para quem ainda não tem conta, então não passam pelo guard. */
+const API_PUBLIC_PREFIX = '/api/public';
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith(API_AUTH_PREFIX)) return NextResponse.next();
+  if (pathname.startsWith(API_PUBLIC_PREFIX)) return NextResponse.next();
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.endsWith('opengraph-image')) return NextResponse.next();
 
   const isPublic = PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));

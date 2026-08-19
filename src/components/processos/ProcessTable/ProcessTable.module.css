@@ -15,6 +15,7 @@
 .workspace[data-density='spacious'] { --row-block-padding: 20px; }
 
 .tableMeta {
+  flex-shrink: 0;
   min-height: 38px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--line-soft);
@@ -32,6 +33,7 @@
   display: none;
   width: 100%;
   overflow: visible;
+  overscroll-behavior: contain;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 1px solid var(--line);
@@ -616,10 +618,26 @@
 
 /* Tablet / desktop: tabela de verdade em vez dos cards */
 @media (min-width: 768px) {
-  .workspace { border-top: 1px solid var(--line); }
+  /* A tabela é o único elemento que rola: a área de scroll da página apenas
+     reparte a altura, e a rolagem (horizontal e vertical) fica presa aqui
+     dentro. Sem isso, arrastar a tabela para o lado leva junto o resumo, a
+     barra de filtros e o cabeçalho da tabela. Como este wrapper é também o
+     scrollport vertical, o `position: sticky` do <thead> continua valendo. */
+  .workspace {
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
   .tableMeta { padding: 8px 32px; }
   .tableMetaHint { display: block; }
-  .desktopTableWrap { display: block; }
+  .desktopTableWrap {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
   .mobileCards { display: none; }
 
   .settingsTrigger { min-width: auto; min-height: auto; }

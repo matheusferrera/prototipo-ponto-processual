@@ -9,6 +9,8 @@ import {
   Gauge,
   ScanSearch,
   Scale,
+  Lock,
+  EyeOff,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { fraunces } from './fonts';
@@ -17,110 +19,114 @@ import { HeroRays } from './HeroRays';
 import { TribunalFlow } from './TribunalFlow';
 import { HeroSection } from './HeroSection';
 import { LinedIcon } from './LinedIcon';
+import { OabSearch } from './OabSearch';
+import { CustoRonda } from './CustoRonda';
+import { ProvaAlerta } from './ProvaAlerta';
+import { Faq } from './Faq';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
-  title: 'Ponto Processual — Fique à frente de cada prazo',
+  title: 'Ponto Processual — Pare de ser o alarme dos seus processos',
   description:
-    'Monitoramento agêntico de processos judiciais com alertas via WhatsApp. Cobrimos PJe, e-SAJ, Projudi e CPE em todos os tribunais do país.',
+    'Monitoramento automático de processos judiciais com alertas no WhatsApp. Consulte pela sua OAB e veja seus processos agora, sem senha de tribunal e sem cartão.',
 };
 
-const TRIBUNAIS = ['PJe', 'e-SAJ', 'Projudi', 'CPE', 'TJSP', 'TJRJ', 'TJRN', 'TJPI', 'TRF', 'STJ', 'TST', 'TJMG'];
+const TRIBUNAIS = ['PJe', 'e-SAJ', 'Projudi', 'CPE', 'TJSP', 'TJRJ', 'TJMG', 'TJRN', 'TJPI', 'TRF1', 'TRF3', 'TRT2', 'STJ', 'TST', 'DJEN'];
 
 const PILARES = [
   {
     icon: 'documento' as const,
-    pain: 'Hoje: publicações somem entre PJe, e-SAJ, Projudi e CPE — cada um com login e formato próprio.',
-    title: 'Leia cada movimentação automaticamente',
-    desc: 'Elimine a fricção de acompanhar manualmente publicações, intimações e despachos em dezenas de tribunais diferentes.',
+    pain: 'Hoje: a publicação está em algum lugar entre o diário, o PJe, o e-SAJ, o Projudi e o CPE — cada um com login, layout e formato próprios.',
+    title: 'A ronda deixa de ser sua',
+    desc: 'A plataforma abre os sistemas, lê publicações, intimações e despachos e joga tudo no processo certo. Você para de procurar.',
   },
   {
     icon: 'prazo' as const,
-    pain: 'Hoje: um prazo perdido vira prejuízo pro cliente — e risco de responsabilização pro escritório.',
-    title: 'Elimine o prazo perdido',
-    desc: 'Transforme o calendário processual em alertas automáticos. Priorize o que importa e evite prejuízo ao cliente.',
+    pain: 'Hoje: você descobre o prazo relendo a movimentação — e contando os dias úteis na mão.',
+    title: 'O prazo já vem contado',
+    desc: 'Onde a movimentação abre prazo, a data de vencimento entra no calendário sozinha, em dias úteis, com o feriado do tribunal descontado.',
   },
   {
     icon: 'whatsapp' as const,
-    pain: 'Hoje: o cliente liga toda hora perguntando status, e a planilha de controle nunca está atualizada.',
-    title: 'Feche o ciclo com seu cliente',
-    desc: 'Mantenha clientes informados pelo WhatsApp, sem ligação manual nem planilha de controle.',
+    pain: 'Hoje: o cliente liga perguntando status e a planilha de controle está desatualizada desde terça.',
+    title: 'Você sabe antes de perguntarem',
+    desc: 'O alerta chega no WhatsApp no dia da publicação. Quando o cliente liga, a resposta já está com você.',
   },
 ];
 
 const NARRATIVA = [
-  'O Ponto Processual classifica e organiza automaticamente movimentações de qualquer tribunal — PJe, e-SAJ, Projudi, CPE — direto para o processo certo.',
-  'Onde a movimentação muda um prazo, o calendário é atualizado automaticamente.',
-  'O sistema verifica novas publicações e intimações a cada ciclo de sincronização, 24 horas por dia.',
-  'O status de cada processo e a proximidade do prazo definem as recomendações e alertas do Ponto Processual.',
-  'No fim, toda essa informação move você e sua equipe mais rápido, evitando prejuízo e liberando tempo para o que importa: a advocacia.',
-];
-
-const DEPOIMENTOS = [
-  {
-    quote: 'Com o Ponto Processual, paro de abrir seis sistemas de tribunal por dia. Chega tudo no WhatsApp e eu decido em segundos.',
-    name: 'Camila R.',
-    role: 'Advogada trabalhista',
-  },
-  {
-    quote: 'Eu chamo de “efeito Ponto”. Cada prazo que a gente antecipa vira uma cliente mais tranquila e menos ligação de última hora.',
-    name: 'Rafael S.',
-    role: 'Sócio, banca previdenciária',
-  },
-  {
-    quote: 'Consigo acompanhar o triplo de processos sem contratar mais ninguém pro operacional.',
-    name: 'Beatriz A.',
-    role: 'Advogada autônoma',
-  },
+  'Você informa a OAB. A partir daí, a plataforma passa a acompanhar tudo que sai no seu nome — sem você abrir sistema nenhum.',
+  'Cada publicação é lida, classificada e ligada ao processo certo, venha ela do diário nacional ou do sistema do tribunal.',
+  'Quando aquilo abre prazo, a data entra no seu calendário já contada em dias úteis.',
+  'O alerta chega no seu WhatsApp no mesmo dia, dizendo o que saiu e o que aquilo exige de você.',
+  'No fim do mês, as horas que você gastava conferindo tribunal voltam para o que só você pode fazer: advogar.',
 ];
 
 const EXCELENCIA = [
   {
     icon: ScanSearch,
-    title: 'Movimentações no piloto automático',
-    desc: 'Publicações começam em PDF, print de tela e diário oficial. O Ponto Processual lê tudo isso mais rápido que o estagiário mais dedicado — e sem cansar.',
+    title: 'Leitura que não cansa e não tira férias',
+    desc: 'Publicação vem em PDF, em texto corrido de diário e em tela de sistema. A plataforma lê os três formatos no mesmo ritmo, todo dia, inclusive naquele feriado em que você preferiu não olhar.',
   },
   {
     icon: FileSearch,
-    title: 'Nunca perca um prazo por falta de informação',
-    desc: 'Identificamos o que está pendente em cada processo, avisamos a pessoa certa e acompanhamos até resolver.',
+    title: 'Prazo com data, não com aviso genérico',
+    desc: 'Identificamos o que está pendente em cada processo, a data em que vence e quem precisa agir. E continuamos avisando até sair do vermelho.',
   },
   {
     icon: Radar,
-    title: 'Triagem inteligente de tribunal e credencial',
-    desc: 'Detectamos mudança de vara ou instância cedo. Credenciais são reverificadas automaticamente.',
+    title: 'Mudou de vara, de instância ou de sistema',
+    desc: 'Redistribuição e subida de instância são onde o processo some do radar. Detectamos a mudança e seguimos o processo até o novo lugar.',
   },
   {
     icon: MessageCircleMore,
-    title: 'Alertas integrados no WhatsApp',
-    desc: 'Chega de checar sistema de tribunal toda manhã. Alerta e acompanhamento em um só lugar.',
+    title: 'Alerta onde você já olha',
+    desc: 'Não é mais um painel para você lembrar de abrir. É o WhatsApp que já está na sua mão, com o resumo do dia e o que exige ação.',
   },
   {
     icon: Gauge,
-    title: 'Uma torre de controle para toda a carteira',
-    desc: 'Veja o que está parado, o que precisa de ação hoje e o que impacta seus prazos críticos.',
+    title: 'Uma torre de controle da carteira inteira',
+    desc: 'O que está parado, o que precisa de ação hoje e o que vence esta semana — em uma tela, sem planilha paralela.',
   },
 ];
 
-const CASOS_DE_USO = [
-  {
-    tag: 'Trabalhista',
-    title: 'Escritório trabalhista reduz 80% do tempo de triagem de movimentações',
-  },
-  {
-    tag: 'Previdenciário',
-    title: 'Banca previdenciária monitora 3x mais processos com a mesma equipe',
-  },
+const PARA_QUEM = [
   {
     tag: 'Autônomo',
-    title: 'Advogado autônomo nunca mais perde prazo desde que automatizou os alertas',
+    title: 'Advogado sozinho, sem estagiário para fazer a conferência diária dos sistemas',
+  },
+  {
+    tag: 'Banca',
+    title: 'Escritório em que a carteira cresceu mais rápido que o time de operacional',
+  },
+  {
+    tag: 'Volume',
+    title: 'Prática de massa — trabalhista, previdenciário, consumidor — com processos em muitos tribunais ao mesmo tempo',
+  },
+];
+
+const GARANTIAS = [
+  {
+    icon: Lock,
+    title: 'Você começa sem entregar senha nenhuma',
+    desc: 'A consulta inicial usa a base pública do diário nacional — a mesma que qualquer pessoa pode consultar. Nenhuma credencial de tribunal é pedida para você ver o resultado.',
+  },
+  {
+    icon: EyeOff,
+    title: 'Se você cadastrar credencial, ela fica cega para nós',
+    desc: 'Guardada criptografada em repouso e em trânsito. Ninguém da nossa equipe consegue ler a sua senha — ela é usada exclusivamente pela máquina que lê as suas movimentações.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Somente leitura. Sempre.',
+    desc: 'Nada é protocolado, assinado, juntado ou respondido em seu nome. O ato processual continua sendo seu, inteiro. E você revoga o acesso com um clique, quando quiser.',
   },
 ];
 
 const SELOS = [
   { icon: ShieldCheck, label: 'LGPD', desc: 'Tratamento de dados conforme a lei' },
-  { icon: Scale, label: 'Sigilo profissional', desc: 'Acesso restrito por credencial própria' },
-  { icon: ShieldCheck, label: 'Criptografia', desc: 'Em trânsito e em repouso' },
+  { icon: Scale, label: 'Sigilo profissional', desc: 'Acesso restrito à sua própria credencial' },
+  { icon: Lock, label: 'Criptografia', desc: 'Em trânsito e em repouso' },
 ];
 
 export default function HomePage() {
@@ -135,31 +141,49 @@ export default function HomePage() {
         <nav className={styles.navLinks}>
           <a href="#produto">Produto</a>
           <a href="#como-funciona">Como funciona</a>
-          <a href="#depoimentos">Depoimentos</a>
-          <a href="#seguranca">Segurança</a>
+          <a href="#seguranca">Sua senha</a>
+          <a href="#perguntas">Perguntas</a>
         </nav>
         <div className={styles.navCtas}>
           <Link href="/login" className={styles.navSecondary}>
             Entrar
           </Link>
           <Link href="/cadastro" className={buttonVariants({ className: styles.navPrimary })}>
-            COMEÇAR AGORA
+            CRIAR CONTA
           </Link>
         </div>
       </header>
 
       <HeroSection />
 
+      {/* O CUSTO DA RONDA — primeira seção depois do hero de propósito: quem
+          não buscou a OAB precisa levar o número da própria dor antes de
+          qualquer explicação de produto. */}
+      <section className={styles.section} data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>
+            <span className={styles.sectionGlyph} aria-hidden="true">§</span>
+            Faça a conta do seu plantão
+          </h2>
+          <p className={styles.sectionLead}>
+            Ninguém contrata você para abrir sistema de tribunal. Mas alguém tem que abrir — e hoje é
+            você, todo dia, de graça.
+          </p>
+        </div>
+        <CustoRonda />
+      </section>
+
       {/* EM RESUMO — o diagrama mostra literalmente o que a seção descreve:
           tribunais heterogêneos convergindo pro produto, saindo em um único
           fluxo pro WhatsApp do usuário. */}
-      <section className={styles.section} id="produto" data-nav-theme="light">
+      <section className={`${styles.section} ${styles.sectionAlt}`} id="produto" data-nav-theme="light">
         <div className={styles.resumoGrid}>
           <div>
-            <h2 className={styles.h2}>Com o Ponto Processual, nenhum prazo escapa</h2>
+            <h2 className={styles.h2}>Um lugar só, em vez de um por tribunal</h2>
             <p className={styles.sectionLead}>
-              Tome decisões operacionais inteligentes em cada movimentação, prazo ou intimação. Nossa tecnologia
-              se integra ao PJe, e-SAJ, Projudi e CPE — e centraliza seus processos, movimentações e prazos em um único lugar.
+              Cada tribunal do país tem o seu sistema, e nenhum deles conversa com o outro. A plataforma
+              fala com todos eles — PJe, e-SAJ, Projudi, CPE e o diário nacional — e devolve seus
+              processos, movimentações e prazos em um único lugar.
             </p>
           </div>
           <TribunalFlow />
@@ -167,16 +191,16 @@ export default function HomePage() {
       </section>
 
       {/* O RESULTADO */}
-      <section className={`${styles.section} ${styles.sectionAlt}`} id="como-funciona" data-nav-theme="light">
+      <section className={styles.section} id="como-funciona" data-nav-theme="light">
         <div>
           <h2 className={styles.h2}>
-            Sem prazo perdido.
-            <br />
-            Menos risco. Processos sob controle.
+            Você não perde prazo por desorganização.{' '}
+            <br className={styles.brWide} />
+            Perde porque a informação não chega até você.
           </h2>
           <p className={styles.sectionLead}>
-            O Ponto Processual processa e organiza automaticamente cada movimentação para que escritórios
-            de alta performance nunca sejam pegos de surpresa.
+            O problema nunca foi falta de cuidado. É que a informação está espalhada em sistemas que não
+            se falam, e alguém precisa ir buscar cada pedaço. O Ponto Processual é esse alguém.
           </p>
         </div>
         <div className={styles.pillarsList}>
@@ -199,16 +223,26 @@ export default function HomePage() {
         </a>
       </section>
 
+      {/* PROVA DE PRODUTO — substitui os depoimentos: mostra o formato real do
+          alerta em vez de citação anônima não verificável. */}
+      <section className={`${styles.section} ${styles.sectionAlt}`} data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>É isso que chega no seu WhatsApp</h2>
+        </div>
+        <ProvaAlerta />
+      </section>
+
       {/* COBERTURA */}
       <section className={styles.section} data-nav-theme="light">
         <div>
           <h2 className={styles.h2}>
             <span className={styles.sectionGlyph} aria-hidden="true">§</span>
-            Cobrimos os tribunais que importam
+            Cobrimos o país inteiro
           </h2>
           <p className={styles.sectionLead}>
-            De bancas grandes a advogados autônomos, monitoramos processos em sistemas de todo o país,
-            todos os dias.
+            O diário nacional alcança todos os tribunais do Brasil. Sobre ele, sincronizamos direto
+            dentro dos sistemas — e essa lista cresce todo mês. Consulte pela sua OAB e veja quais dos
+            seus tribunais já entram na sincronização direta.
           </p>
         </div>
       </section>
@@ -228,7 +262,7 @@ export default function HomePage() {
       <section className={`${styles.section} ${styles.sectionAlt}`} data-nav-theme="light">
         <h2 className={styles.h2}>
           <span className={styles.sectionGlyph} aria-hidden="true">§</span>
-          Prazos monitorados, sempre atualizados
+          Da sua OAB até o seu bolso
         </h2>
         <div className={styles.narrativa}>
           {NARRATIVA.map((p, i) => (
@@ -245,39 +279,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* DEPOIMENTOS */}
-      <section className={styles.section} id="depoimentos" data-nav-theme="light">
-        <div>
-          <h2 className={styles.h2}>O que dizem os escritórios</h2>
-        </div>
-        <div className={styles.testimonialGrid}>
-          {DEPOIMENTOS.map((d, i) => (
-            <figure
-              key={d.name}
-              className={styles.testimonial}
-              data-reveal
-              style={{ '--reveal-delay': `${i * 90}ms` } as CSSProperties}
-            >
-              <blockquote className={styles.testimonialQuote}>&ldquo;{d.quote}&rdquo;</blockquote>
-              <figcaption className={styles.testimonialAttr}>
-                <span className={styles.testimonialName}>{d.name}</span>
-                <span className={styles.testimonialRole}>{d.role}</span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
-
       {/* EXCELÊNCIA OPERACIONAL — lista corrida dividida por friso, não
           grid de cards: o mesmo módulo (ícone + título + texto) já apareceu
           em "O resultado"; repeti-lo em caixas idênticas leria como
           template. Aqui vira índice denso, à la sumário processual. */}
       <section className={`${styles.section} ${styles.sectionDark}`} id="excelencia" data-nav-theme="dark">
         <div>
-          <h2 className={`${styles.h2} ${styles.h2Light}`}>O Ponto Processual eleva o padrão da advocacia</h2>
+          <h2 className={`${styles.h2} ${styles.h2Light}`}>O que a plataforma faz enquanto você advoga</h2>
           <p className={`${styles.sectionLead} ${styles.sectionLeadLight}`}>
-            Escritórios líderes trabalham mais rápido, cometem menos erros e crescem com menos esforço
-            operacional.
+            Tudo aqui é trabalho que hoje consome a sua manhã — e que ninguém está pagando para você
+            fazer.
           </p>
         </div>
         <div className={styles.excelenciaList}>
@@ -297,18 +308,18 @@ export default function HomePage() {
           ))}
         </div>
         <Link href="/cadastro" className={styles.ctaLight}>
-          COMEÇAR AGORA
+          CRIAR CONTA
         </Link>
       </section>
 
-      {/* CASOS DE USO — três linhas cheias (formato "andamento/docket"),
+      {/* PARA QUEM É — três linhas cheias (formato "andamento/docket"),
           não três caixas iguais lado a lado. */}
       <section className={styles.section} data-nav-theme="light">
         <div>
-          <h2 className={styles.h2}>Como escritórios usam o Ponto Processual</h2>
+          <h2 className={styles.h2}>Para quem o Ponto Processual foi feito</h2>
         </div>
         <div className={styles.casosList}>
-          {CASOS_DE_USO.map((c, i) => (
+          {PARA_QUEM.map((c, i) => (
             <div
               key={c.title}
               className={styles.caso}
@@ -322,13 +333,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SEGURANÇA */}
+      {/* SEGURANÇA — trata a objeção nº1 de frente e pelo nome, porque é ela
+          que trava o cadastro. Selos genéricos sozinhos não respondem "vocês
+          vão pegar minha senha do PJe?". */}
       <section className={`${styles.section} ${styles.sectionAlt}`} id="seguranca" data-nav-theme="light">
         <div>
           <h2 className={styles.h2}>
             <span className={styles.sectionGlyph} aria-hidden="true">§</span>
-            Feito para lidar com dados sob sigilo
+            Sim, vamos falar da sua senha do PJe
           </h2>
+          <p className={styles.sectionLead}>
+            É a primeira pergunta de todo advogado que chega aqui, e ela merece resposta direta — não
+            três selos no rodapé.
+          </p>
+        </div>
+        <div className={styles.garantiasList}>
+          {GARANTIAS.map((g, i) => (
+            <div
+              key={g.title}
+              className={styles.garantia}
+              data-reveal
+              style={{ '--reveal-delay': `${i * 90}ms` } as CSSProperties}
+            >
+              <span className={styles.garantiaMark}>§{i + 1}</span>
+              <g.icon size={20} strokeWidth={1.75} className={styles.garantiaIcon} />
+              <div>
+                <h3 className={styles.garantiaTitulo}>{g.title}</h3>
+                <p className={styles.garantiaDesc}>{g.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
         <div className={styles.selosGrid}>
           {SELOS.map(s => (
@@ -343,14 +377,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA FINAL */}
+      {/* PERGUNTAS — último obstáculo antes do CTA. */}
+      <section className={styles.section} id="perguntas" data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>Antes que você pergunte</h2>
+        </div>
+        <Faq />
+      </section>
+
+      {/* CTA FINAL — repete a busca por OAB, não um botão genérico: quem
+          chegou até aqui já entendeu o produto e está pronto para o mesmo
+          microcompromisso do topo. */}
       <section className={styles.finalCta} data-nav-theme="dark">
         <HeroRays />
         <div className={styles.finalCtaInner} data-reveal>
-          <h2 className={`${styles.h2} ${styles.h2Light}`}>Nenhum prazo perdido. Só resultado.</h2>
-          <Link href="/cadastro" className={styles.ctaLight}>
-            COMEÇAR AGORA
-          </Link>
+          <h2 className={`${styles.h2} ${styles.h2Light}`}>
+            Amanhã de manhã: a ronda de sempre, ou uma mensagem?
+          </h2>
+          <p className={styles.finalCtaLead}>
+            Consulte pela sua OAB e veja, agora, quantos processos seus estão publicando por aí.
+          </p>
+          <OabSearch />
         </div>
       </section>
 
@@ -363,9 +410,9 @@ export default function HomePage() {
         <div className={styles.footerCols}>
           <div className={styles.footerCol}>
             <span className={styles.footerColTitle}>Produto</span>
-            <Link href="/processos">Processos</Link>
-            <Link href="/prazos">Prazos</Link>
-            <Link href="/credenciais">Credenciais</Link>
+            <a href="#produto">Como funciona</a>
+            <a href="#excelencia">Recursos</a>
+            <a href="#perguntas">Perguntas</a>
           </div>
           <div className={styles.footerCol}>
             <span className={styles.footerColTitle}>Conta</span>

@@ -579,9 +579,13 @@ function ResizeHandle({
   );
 }
 
-/** Ancestral rolável mais próximo — concentra os dois eixos para permitir o header sticky. */
+/**
+ * Elemento rolável mais próximo, começando pelo próprio wrapper da tabela — é
+ * ele que concentra os dois eixos (o scroll horizontal não pode vazar para a
+ * página) e serve de scrollport para o header sticky.
+ */
 function findScrollAncestor(start: HTMLElement): HTMLElement {
-  let node = start.parentElement;
+  let node: HTMLElement | null = start;
   while (node) {
     const style = window.getComputedStyle(node);
     const scrollsX = (style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth;

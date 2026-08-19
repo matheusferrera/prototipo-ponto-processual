@@ -157,6 +157,13 @@
 }
 .h2Light { color: #fff; }
 
+/* Quebra de linha desenhada para a medida larga do H1. No mobile a linha já
+   quebra sozinha e a quebra manual só produz um verso curto e torto. */
+.brWide { display: none; }
+@media (min-width: 768px) {
+  .brWide { display: inline; }
+}
+
 .sectionLead {
   font-size: 15px;
   line-height: 1.6;
@@ -211,7 +218,7 @@
 .heroContent {
   position: relative;
   z-index: 1;
-  max-width: 640px;
+  max-width: 680px;
   width: 100%;
   min-height: 100vh;
   display: flex;
@@ -247,6 +254,27 @@
   background: #fff;
   transform: translate(-2px, -2px);
   box-shadow: 7px 7px 0 rgba(0, 0, 0, 0.22);
+}
+
+/* Véu de legibilidade — só no mobile. Ali o leque ocupa o terço superior
+   inteiro e passa por trás das linhas de texto, que usam a largura toda. Em
+   vez de enfraquecer o efeito para salvar o contraste, o texto ganha um fundo
+   próprio: verde-escuro cheio onde as linhas começam, dissolvendo até o canto
+   alto/direito, que é justamente onde o leque abre e onde não há o que ler. */
+@media (max-width: 767px) {
+  .heroContent::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      104deg,
+      rgba(20, 83, 45, 0.92) 4%,
+      rgba(20, 83, 45, 0.66) 44%,
+      rgba(20, 83, 45, 0) 82%
+    );
+  }
 }
 
 @media (min-width: 768px) {
@@ -520,6 +548,54 @@
   .casoTitle { font-size: 21px; }
 }
 
+/* ===== Garantias de segurança — objeção da senha =====
+   Formato §1/§2/§3, o mesmo da narrativa: aqui a numeração também é
+   legítima (são três compromissos distintos, lidos em ordem), e o glifo
+   amarra a seção ao vocabulário processual do resto da página. */
+.garantiasList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 36px;
+  border-top: 1px solid var(--line);
+}
+.garantia {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: start;
+  gap: 14px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+.garantiaMark {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick);
+  padding-top: 2px;
+}
+.garantiaIcon { color: var(--brick); flex-shrink: 0; margin-top: 1px; }
+.garantiaTitulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.garantiaDesc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 62ch;
+}
+
+@media (min-width: 768px) {
+  .garantiasList { margin-top: 48px; }
+  .garantia { padding: 26px 0; gap: 18px; }
+  .garantiaTitulo { font-size: 17px; }
+  .garantiaDesc { font-size: 14px; }
+}
+
 /* ===== Selos de segurança ===== */
 .selosGrid {
   display: flex;
@@ -547,8 +623,37 @@
   padding: 56px 20px;
   overflow: hidden;
 }
-.finalCtaInner { position: relative; max-width: 520px; }
-.finalCtaInner .h2 { margin-bottom: 28px; }
+/* z-index próprio para o véu de legibilidade do mobile (::before, abaixo)
+   ficar contido neste elemento: sem o stacking context, um filho em z-index
+   -1 escaparia para trás do fundo da própria seção. */
+.finalCtaInner { position: relative; z-index: 1; max-width: 620px; }
+.finalCtaInner .h2 { margin-bottom: 16px; }
+.finalCtaLead {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--paper-2);
+  max-width: 48ch;
+  margin: 0 0 28px;
+}
+
+/* Mesmo véu do hero: no CTA final o leque também passa por trás do texto no
+   mobile. Os insets negativos estouram a caixa do conteúdo para o gradiente
+   morrer fora dela, sem borda visível. */
+@media (max-width: 767px) {
+  .finalCtaInner::before {
+    content: '';
+    position: absolute;
+    inset: -36px -24px;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      104deg,
+      rgba(20, 83, 45, 0.92) 4%,
+      rgba(20, 83, 45, 0.66) 46%,
+      rgba(20, 83, 45, 0) 84%
+    );
+  }
+}
 
 @media (min-width: 768px) {
   .finalCta { padding: 100px 40px; }
