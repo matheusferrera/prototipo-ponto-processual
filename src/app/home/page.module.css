@@ -260,19 +260,25 @@
    inteiro e passa por trás das linhas de texto, que usam a largura toda. Em
    vez de enfraquecer o efeito para salvar o contraste, o texto ganha um fundo
    próprio: verde-escuro cheio onde as linhas começam, dissolvendo até o canto
-   alto/direito, que é justamente onde o leque abre e onde não há o que ler. */
+   alto/direito, que é justamente onde o leque abre e onde não há o que ler.
+   O véu segura quase toda a opacidade até depois do fim das linhas: as faixas
+   continuam desenhando ali, mas em fantasma, sem cortar as letras.
+
+   Ele mora na camada grudada, junto com o leque, e não no .heroContent: preso
+   ao conteúdo, o véu rolava por cima de faixas paradas e sua borda de baixo
+   varria o hero como um degrau de cor no meio da tela. Grudado, não tem borda
+   nenhuma dentro do quadro — começa e termina junto com o próprio fundo. */
 @media (max-width: 767px) {
-  .heroContent::before {
+  .heroBg::after {
     content: '';
     position: absolute;
     inset: 0;
-    z-index: -1;
-    pointer-events: none;
     background: linear-gradient(
       104deg,
-      rgba(20, 83, 45, 0.92) 4%,
-      rgba(20, 83, 45, 0.66) 44%,
-      rgba(20, 83, 45, 0) 82%
+      rgba(20, 83, 45, 0.96) 6%,
+      rgba(20, 83, 45, 0.9) 46%,
+      rgba(20, 83, 45, 0.62) 72%,
+      rgba(20, 83, 45, 0) 97%
     );
   }
 }
@@ -623,9 +629,7 @@
   padding: 56px 20px;
   overflow: hidden;
 }
-/* z-index próprio para o véu de legibilidade do mobile (::before, abaixo)
-   ficar contido neste elemento: sem o stacking context, um filho em z-index
-   -1 escaparia para trás do fundo da própria seção. */
+/* Acima do leque e do véu de legibilidade do mobile (::after da seção). */
 .finalCtaInner { position: relative; z-index: 1; max-width: 620px; }
 .finalCtaInner .h2 { margin-bottom: 16px; }
 .finalCtaLead {
@@ -637,20 +641,22 @@
 }
 
 /* Mesmo véu do hero: no CTA final o leque também passa por trás do texto no
-   mobile. Os insets negativos estouram a caixa do conteúdo para o gradiente
-   morrer fora dela, sem borda visível. */
+   mobile. Ele cobre a seção inteira, não a caixa do conteúdo — recortado na
+   caixa, mesmo com insets negativos, o topo e o pé do gradiente cruzavam as
+   faixas como duas linhas horizontais de corte. Colado nas bordas da seção,
+   suas únicas bordas caem onde a cor já muda de qualquer jeito. */
 @media (max-width: 767px) {
-  .finalCtaInner::before {
+  .finalCta::after {
     content: '';
     position: absolute;
-    inset: -36px -24px;
-    z-index: -1;
+    inset: 0;
     pointer-events: none;
     background: linear-gradient(
       104deg,
-      rgba(20, 83, 45, 0.92) 4%,
-      rgba(20, 83, 45, 0.66) 46%,
-      rgba(20, 83, 45, 0) 84%
+      rgba(20, 83, 45, 0.96) 6%,
+      rgba(20, 83, 45, 0.9) 48%,
+      rgba(20, 83, 45, 0.62) 74%,
+      rgba(20, 83, 45, 0) 97%
     );
   }
 }

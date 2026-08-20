@@ -4,8 +4,9 @@ import { useEffect } from 'react';
 
 /**
  * Efeitos de scroll leves, sem sequestrar a roda do mouse:
- * 1) Reveal (fade + subir) em elementos `[data-reveal]` ao entrarem na
- *    viewport — via IntersectionObserver, uma vez só por elemento.
+ * 1) Reveal (fade + subir) em elementos `[data-reveal]` quando o topo deles
+ *    cruza a linha do meio da tela — via IntersectionObserver, uma vez só
+ *    por elemento.
  * 2) Header muda de tema (claro/escuro) conforme a seção `[data-nav-theme]`
  *    que está sob ele.
  *
@@ -23,18 +24,41 @@ export function ScrollFx() {
     document.body.classList.add('reveal-armed');
 
     const revealEls = document.querySelectorAll<HTMLElement>('[data-reveal]');
-    const revealIo = new IntersectionObserver(
-      entries => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            revealIo.unobserve(entry.target);
-          }
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
+    let pending = revealEls.length;
+
+    const reveal = (el: Element) => {
+      el.classList.add('is-visible');
+      midIo.unobserve(el);
+      pending -= 1;
+      if (pending === 0) window.removeEventListener('scroll', onTailScroll);
+    };
+
+    // Gatilho: o topo do elemento cruzando a linha do meio da tela. Encolher
+    // a raiz em 50% pela base é o que move o gatilho do rodapé da viewport
+    // para o centro dela — antes bastava o elemento espiar na borda de baixo
+    // (12% dele visível) e a animação já tinha acabado quando ele chegava na
+    // altura de leitura. Numa grade, a linha inteira cruza o meio junto, e é
+    // isso que faz o --reveal-delay ler como cascata em vez de ruído.
+    const midIo = new IntersectionObserver(
+      entries => entries.forEach(e => e.isIntersecting && reveal(e.target)),
+      { threshold: 0, rootMargin: '0px 0px -50% 0px' },
     );
-    revealEls.forEach(el => revealIo.observe(el));
+    revealEls.forEach(el => midIo.observe(el));
+
+    // Rede de segurança para o pé da página: quem está na última meia-tela do
+    // documento nunca alcança a linha do meio — a página acaba antes — e
+    // ficaria escondido para sempre (o CTA final numa tela alta, tipo tablet
+    // em pé). Encostou no fim do scroll, o que sobrou entra: a essa altura
+    // esses elementos já estão em quadro, parados na posição final deles.
+    // Não serve de gatilho concorrente porque só dispara no fim do curso.
+    const onTailScroll = () => {
+      const d = document.documentElement;
+      if (window.scrollY + window.innerHeight < d.scrollHeight - 2) return;
+      revealEls.forEach(el => {
+        if (!el.classList.contains('is-visible')) reveal(el);
+      });
+    };
+    window.addEventListener('scroll', onTailScroll, { passive: true });
 
     const header = document.querySelector<HTMLElement>('[data-nav]');
     const themeEls = document.querySelectorAll<HTMLElement>('[data-nav-theme]');
@@ -54,7 +78,8 @@ export function ScrollFx() {
     }
 
     return () => {
-      revealIo.disconnect();
+      midIo.disconnect();
+      window.removeEventListener('scroll', onTailScroll);
       navIo?.disconnect();
     };
   }, []);
