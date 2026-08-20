@@ -1,34 +1,27 @@
 'use client';
 
-import { useId, useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
-import { Loader2, Search, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2, Search, AlertTriangle } from 'lucide-react';
+import { slugOab } from '@/lib/previa';
 import styles from './OabSearch.module.css';
-
-type Tribunal = { sigla: string; processos: number; suportado: boolean };
-type Preview = { totalProcessos: number; desde: string; tribunais: Tribunal[] };
-
-/** `/cadastro?oab=…&uf=…` → `/onboarding?oab=…&uf=…`: a OAB viaja pela URL até
- *  o onboarding, que a usa como valor inicial do campo. */
-function hrefCadastro(numero: string, uf: string) {
-  const qs = new URLSearchParams({ oab: numero.replace(/\D/g, ''), uf: uf.toUpperCase() });
-  return `/cadastro?${qs}`;
-}
 
 /**
  * Busca por OAB do hero — o único CTA acima da dobra.
  *
- * Chama a rota anônima `/api/public/preview-oab` (DJEN nacional, base
- * pública), então o visitante vê os **próprios** processos antes de dar
- * e-mail: a prova mais forte que a página tem para oferecer. O cadastro só
- * é pedido depois do resultado, já com a OAB guardada em localStorage para
- * o onboarding não repetir a pergunta.
+ * Não resolve o resultado aqui: navega para `/oab/<numero>-<uf>`, uma página
+ * dedicada que consulta o DJEN no servidor e conta a história dos processos
+ * daquela OAB. Isso dá URL ao resultado (sobrevive ao F5, é compartilhável) e
+ * tira o visitante da landing, que competia por atenção com o próprio dado.
+ *
+ * A validação continua aqui para o erro de campo aparecer no lugar onde ele
+ * foi cometido, em vez de virar uma navegação para uma página de erro.
  */
 export function OabSearch() {
+  const router = useRouter();
+  const [navegando, iniciarNavegacao] = useTransition();
   const [numero, setNumero] = useState('');
   const [uf, setUf] = useState('');
-  const [estado, setEstado] = useState<'idle' | 'buscando' | 'ok' | 'erro'>('idle');
-  const [preview, setPreview] = useState<Preview | null>(null);
   const [erro, setErro] = useState('');
   const numeroRef = useRef<HTMLInputElement>(null);
   const ufRef = useRef<HTMLInputElement>(null);
@@ -38,56 +31,28 @@ export function OabSearch() {
   const idNumero = `oab-numero-${uid}`;
   const idUf = `oab-uf-${uid}`;
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (estado === 'buscando') return;
+    if (navegando) return;
 
     /* O botão nunca fica desabilitado: sobre o fundo verde do hero um CTA
        apagado lê como indisponível, e é o único pedido acima da dobra. Campo
        faltando vira foco + aviso, não um botão morto. */
     if (!numero.trim()) {
       setErro('Informe o número da sua OAB.');
-      setEstado('erro');
       numeroRef.current?.focus();
       return;
     }
     if (uf.trim().length !== 2) {
       setErro('Informe a UF da sua OAB (duas letras).');
-      setEstado('erro');
       ufRef.current?.focus();
       return;
     }
 
-    setEstado('buscando');
     setErro('');
-
-    try {
-      const qs = new URLSearchParams({ oabNumero: numero.replace(/\D/g, ''), oabUf: uf.toUpperCase() });
-      const res = await fetch(`/api/public/preview-oab?${qs}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErro(data.error ?? 'Não foi possível consultar agora.');
-        setEstado('erro');
-        return;
-      }
-
-      setPreview(data as Preview);
-      setEstado('ok');
-    } catch {
-      setErro('Não foi possível consultar agora. Tente de novo em instantes.');
-      setEstado('erro');
-    }
-  }
-
-  function reiniciar() {
-    setEstado('idle');
-    setPreview(null);
-    setErro('');
-  }
-
-  if (estado === 'ok' && preview) {
-    return <Resultado preview={preview} numero={numero} uf={uf.toUpperCase()} onVoltar={reiniciar} />;
+    /* Dentro da transição, `navegando` cobre a espera do Server Component —
+       o botão mostra progresso até a página de resultado assumir. */
+    iniciarNavegacao(() => router.push(`/oab/${slugOab(numero, uf)}`));
   }
 
   return (
@@ -124,8 +89,8 @@ export function OabSearch() {
             autoComplete="off"
           />
         </div>
-        <button type="submit" className={styles.submit} disabled={estado === 'buscando'}>
-          {estado === 'buscando' ? (
+        <button type="submit" className={styles.submit} disabled={navegando}>
+          {navegando ? (
             <>
               <Loader2 size={14} className={styles.spin} /> CONSULTANDO…
             </>
@@ -137,8 +102,8 @@ export function OabSearch() {
         </button>
       </form>
 
-      {estado === 'erro' ? (
-        <p className={styles.erro}>
+      {erro ? (
+        <p className={styles.erro} role="alert">
           <AlertTriangle size={14} /> {erro}
         </p>
       ) : (
@@ -146,89 +111,6 @@ export function OabSearch() {
           Consulta em base pública. Não pedimos senha de tribunal nem cartão.
         </p>
       )}
-    </div>
-  );
-}
-
-function Resultado({
-  preview,
-  numero,
-  uf,
-  onVoltar,
-}: {
-  preview: Preview;
-  numero: string;
-  uf: string;
-  onVoltar: () => void;
-}) {
-  const { totalProcessos, tribunais } = preview;
-
-  if (totalProcessos === 0) {
-    return (
-      <div className={styles.wrap}>
-        <div className={styles.resultado}>
-          <p className={styles.resultadoEyebrow}>OAB {numero}/{uf}</p>
-          <p className={styles.resultadoTitulo}>
-            Nenhuma publicação sua nos últimos 6 meses em base pública.
-          </p>
-          <p className={styles.resultadoDesc}>
-            Acontece com OAB nova e com processos que correm em segredo de justiça. Com o login do
-            tribunal, a leitura alcança também esses.
-          </p>
-          <div className={styles.resultadoAcoes}>
-            <button type="button" className={styles.voltar} onClick={onVoltar}>
-              Tentar outra OAB
-            </button>
-            <Link href={hrefCadastro(numero, uf)} className={styles.resultadoCta}>
-              CRIAR CONTA <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const cobertos = tribunais.filter(t => t.suportado).length;
-
-  return (
-    <div className={styles.wrap}>
-      <div className={styles.resultado}>
-        <p className={styles.resultadoEyebrow}>Encontramos na OAB {numero}/{uf}</p>
-        <p className={styles.resultadoNumero}>
-          <strong>{totalProcessos}</strong> {totalProcessos === 1 ? 'processo' : 'processos'} em{' '}
-          <strong>{tribunais.length}</strong> {tribunais.length === 1 ? 'tribunal' : 'tribunais'}
-        </p>
-
-        <ul className={styles.tribunais}>
-          {tribunais.slice(0, 8).map(t => (
-            <li key={t.sigla} className={styles.tribunal} data-suportado={t.suportado ? 'sim' : 'nao'}>
-              <span className={styles.tribunalSigla}>{t.sigla}</span>
-              <span className={styles.tribunalQtd}>{t.processos}</span>
-            </li>
-          ))}
-          {tribunais.length > 8 && (
-            <li className={styles.tribunalMais}>+{tribunais.length - 8}</li>
-          )}
-        </ul>
-
-        <p className={styles.resultadoDesc}>
-          {cobertos > 0
-            ? `Sincronizamos ${cobertos === tribunais.length ? 'todos' : cobertos} desses tribunais automaticamente, várias vezes por dia. `
-            : ''}
-          Aqui aparecem só os que publicaram nos últimos 6 meses em base pública. Com o login do
-          tribunal entram também os que correm em segredo de justiça.
-        </p>
-
-        <div className={styles.resultadoAcoes}>
-          <Link href={hrefCadastro(numero, uf)} className={styles.resultadoCta}>
-            MONITORAR ESSES PROCESSOS <ArrowRight size={14} />
-          </Link>
-          <button type="button" className={styles.voltar} onClick={onVoltar}>
-            Consultar outra OAB
-          </button>
-        </div>
-        <p className={styles.micro}>Grátis para começar, sem cartão.</p>
-      </div>
     </div>
   );
 }

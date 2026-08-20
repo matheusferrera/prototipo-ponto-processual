@@ -1,6 +1,18 @@
 /* Ilustrações dos pilares — mesma linguagem do diagrama do hero
-   (TribunalFlow.module.css): linha fina, brilho lento, rastro de pontos
-   (posicionado via rAF em useFlowTrails) e nó com anel pulsando. */
+   (TribunalFlow.module.css): linha fina, rastro de pontos (posicionado em
+   useFlowTrails) e nó com anel.
+
+   Diferença deliberada em relação ao hero: aqui **nada anda sozinho**. O
+   ciclo é a rolagem, então não há keyframe em loop nenhum neste arquivo — o
+   que muda, muda por mudança de estado (`data-flow-hit`, `data-flow-state`),
+   com transição. Parado na tela, o desenho fica parado.
+
+   Hierarquia de leitura, do mais forte pro mais fraco:
+     1. mecanismo vivo  → --brick (rastro, trilho, nó, marco aceso)
+     2. objeto          → --line, 2px (a folha, o calendário, o celular)
+     3. detalhe inerte  → --line / --ink-4 (pauta, grade, hachura)
+   O trilho era a coisa mais apagada do desenho e é justamente o que está
+   funcionando; agora ele é verde e pontilhado — a rota antes de ser feita. */
 
 .svg {
   display: block;
@@ -23,12 +35,29 @@
   fill: none;
   stroke: var(--brick);
   stroke-width: 2;
-  opacity: 0.12;
-  animation: flow-shimmer 3.2s ease-in-out infinite;
+  opacity: 0.16;
 }
-@keyframes flow-shimmer {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 0.5; }
+
+/* Trilho: a rota que o rastro ainda vai percorrer. */
+.rail {
+  fill: none;
+  stroke: var(--brick);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+  opacity: 0.3;
+}
+
+/* ── rastro ─────────────────────────────────────────────────────────────── */
+.trail {
+  opacity: 1;
+  transition: opacity 320ms ease;
+}
+/* Fora da janela do rastro os pontos ficariam empilhados na origem ou no
+   destino; some com eles e deixa o marco aceso contar o que aconteceu. */
+.trail[data-flow-state='idle'],
+.trail[data-flow-state='done'] {
+  opacity: 0;
 }
 
 .trailDot {
@@ -40,49 +69,35 @@
 /* ── nós ────────────────────────────────────────────────────────────────── */
 .nodeMark { fill: var(--brick); }
 
-.ring {
+.ring,
+.ringOrigin {
   fill: none;
   stroke: var(--brick);
   stroke-width: 2;
   transform-box: fill-box;
   transform-origin: center;
-  animation: node-ping 2.4s ease-out infinite;
 }
-@keyframes node-ping {
-  0% { transform: scale(0.4); opacity: 0.6; }
-  100% { transform: scale(1.9); opacity: 0; }
+/* Origem: sempre visível, sem pedir atenção. */
+.ringOrigin { opacity: 0.4; }
+/* Destino: apagado até o rastro chegar; então trava, uma vez só. */
+.ring {
+  opacity: 0.18;
+  transition: opacity 240ms ease;
+}
+[data-flow-hit='true'] .ring {
+  opacity: 1;
+  animation: node-land 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes node-land {
+  0% { transform: scale(0.25); opacity: 0; }
+  55% { transform: scale(1.28); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* ── trilho discreto (guia o rastro sem competir com o desenho) ─────────── */
-.rail {
-  fill: none;
-  stroke: var(--line-soft);
-  stroke-width: 1.2;
-  opacity: 0.85;
-}
-
+/* ── objeto e detalhe ───────────────────────────────────────────────────── */
 .frame {
   fill: none;
   stroke: var(--line);
-  stroke-width: 2;
-}
-
-.dataRow {
-  stroke: var(--brick);
-  stroke-width: 4;
-  stroke-linecap: square;
-  opacity: 0.2;
-  animation: row-fill 3.2s ease-in-out infinite;
-}
-@keyframes row-fill {
-  0%, 100% { opacity: 0.18; }
-  45% { opacity: 1; }
-}
-
-/* ── prazo: calendário ──────────────────────────────────────────────────── */
-.cellMark {
-  fill: var(--brick-soft);
-  stroke: var(--brick);
   stroke-width: 2;
 }
 
@@ -94,39 +109,92 @@
   stroke: var(--ink-4);
   stroke-width: 2;
 }
-/* ── whatsapp: conversa no celular ──────────────────────────────────────── */
-.bubble {
+
+/* ── ronda: a publicação lida e classificada ────────────────────────────── */
+.sourceMark {
   fill: none;
   stroke: var(--ink-4);
   stroke-width: 2;
 }
-.bubbleAccent {
-  fill: var(--brick-soft);
+
+/* Acende quando o rastro da leitura passa por cima, não num relógio próprio:
+   antes o destaque piscava em 3,2s enquanto a leitura levava 5,6s, e as duas
+   coisas nunca se encontravam. */
+.dataRow {
+  stroke: var(--brick);
+  stroke-width: 4;
+  stroke-linecap: square;
+  opacity: 0.16;
+  transition: opacity 260ms ease;
+}
+.dataRow[data-flow-hit='true'] { opacity: 1; }
+
+/* ── prazo: calendário ──────────────────────────────────────────────────── */
+/* Os dias que não contam. */
+.hatch {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.6;
+}
+
+/* Pontilhada enquanto o prazo é só previsão; cheia quando a contagem chega. */
+.cellMark {
+  fill: none;
   stroke: var(--brick);
   stroke-width: 2;
+  stroke-dasharray: 4 4;
+  opacity: 0.45;
+  transition: fill 280ms ease, opacity 280ms ease;
 }
-.bubbleText {
-  stroke: var(--ink-4);
-  stroke-width: 3;
-  stroke-linecap: square;
+.cellMark[data-flow-hit='true'] {
+  fill: var(--brick-soft);
+  stroke-dasharray: none;
+  opacity: 1;
 }
+
+/* ── aviso: a corrida até o seu celular ─────────────────────────────────── */
+.bubble,
+.bubbleAccent {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.bubbleText,
 .bubbleTextAccent {
-  stroke: var(--brick);
+  fill: none;
+  stroke: var(--line);
   stroke-width: 3;
   stroke-linecap: square;
 }
 
-/* Gate de visibilidade: enquanto o pilar não entrou na viewport, as
-   animações de CSS ficam paradas (os rastros em rAF já pausam sozinhos). */
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .shimmerLine,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .ring,
-:global(body.reveal-armed [data-reveal]:not(.is-visible)) .dataRow {
-  animation-play-state: paused;
+/* Cada bolha só ganha conteúdo quando o rastro dela chega. */
+.bubble,
+.bubbleAccent,
+.bubbleText,
+.bubbleTextAccent {
+  transition: stroke 280ms ease, fill 280ms ease;
 }
+[data-flow-hit='true'] .bubbleAccent {
+  fill: var(--brick-soft);
+  stroke: var(--brick);
+}
+[data-flow-hit='true'] .bubbleTextAccent { stroke: var(--brick); }
+[data-flow-hit='true'] .bubble { stroke: var(--ink-4); }
+[data-flow-hit='true'] .bubbleText { stroke: var(--ink-4); }
 
+/* Sem movimento, o desenho já nasce no quadro final: o rastro estacionado no
+   destino (posicionado pelo hook) e todos os marcos acesos, sem transição. */
 @media (prefers-reduced-motion: reduce) {
-  .shimmerLine { animation: none; opacity: 0.22; }
-  .ring { animation: none; opacity: 0.35; }
-  .dataRow { animation: none; opacity: 1; }
-  .trailDot { display: none; }
+  .trail,
+  .dataRow,
+  .cellMark,
+  .bubble,
+  .bubbleAccent,
+  .bubbleText,
+  .bubbleTextAccent,
+  .ring {
+    transition: none;
+  }
+  [data-flow-hit='true'] .ring { animation: none; }
 }

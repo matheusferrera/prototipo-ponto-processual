@@ -1,0 +1,125 @@
+/* Espera da consulta ao DJEN. Mesma paleta do hero da página de resultado,
+   para a transição loading → conteúdo não trocar o fundo debaixo do usuário.
+   Tudo em CSS: nenhuma animação depende de JS. */
+
+.palco {
+  min-height: 100dvh;
+  background: var(--brick-deep);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.centro {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--paper) 52%, transparent);
+  margin-bottom: 28px;
+}
+
+/* ===== Scanner ===== */
+.scanner {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  border-top: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--paper) 18%, transparent);
+  /* Apaga as pontas: as siglas nascem e morrem no gradiente, não numa borda. */
+  mask-image: linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+}
+
+.trilha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* -50% = exatamente uma volta da lista duplicada, então o laço é contínuo. */
+  animation: rolar 9s linear infinite;
+}
+
+@keyframes rolar {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}
+
+.sigla {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 9px 0;
+  color: color-mix(in srgb, var(--paper) 42%, transparent);
+}
+
+/* Faixa que atravessa o scanner — é o que dá a leitura de "lendo agora". */
+.linha {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--brick-soft);
+  box-shadow: 0 0 18px 2px color-mix(in srgb, var(--brick-soft) 55%, transparent);
+  animation: varrer 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes varrer {
+  0%, 100% { transform: translate3d(0, -46px, 0); opacity: 0.35; }
+  50%      { transform: translate3d(0, 46px, 0);  opacity: 1; }
+}
+
+/* ===== Texto ===== */
+.status {
+  margin-top: 26px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Reticências que preenchem em vez de piscar — `ch` mantém a largura fixa,
+   então o texto ao lado não se mexe. */
+.reticencias::after {
+  content: '';
+  display: inline-block;
+  width: 3ch;
+  text-align: left;
+  animation: pontos 1.5s steps(4, end) infinite;
+}
+@keyframes pontos {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: '...'; }
+}
+
+.micro {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--paper) 48%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trilha, .linha, .reticencias::after { animation: none; }
+  .linha { top: 50%; transform: none; opacity: 0.8; }
+  .reticencias::after { content: '...'; }
+}
+
+@media (min-width: 768px) {
+  .centro  { max-width: 480px; }
+  .scanner { height: 168px; }
+  .sigla   { font-size: 24px; padding: 12px 0; }
+  .status  { font-size: 18px; }
+}

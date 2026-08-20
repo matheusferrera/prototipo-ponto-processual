@@ -255,3 +255,83 @@
 
   .btnOutline { font-size: 13px; }
 }
+
+/* ===== Etapas do cadastro =====
+   Diz de saída que existe um passo 2 (conectar tribunal), que é um pedido
+   maior que o próprio cadastro. Surpresa ali é abandono. */
+.passos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  margin-bottom: 22px;
+}
+.passo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-4);
+}
+.passo[data-atual] { color: var(--ink); }
+.passoNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+}
+.passo[data-atual] .passoNum {
+  border-color: var(--brick);
+  background: var(--brick);
+  color: var(--paper);
+}
+
+/* Dica sob um campo já preenchido por nós — explica de onde veio o valor. */
+.dicaCampo {
+  margin: -10px 0 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-4);
+}
+
+/* ===== Saída para o login =====
+   "E-mail já cadastrado" não é erro de digitação: é a pessoa certa na porta
+   errada. Vira caminho, não texto vermelho. */
+.saidaBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-left: 3px solid var(--brick);
+  background: var(--brick-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.saidaBanner strong { color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+.saidaCta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 9px 16px;
+  background: var(--brick);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 180ms ease-out;
+}
+.saidaCta:hover { background: var(--brick-deep); }
+
+@media (prefers-reduced-motion: reduce) {
+  .saidaCta { transition: none; }
+}

@@ -13,7 +13,6 @@ import styles from './OnboardingFlow.module.css';
 interface DjenTribunalPreview {
   sigla: string;
   processos: number;
-  suportado: boolean;
 }
 
 interface DjenPreview {

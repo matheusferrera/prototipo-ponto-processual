@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/cadastro', '/home'];
+/* Rotas só para quem NÃO está logado: logado nelas é redirecionado ao painel. */
+const ANON_ROUTES = ['/login', '/cadastro', '/home'];
+/* Rotas abertas a todos. `/oab/<numero>-<uf>` é o resultado da busca pública:
+   tem URL própria para ser compartilhada, e quem recebe o link pode já ter
+   conta — expulsar essa pessoa para o painel quebraria o compartilhamento. */
+const OPEN_ROUTES = ['/oab'];
 const API_AUTH_PREFIX = '/api/auth';
 /* Rotas de API anônimas usadas pela landing (busca por OAB do hero): existem
    justamente para quem ainda não tem conta, então não passam pelo guard. */
@@ -13,18 +18,20 @@ export function middleware(req: NextRequest) {
   if (pathname.startsWith(API_PUBLIC_PREFIX)) return NextResponse.next();
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.endsWith('opengraph-image')) return NextResponse.next();
 
-  const isPublic = PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+  const casa = (rotas: string[]) => rotas.some(r => pathname === r || pathname.startsWith(r + '/'));
+  const isAnon = casa(ANON_ROUTES);
+  const isOpen = casa(OPEN_ROUTES);
 
   const token = req.cookies.get('access_token')?.value;
 
-  if (!token && !isPublic) {
+  if (!token && !isAnon && !isOpen) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = '/login';
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (token && isPublic) {
+  if (token && isAnon) {
     const homeUrl = req.nextUrl.clone();
     homeUrl.pathname = '/';
     homeUrl.search = '';

@@ -147,17 +147,8 @@
   font-weight: 700;
   color: var(--ink-2);
 }
-/* Verde = tribunal que já sincronizamos direto no sistema, não só via
-   diário. É a diferença que o produto vende, então ela precisa ser visível
-   já no resultado. */
-.tribunal[data-suportado='sim'] {
-  border-color: var(--brick);
-  background: var(--brick-soft);
-  color: var(--brick);
-}
 .tribunalSigla { letter-spacing: 0.04em; }
 .tribunalQtd { color: var(--ink-3); font-weight: 400; }
-.tribunal[data-suportado='sim'] .tribunalQtd { color: var(--brick); opacity: 0.7; }
 .tribunalMais {
   display: inline-flex;
   align-items: center;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { use, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthShell, type AuthFeature } from '@/components/auth/AuthShell';
 import { AuthField } from '@/components/auth/AuthField';
@@ -35,9 +35,21 @@ function GoogleIcon() {
   );
 }
 
-export default function LoginPage() {
+/**
+ * `/cadastro` manda para cá com `?email=` quando a conta já existe, para a
+ * pessoa não redigitar o que acabou de digitar.
+ *
+ * O param é lido via `use(searchParams)`, não de `window`: assim servidor e
+ * cliente renderizam o mesmo valor inicial (sem divergência de hidratação) e
+ * sem `setState` dentro de efeito.
+ */
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string }>;
+}) {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(use(searchParams).email ?? '');
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);

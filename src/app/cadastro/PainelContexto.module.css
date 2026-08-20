@@ -1,0 +1,130 @@
+/* Painel contextual do /cadastro — vive dentro do lado verde do AuthShell, que
+   só aparece a partir de 768px. Herda a cor do pai (var(--paper) sobre verde),
+   então aqui só se define hierarquia e ritmo. */
+
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.oab {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--paper) 58%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nome {
+  font-family: var(--ui);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--paper);
+  /* Nome longo quebra em vez de vazar o painel. */
+  overflow-wrap: break-word;
+}
+
+.linha {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--paper) 78%, transparent);
+}
+.numero {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: var(--paper);
+}
+
+.tribunais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+.tribunal,
+.tribunalMais {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid color-mix(in srgb, var(--paper) 24%, transparent);
+  color: color-mix(in srgb, var(--paper) 66%, transparent);
+}
+/* Tribunal com robô autenticado ganha peso — é o que o cadastro está vendendo. */
+.tribunalQtd {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.nota {
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--paper) 58%, transparent);
+  max-width: 40ch;
+}
+
+/* ===== Faixa de contexto do celular =====
+   Vive dentro do painel claro do formulário, então tem paleta própria (a do
+   painel acima é sobre o verde). Some a partir de 768px, quando o painel
+   lateral volta a existir e passa a carregar o contexto. */
+.faixa {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 22px;
+  border-left: 3px solid var(--brick);
+  background: var(--brick-soft);
+}
+.faixaLinha {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.faixaNumero {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  color: var(--brick-deep);
+}
+.faixaTribunais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  list-style: none;
+}
+.faixaTribunal {
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--brick) 32%, transparent);
+  color: color-mix(in srgb, var(--brick-deep) 72%, transparent);
+}
+
+@media (min-width: 768px) {
+  .faixa { display: none; }
+}

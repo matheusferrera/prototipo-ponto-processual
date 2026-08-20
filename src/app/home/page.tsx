@@ -35,7 +35,7 @@ const TRIBUNAIS = ['PJe', 'e-SAJ', 'Projudi', 'CPE', 'TJSP', 'TJRJ', 'TJMG', 'TJ
 
 const PILARES = [
   {
-    icon: 'documento' as const,
+    icon: 'ronda' as const,
     pain: 'A publicação pode estar no diário nacional ou dentro do PJe, do e-SAJ, do Projudi. Cada um com login e formato próprios.',
     title: 'A ronda deixa de ser sua',
     desc: 'A plataforma abre os sistemas, lê o que saiu e arquiva cada publicação no processo a que ela pertence.',
@@ -47,7 +47,7 @@ const PILARES = [
     desc: 'Quando a movimentação abre prazo, a data de vencimento entra no calendário já em dias úteis, com o feriado do tribunal descontado.',
   },
   {
-    icon: 'whatsapp' as const,
+    icon: 'aviso' as const,
     pain: 'O cliente liga perguntando o andamento e a planilha de controle está parada desde terça.',
     title: 'Quando o cliente liga, você já sabe',
     desc: 'O alerta chega no WhatsApp no mesmo dia da publicação, com o número do processo e o que saiu.',

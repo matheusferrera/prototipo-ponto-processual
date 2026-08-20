@@ -11,7 +11,15 @@ interface AuthShellProps {
   eyebrow: string;
   headline: ReactNode;
   description: string;
-  features: AuthFeature[];
+  /** Lista padrão de benefícios do painel de marca. Ignorada quando vem `painel`. */
+  features?: AuthFeature[];
+  /**
+   * Substitui o bloco de benefícios por conteúdo próprio. É o que permite ao
+   * /cadastro continuar a conversa da busca por OAB (nome, contagem de
+   * processos, tribunais) em vez de repetir o discurso genérico para quem
+   * acabou de ver os próprios dados.
+   */
+  painel?: ReactNode;
   children: ReactNode;
 }
 
@@ -21,7 +29,7 @@ interface AuthShellProps {
  * Mobile-first — base é a coluna única do celular, o split de 45/55 só liga
  * a partir de `md`.
  */
-export function AuthShell({ eyebrow, headline, description, features, children }: AuthShellProps) {
+export function AuthShell({ eyebrow, headline, description, features, painel, children }: AuthShellProps) {
   return (
     <div className={styles.page}>
       <div className={styles.left}>
@@ -36,17 +44,19 @@ export function AuthShell({ eyebrow, headline, description, features, children }
           <div className={styles.description}>{description}</div>
         </div>
 
-        <div className={styles.features}>
-          {features.map((f, i) => (
-            <div key={i} className={styles.feature}>
-              <div className={styles.featureIcon}>{f.icon}</div>
-              <div>
-                <div className={styles.featureTitle}>{f.title}</div>
-                <div className={styles.featureDesc}>{f.desc}</div>
+        {painel ?? (
+          <div className={styles.features}>
+            {(features ?? []).map((f, i) => (
+              <div key={i} className={styles.feature}>
+                <div className={styles.featureIcon}>{f.icon}</div>
+                <div>
+                  <div className={styles.featureTitle}>{f.title}</div>
+                  <div className={styles.featureDesc}>{f.desc}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className={styles.ornamentA} aria-hidden="true" />
         <div className={styles.ornamentB} aria-hidden="true" />
