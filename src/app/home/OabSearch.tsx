@@ -3,7 +3,7 @@
 import { useId, useRef, useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Search, AlertTriangle } from 'lucide-react';
-import { slugOab } from '@/lib/previa';
+import { limparOabNumero, limparOabUf, slugOab } from '@/lib/previa';
 import styles from './OabSearch.module.css';
 
 /**
@@ -67,7 +67,7 @@ export function OabSearch() {
             ref={numeroRef}
             className={styles.input}
             value={numero}
-            onChange={e => setNumero(e.target.value.replace(/\D/g, ''))}
+            onChange={e => setNumero(limparOabNumero(e.target.value))}
             placeholder="12345"
             inputMode="numeric"
             maxLength={8}
@@ -83,7 +83,7 @@ export function OabSearch() {
             ref={ufRef}
             className={styles.input}
             value={uf}
-            onChange={e => setUf(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
+            onChange={e => setUf(limparOabUf(e.target.value))}
             placeholder="SP"
             maxLength={2}
             autoComplete="off"

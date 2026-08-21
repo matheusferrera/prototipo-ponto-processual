@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Check, KeyRound, Loader2, Scale, Search } from 'lucide-react';
+import { AlertTriangle, Check, KeyRound, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldLabel, FieldSet } from '@/components/ui/field';
+import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { limparOabNumero, limparOabUf } from '@/lib/previa';
 import { CredentialSheet, type CredentialSheetTarget } from '@/components/credenciais/CredentialSheet/CredentialSheet';
 import type { SistemaGroup, ScraperSecretView } from '@/lib/credenciais';
 import styles from './OnboardingFlow.module.css';
@@ -22,7 +23,12 @@ interface DjenPreview {
   tribunais: DjenTribunalPreview[];
 }
 
-type Stage = 'oab' | 'resultado' | 'erro';
+/**
+ * `buscando` é o estado de abertura de quem chega com OAB — a busca dispara
+ * sozinha. `credencial` é o de quem chega sem ela (conta antiga, ou volta pelo
+ * painel vazio): em vez de perguntar a OAB aqui, vai direto ao tribunal.
+ */
+type Stage = 'buscando' | 'resultado' | 'erro' | 'credencial';
 
 function getNomeTribunalFallback(sigla: string): string {
   const ufMap: Record<string, string> = {
@@ -55,10 +61,18 @@ function getNomeTribunalFallback(sigla: string): string {
 }
 
 /**
- * `oabInicial` vem da busca do hero da landing, carregada pela URL
- * (`/cadastro?oab=…&uf=…` → `/onboarding?oab=…&uf=…`). Quem já digitou a OAB
- * lá não digita de novo aqui — repetir a pergunta logo depois do cadastro é
- * atrito gratuito, e é onde esta tela mais perde gente.
+ * Primeiro acesso — e, deliberadamente, uma tela que **não pergunta a OAB**.
+ *
+ * A OAB é respondida uma vez só, no formulário de criar conta, e chega aqui
+ * pela URL (`/cadastro?oab=…&uf=…` → `/onboarding?oab=…&uf=…`). Esta tela trata
+ * isso como resposta dada: dispara a busca sozinha e abre já no resultado.
+ * Antes ela repetia o formulário com os campos preenchidos — o que, logo depois
+ * de a pessoa ter visto os próprios processos em `/oab/<slug>` e no painel do
+ * cadastro, lia como se nada tivesse sido dito. Era onde o funil mais vazava.
+ *
+ * Restou um único lugar para digitar OAB aqui: a correção, escondida atrás de
+ * "não é essa OAB?" nos caminhos de erro e de zero resultados. Ali não é
+ * pergunta — é a saída de quem errou um dígito e ficaria sem próximo passo.
  */
 export function OnboardingFlow({
   sistemas,
@@ -69,7 +83,7 @@ export function OnboardingFlow({
 }) {
   const router = useRouter();
 
-  const [stage, setStage] = useState<Stage>('oab');
+  const [stage, setStage] = useState<Stage>(oabInicial ? 'buscando' : 'credencial');
   const [oabNumero, setOabNumero] = useState(oabInicial?.numero ?? '');
   const [oabUf, setOabUf] = useState(oabInicial?.uf ?? '');
   const [buscando, setBuscando] = useState(false);
@@ -102,14 +116,13 @@ export function OnboardingFlow({
     router.push('/login');
   }
 
-  async function handleBuscar(e: FormEvent) {
-    e.preventDefault();
-    if (!oabNumero.trim() || !oabUf.trim()) return;
+  const buscar = useCallback(async (numero: string, uf: string) => {
+    if (!numero || uf.length !== 2) return;
 
     setBuscando(true);
     setErro('');
     try {
-      const params = new URLSearchParams({ oabNumero: oabNumero.trim(), oabUf: oabUf.trim().toUpperCase() });
+      const params = new URLSearchParams({ oabNumero: numero, oabUf: uf });
       const res = await fetch(`/api/scraper/preview-djen?${params}`);
       const data = await res.json();
       if (!res.ok) {
@@ -129,7 +142,7 @@ export function OnboardingFlow({
         void fetch('/api/scraper/monitorar-oab', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oabNumero: oabNumero.trim(), oabUf: oabUf.trim().toUpperCase() }),
+          body: JSON.stringify({ oabNumero: numero, oabUf: uf }),
         }).catch(() => {});
       }
     } catch {
@@ -138,13 +151,23 @@ export function OnboardingFlow({
     } finally {
       setBuscando(false);
     }
-  }
+  }, []);
+
+  /* A busca de abertura. O ref protege do efeito duplo do StrictMode em dev:
+     `monitorar-oab` é idempotente, mas duas idas ao DJEN por carregamento
+     gastam o rate limit de quem está entrando agora. */
+  const jaBuscou = useRef(false);
+  useEffect(() => {
+    if (!oabInicial || jaBuscou.current) return;
+    jaBuscou.current = true;
+    void buscar(oabInicial.numero, oabInicial.uf);
+  }, [oabInicial, buscar]);
 
   function abrirCredencial() {
     setSheetTarget({
       mode: 'create',
-      presetOabNumero: oabNumero.trim(),
-      presetOabUf: oabUf.trim().toUpperCase(),
+      presetOabNumero: oabNumero,
+      presetOabUf: oabUf,
     });
   }
 
@@ -165,12 +188,23 @@ export function OnboardingFlow({
 
     setSheetTarget({
       mode: 'create',
-      presetOabNumero: oabNumero.trim(),
-      presetOabUf: oabUf.trim().toUpperCase(),
+      presetOabNumero: oabNumero,
+      presetOabUf: oabUf,
       presetSistema: sistema,
       presetTribunaisIds: tribunalIds.length > 0 ? tribunalIds : undefined,
     });
   }
+
+  const trocarOab = (
+    <TrocarOab
+      numero={oabNumero}
+      uf={oabUf}
+      onNumero={setOabNumero}
+      onUf={setOabUf}
+      buscando={buscando}
+      onBuscar={() => void buscar(oabNumero, oabUf)}
+    />
+  );
 
   return (
     <div className={styles.page}>
@@ -204,60 +238,47 @@ export function OnboardingFlow({
               </Button>
             </div>
           </div>
-        ) : stage === 'oab' ? (
-          <form className={`${styles.card} ${styles.cardWide}`} onSubmit={handleBuscar}>
+        ) : stage === 'buscando' ? (
+          /* Sem botão e sem campo: a pessoa já respondeu tudo o que precisávamos
+             no cadastro. Esta tela só presta contas do que está acontecendo. */
+          <div className={styles.card}>
             <div className={styles.icon}>
-              <Scale size={22} />
+              <Loader2 size={22} className={styles.spin} />
+            </div>
+            <div className={styles.eyebrow}>OAB {oabNumero}/{oabUf}</div>
+            <div className={styles.title}>Procurando seus processos</div>
+            <p className={styles.desc}>
+              Estamos varrendo as bases públicas para descobrir em quais tribunais você tem
+              atividade. Leva alguns segundos.
+            </p>
+          </div>
+        ) : stage === 'credencial' ? (
+          <div className={styles.card}>
+            <div className={styles.icon}>
+              <KeyRound size={22} />
             </div>
             <div className={styles.eyebrow}>Primeiro acesso</div>
-            <div className={styles.title}>Vamos localizar seus processos</div>
+            <div className={styles.title}>Vamos conectar seu primeiro tribunal</div>
             <p className={styles.desc}>
-              Informe sua OAB — a gente faz uma busca nas bases públicas e mostra
-              quantos processos e em quais tribunais você tem atividade. Essa busca é pública e ainda não
-              precisa de login nem senha de nenhum tribunal.
+              Cadastre o login que você usa no tribunal (PJe, CPE, Projudi…) e o robô assume a
+              ronda: descobre seus processos pela OAB e acompanha cada movimentação e prazo,
+              inclusive nos autos em segredo de justiça.
             </p>
-
-            <FieldSet className={styles.oabFieldSet}>
-              <div className={styles.oabRow}>
-                <Field>
-                  <FieldLabel htmlFor="onb-oab-numero">Número da OAB</FieldLabel>
-                  <Input
-                    id="onb-oab-numero"
-                    value={oabNumero}
-                    onChange={e => setOabNumero(e.target.value)}
-                    placeholder="12345"
-                    autoFocus
-                  />
-                </Field>
-                <Field className={styles.oabUfField}>
-                  <FieldLabel htmlFor="onb-oab-uf">UF</FieldLabel>
-                  <Input
-                    id="onb-oab-uf"
-                    value={oabUf}
-                    onChange={e => setOabUf(e.target.value.toUpperCase())}
-                    placeholder="DF"
-                    maxLength={2}
-                  />
-                </Field>
-              </div>
-              <FieldDescription>Mesma OAB e UF que aparecem nas suas publicações.</FieldDescription>
-            </FieldSet>
-
             <div className={styles.actions}>
               <Button type="button" variant="ghost" onClick={() => router.push('/')}>
                 Pular por agora
               </Button>
-              <Button type="submit" disabled={buscando || !oabNumero.trim() || !oabUf.trim()}>
-                {buscando ? <Loader2 size={14} className={styles.spin} /> : <Search size={14} />}
-                {buscando ? 'Buscando…' : 'Buscar meus processos'}
+              <Button type="button" onClick={abrirCredencial}>
+                <KeyRound size={14} /> Cadastrar credencial
               </Button>
             </div>
-          </form>
+          </div>
         ) : stage === 'erro' ? (
           <div className={styles.card}>
             <div className={`${styles.icon} ${styles.iconAlert}`}>
               <AlertTriangle size={22} />
             </div>
+            <div className={styles.eyebrow}>OAB {oabNumero}/{oabUf}</div>
             <div className={styles.title}>Não conseguimos realizar a consulta pública agora</div>
             <p className={styles.desc}>{erro || 'Tente novamente em instantes, ou cadastre a credencial do tribunal direto.'}</p>
             <div className={styles.actions}>
@@ -267,16 +288,19 @@ export function OnboardingFlow({
               <Button type="button" variant="outline" onClick={abrirCredencial}>
                 <KeyRound size={14} /> Cadastrar credencial mesmo assim
               </Button>
-              <Button type="button" onClick={() => setStage('oab')}>
-                Tentar de novo
+              <Button type="button" disabled={buscando} onClick={() => void buscar(oabNumero, oabUf)}>
+                {buscando ? <Loader2 size={14} className={styles.spin} /> : <Search size={14} />}
+                {buscando ? 'Buscando…' : 'Tentar de novo'}
               </Button>
             </div>
+            {trocarOab}
           </div>
         ) : preview && preview.totalProcessos === 0 ? (
           <div className={styles.card}>
             <div className={styles.icon}>
               <Search size={22} />
             </div>
+            <div className={styles.eyebrow}>OAB {oabNumero}/{oabUf}</div>
             <div className={styles.title}>Não encontramos publicações dos últimos 6 meses para essa OAB</div>
             <p className={styles.desc}>
               As consultas públicas nem sempre cobrem tudo — pode ser uma OAB nova ou processos em segredo de justiça.
@@ -286,13 +310,11 @@ export function OnboardingFlow({
               <Button type="button" variant="ghost" onClick={() => router.push('/')}>
                 Pular por agora
               </Button>
-              <Button type="button" variant="outline" onClick={() => setStage('oab')}>
-                Tentar outra OAB
-              </Button>
               <Button type="button" onClick={abrirCredencial}>
                 <KeyRound size={14} /> Cadastrar credencial
               </Button>
             </div>
+            {trocarOab}
           </div>
         ) : preview ? (
           <div className={`${styles.card} ${styles.cardWide}`}>
@@ -349,5 +371,78 @@ export function OnboardingFlow({
         onSaved={secret => { setSaved(secret); setSheetTarget(null); }}
       />
     </div>
+  );
+}
+
+/**
+ * Correção da OAB — só nos caminhos em que a busca não deu em nada.
+ *
+ * Fica fechada por padrão, atrás de um link discreto: aberta, seria de novo o
+ * formulário que esta tela deixou de fazer. Um dígito errado no cadastro não
+ * pode virar beco sem saída, mas também não pode competir com o próximo passo,
+ * que é conectar o tribunal.
+ */
+function TrocarOab({
+  numero,
+  uf,
+  onNumero,
+  onUf,
+  onBuscar,
+  buscando,
+}: {
+  numero: string;
+  uf: string;
+  onNumero: (v: string) => void;
+  onUf: (v: string) => void;
+  onBuscar: () => void;
+  buscando: boolean;
+}) {
+  const [aberto, setAberto] = useState(false);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    onBuscar();
+  }
+
+  if (!aberto) {
+    return (
+      <button type="button" className={styles.trocarLink} onClick={() => setAberto(true)}>
+        Não é essa OAB? Corrigir
+      </button>
+    );
+  }
+
+  return (
+    <form className={styles.trocarForm} onSubmit={handleSubmit}>
+      <FieldSet className={styles.oabFieldSet}>
+        <div className={styles.oabRow}>
+          <Field>
+            <FieldLabel htmlFor="onb-oab-numero">Número da OAB</FieldLabel>
+            <Input
+              id="onb-oab-numero"
+              value={numero}
+              onChange={e => onNumero(limparOabNumero(e.target.value))}
+              placeholder="12345"
+              inputMode="numeric"
+              autoFocus
+            />
+          </Field>
+          <Field className={styles.oabUfField}>
+            <FieldLabel htmlFor="onb-oab-uf">UF</FieldLabel>
+            <Input
+              id="onb-oab-uf"
+              value={uf}
+              onChange={e => onUf(limparOabUf(e.target.value))}
+              placeholder="DF"
+              maxLength={2}
+            />
+          </Field>
+        </div>
+      </FieldSet>
+      <Button type="submit" size="sm" variant="outline" disabled={buscando || !numero || uf.length !== 2}>
+        {buscando ? <Loader2 size={14} className={styles.spin} /> : <Search size={14} />}
+        {buscando ? 'Buscando…' : 'Buscar de novo'}
+      </Button>
+    </form>
   );
 }

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { AuthShell, type AuthFeature } from '@/components/auth/AuthShell';
 import { getPrevia } from '@/lib/previa.server';
-import { nomeProprio } from '@/lib/previa';
+import { nomeProprio, normalizarOab } from '@/lib/previa';
 import { CadastroForm } from './CadastroForm';
 import { PainelContexto, PainelEsqueleto, ResumoMobile } from './PainelContexto';
 
@@ -22,15 +22,12 @@ const FEATURES: AuthFeature[] = [
 
 type Params = { searchParams: Promise<{ oab?: string; uf?: string }> };
 
-/** Só aceita a OAB no formato que a busca pública produz — o resto é ruído de URL. */
-function lerOab(sp: { oab?: string; uf?: string }) {
-  const numero = (sp.oab ?? '').replace(/\D/g, '').slice(0, 8);
-  const uf = (sp.uf ?? '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
-  return numero && uf.length === 2 ? { numero, uf } : null;
-}
-
 export default async function CadastroPage({ searchParams }: Params) {
-  const oab = lerOab(await searchParams);
+  const sp = await searchParams;
+  /* A OAB da URL é só um valor inicial do formulário: quem chegou pela busca
+     pública encontra o campo preenchido, quem chegou por "Criar conta" o
+     encontra vazio. Em ambos os casos o campo é o mesmo. */
+  const oab = normalizarOab(sp.oab, sp.uf);
 
   return (
     <AuthShell

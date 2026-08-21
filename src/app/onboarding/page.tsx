@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getScraperSecrets, getTribunaisStatus } from '@/lib/api.server';
 import { agruparPorSistema } from '@/lib/credenciais';
+import { normalizarOab } from '@/lib/previa';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 
 export const metadata: Metadata = {
@@ -27,10 +28,11 @@ export default async function OnboardingPage({
 
   const sistemas = agruparPorSistema(tribunals);
 
-  // Vem da busca por OAB da landing; sanitizado aqui porque a URL é do usuário.
-  const numero = (oab ?? '').replace(/\D/g, '').slice(0, 8);
-  const ufSigla = (uf ?? '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
-  const oabInicial = numero && ufSigla.length === 2 ? { numero, uf: ufSigla } : undefined;
+  /* A OAB foi respondida no /cadastro e chega pela URL. Sanitizada de novo
+     aqui porque a barra de endereço é do usuário, não nossa. Quando falta
+     (conta antiga, ou volta pelo painel vazio), o fluxo não pergunta: vai
+     direto para a conexão do tribunal. */
+  const oabInicial = normalizarOab(oab, uf) ?? undefined;
 
   return <OnboardingFlow sistemas={sistemas} oabInicial={oabInicial} />;
 }

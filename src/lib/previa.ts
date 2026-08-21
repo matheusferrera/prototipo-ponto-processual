@@ -51,6 +51,34 @@ export function parseSlugOab(slug: string): { numero: string; uf: string } | nul
 export const slugOab = (numero: string, uf: string) =>
   `${numero.replace(/\D/g, '')}-${uf.toLowerCase()}`;
 
+/* ── Limpeza dos campos de OAB ──────────────────────────────────────────────
+   A mesma OAB é digitada no hero, relida da URL em /cadastro e no /onboarding
+   e reenviada ao backend. Cada lugar limpava do seu jeito, e bastava um deles
+   divergir para a busca falhar com "não encontramos" em vez de dizer que o
+   campo estava errado. Uma limpeza só, importável por client e server. */
+
+/** Só dígitos, no máximo 8 — o formato que o DJEN aceita. */
+export const limparOabNumero = (v: string) => v.replace(/\D/g, '').slice(0, 8);
+
+/** Sigla em caixa alta, no máximo 2 letras. */
+export const limparOabUf = (v: string) =>
+  v.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+
+/**
+ * `{ numero, uf }` quando os dois campos juntos formam uma OAB utilizável;
+ * `null` caso contrário. Use antes de montar URL, chamar API ou confiar num
+ * `searchParams` — a origem pode ser a digitação do usuário ou a barra de
+ * endereço, e nenhuma das duas é confiável.
+ */
+export function normalizarOab(
+  numero: string | undefined | null,
+  uf: string | undefined | null,
+): { numero: string; uf: string } | null {
+  const n = limparOabNumero(numero ?? '');
+  const u = limparOabUf(uf ?? '');
+  return n && u.length === 2 ? { numero: n, uf: u } : null;
+}
+
 /**
  * Partículas que ficam minúsculas no meio de um nome próprio brasileiro.
  * No começo do nome elas sobem para maiúscula ("Da Silva Advogados"), então a

@@ -19,10 +19,15 @@ interface AuthFieldProps {
   toggle?: { visible: boolean; onToggle: () => void };
   /** Ex.: link "Esqueceu a senha?" alinhado à direita do label. */
   labelRight?: ReactNode;
+  /** Teclado do celular — `numeric` no número da OAB, que só aceita dígitos. */
+  inputMode?: 'text' | 'numeric';
+  /** Trava o tamanho no próprio campo (UF tem 2 letras), não só na validação. */
+  maxLength?: number;
 }
 
 export function AuthField({
   id, label, type, autoComplete, value, onChange, onBlur, placeholder, disabled, error, toggle, labelRight,
+  inputMode, maxLength,
 }: AuthFieldProps) {
   return (
     <div className={styles.field}>
@@ -40,6 +45,8 @@ export function AuthField({
           onBlur={onBlur}
           placeholder={placeholder}
           disabled={disabled}
+          inputMode={inputMode}
+          maxLength={maxLength}
           aria-invalid={!!error}
           className={`${styles.input}${error ? ` ${styles.inputError}` : ''}${toggle ? ` ${styles.inputWithToggle}` : ''}`}
         />

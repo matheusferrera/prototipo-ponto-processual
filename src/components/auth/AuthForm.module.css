@@ -40,6 +40,17 @@
   gap: 6px;
 }
 
+/* Nº da OAB + UF na mesma linha. A UF tem duas letras: empilhar daria a ela a
+   mesma altura de um campo de e-mail e faria o formulário parecer maior do que
+   é — justo no passo em que cada campo a mais custa desistência. Por isso a
+   divisão vale também no celular, onde 88px ainda cabem em 320px de tela. */
+.linhaOab {
+  display: grid;
+  grid-template-columns: 1fr 88px;
+  gap: 12px;
+  align-items: start;
+}
+
 .labelRow {
   display: flex;
   align-items: center;
