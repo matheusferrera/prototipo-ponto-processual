@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { gravarSessao } from '@/lib/auth-cookies';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -40,22 +41,6 @@ export async function POST(req: NextRequest) {
 
   const loginData = await loginRes.json();
   const res = NextResponse.json(data, { status: 201 });
-
-  res.cookies.set('access_token', loginData.accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 15,
-    path: '/',
-  });
-
-  res.cookies.set('refresh_token', loginData.refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/',
-  });
-
+  gravarSessao(res, loginData);
   return res;
 }

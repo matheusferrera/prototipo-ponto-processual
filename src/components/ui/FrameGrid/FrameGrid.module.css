@@ -1,0 +1,248 @@
+/* Malha de quadros vazios — ver FrameGrid.tsx para a mecânica. Herda o
+   vocabulário do painel de login (AuthShell): quadrado, sem preenchimento,
+   um fio de 1px e um anel grosso por dentro, ambos em branco translúcido.
+   Puramente decorativo (aria-hidden). */
+
+/* Registrados para poderem ser animados por keyframes (variante `idle`, que
+   não tem scroll para empurrar o padrão). Nomes prefixados porque CSS Modules
+   não escopa custom properties — estes são globais. */
+@property --fg-p {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --fg-t {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* A malha é maior que o quadro de propósito: ela sangra pelo topo, pela
+     direita e pelo pé, e quem decide onde ela termina é a máscara — só do
+     lado esquerdo, antes da coluna de texto. Um retângulo de grade com quatro
+     arestas duras leria como papel de parede; sangrando, lê como recorte. */
+  /* Duas camadas cruzadas: a elipse abre o recorte no canto alto/direito e a
+     rampa vertical dissolve as duas pontas. A rampa existe porque a seção
+     começa e termina em corte reto — sem ela a fileira da borda aparece
+     serrada ao meio na virada de seção, o que num quadrado salta muito mais
+     aos olhos do que saltava numa faixa diagonal.
+
+     As duas pontas, não só o pé: no hero o corte de cima cai atrás do menu e
+     quase não se nota, mas no CTA final a seção começa no meio da página,
+     contra fundo claro, e ali a emenda é escancarada. */
+  mask-image:
+    radial-gradient(ellipse 56% 104% at 83% 36%, #000 0%, #000 30%, transparent 88%),
+    linear-gradient(to bottom, transparent 0%, #000 13%, #000 58%, transparent 96%);
+  -webkit-mask-image:
+    radial-gradient(ellipse 56% 104% at 83% 36%, #000 0%, #000 30%, transparent 88%),
+    linear-gradient(to bottom, transparent 0%, #000 13%, #000 58%, transparent 96%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+
+  /* --fg-p  percurso de scroll (0→1) — move a malha
+     --fg-t  fase do padrão de células acesas (0→1) — não move nada
+     --fg-mx/--fg-my  mouse normalizado (-1..1), já suavizado no JS */
+  --fg-p: 0;
+  --fg-t: 0;
+  --fg-mx: 0;
+  --fg-my: 0;
+
+  /* Geometria e peso do desenho. */
+  --fg-cell: clamp(76px, 9.4vw, 148px);
+  --fg-gap: clamp(10px, 1.2vw, 20px);
+  --fg-ring: clamp(9px, 1.15vw, 19px);
+  --fg-hair: 0.1;
+  --fg-glow: 0.09;
+  --fg-drift: 1;
+  --fg-cycles: 1.8;
+  --fg-sharp: 3;
+  --fg-spread: 0.6;
+}
+
+/* Malha centrada no foco da máscara: ela transborda o quadro de propósito, a
+   máscara é quem decide onde termina. */
+.grid {
+  position: absolute;
+  top: 34%;
+  left: 80%;
+  display: grid;
+  gap: var(--fg-gap);
+  translate: -50% -50%;
+}
+
+/* A célula carrega só o deslocamento (scroll + mouse). O desenho fica no
+   .frame de dentro, para a animação de entrada não brigar com este transform. */
+.cell {
+  position: relative;
+  width: var(--fg-cell);
+  height: var(--fg-cell);
+  /* Frequência própria desta célula. Em --fg-spread: 0 todas voltam a andar
+     no mesmo compasso (onda coerente); quanto maior, mais cada uma segue o
+     próprio relógio. */
+  --rate: calc(1 + (var(--rjit) - 0.5) * 1.6 * var(--fg-spread));
+
+  /* Quanto esta célula "acende": duas senoides de períodos incomensuráveis
+     (a segunda a 0,618 da primeira), cada uma com a sua fase sorteada, somadas
+     e afinadas por pow() — só onde as duas coincidem no alto a célula acende
+     forte. É isso que faz algumas pipocarem espalhadas em vez de o brilho
+     varrer a malha em fileira.
+
+     O clamp() antes do pow() não é enfeite: a soma pode passar de 1 ou cair
+     abaixo de 0, e pow() de base negativa com expoente fracionário é NaN —
+     bastaria arrastar a "nitidez" para um valor quebrado para a malha inteira
+     apagar. */
+  --lit: calc(
+    pow(
+      clamp(
+        0,
+        0.5 +
+          0.3 * sin((var(--fg-t) * var(--fg-cycles) * var(--rate) + var(--ph1)) * 6.2832rad) +
+          0.3 * sin((var(--fg-t) * var(--fg-cycles) * var(--rate) * 0.618 + var(--ph2)) * 6.2832rad),
+        1
+      ),
+      var(--fg-sharp)
+    )
+  );
+  /* Três forças: 1) a malha se abre a partir do centro conforme a seção rola
+     (por isso o (--col - centro)), 2) sobe um pouco no conjunto, 3) deriva com
+     o mouse com amplitude proporcional à profundidade da célula. */
+  transform: translate3d(
+    calc(
+      (var(--col) - var(--cx)) * var(--fg-p) * 13px * var(--fg-drift) +
+      var(--fg-mx) * (4px + var(--depth) * 10px)
+    ),
+    calc(
+      (var(--row) - var(--cy)) * var(--fg-p) * 10px * var(--fg-drift) -
+      var(--fg-p) * 24px * var(--fg-drift) +
+      var(--fg-my) * (3px + var(--depth) * 8px)
+    ),
+    0
+  );
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, var(--fg-hair));
+  /* Entra em varredura diagonal: o atraso cresce com col+row. */
+  animation: frame-enter 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc((var(--col) + var(--row)) * 46ms);
+}
+
+/* O anel grosso por dentro do fio — é literalmente o ornamentA do login
+   (borda larga, sem preenchimento) sobreposto ao ornamentB. */
+.frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: var(--fg-ring) solid rgba(255, 255, 255, var(--fg-glow));
+  opacity: var(--lit);
+}
+
+@keyframes frame-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Variante sem scroll (painel de login/cadastro): o padrão de acesas respira
+   sozinho, devagar, e nada se desloca a não ser pelo mouse.
+
+   Geometria própria: o painel é estreito e alto, então a malha do hero (célula
+   grande, ancorada no meio da altura) viraria duas colunas de listras. Aqui
+   ela é miúda e mora no canto de baixo à direita — exatamente onde estavam o
+   ornamentA e o ornamentB que ela substitui. */
+.idle {
+  animation: fg-idle 46s linear infinite;
+  --fg-cell: clamp(56px, 14vw, 84px);
+  --fg-gap: 10px;
+  --fg-ring: clamp(7px, 1.8vw, 11px);
+  /* Exatamente as opacidades dos dois ornamentos que a malha substitui aqui
+     (ornamentB era um fio a 0,08; ornamentA, uma borda grossa a 0,05). Não é
+     nostalgia: no painel a malha passa por trás da lista de benefícios, cujo
+     corpo é rgba(255,255,255,0.6) a 12px — o texto mais frágil da tela, já em
+     ~3,6:1 contra o verde antes de qualquer fundo. Com estes valores o efeito
+     sobre ele é o mesmo de antes (~3,4:1); com os 0,09/0,085 do hero, cairia
+     mais. O hero pode ser mais forte porque lá não há texto por cima. */
+  --fg-hair: 0.08;
+  --fg-glow: 0.055;
+  /* Camada única: o painel não termina em corte de seção, então não precisa da
+     rampa do pé — e com uma camada só o `intersect` herdado zeraria a máscara. */
+  mask-image: radial-gradient(ellipse 88% 74% at 92% 88%, #000 0%, #000 24%, transparent 86%);
+  -webkit-mask-image: radial-gradient(ellipse 88% 74% at 92% 88%, #000 0%, #000 24%, transparent 86%);
+  mask-composite: add;
+  -webkit-mask-composite: source-over;
+}
+
+.idle .grid {
+  top: auto;
+  left: auto;
+  right: 0;
+  bottom: 0;
+  translate: 32% 30%;
+}
+@keyframes fg-idle {
+  from { --fg-t: 0; }
+  to   { --fg-t: 1; }
+}
+
+/* ===== Celular =====
+   Aqui o desenho não é o do desktop reduzido — é outro problema.
+
+   1) ONDE. O texto do hero usa a largura inteira, então o hero mobile pinta
+      um véu de legibilidade por cima do fundo (`.heroBg::after`, na
+      page.module.css da landing) que chega a 0,96 de opacidade no alto e só
+      libera no canto de baixo à direita. Uma malha ancorada no alto ficava
+      embaixo da parte mais fechada do véu e sumia — não por ser sutil, por
+      estar coberta. Ela se muda para o canto de baixo à direita, que é onde o
+      véu já solta sozinho, sem precisar enfraquecer a proteção do texto.
+
+   2) O QUÊ. Poucos quadros e grandes, não muitos e miúdos. O que sobrevive a
+      um véu é massa, não linha: um fio de 1px com opacidade efetiva de 0,03
+      é invisível, um anel de 26px na mesma opacidade ainda lê como bloco.
+      Por isso a célula e o anel crescem no celular em vez de encolher. */
+@media (max-width: 767px) {
+  .field {
+    mask-image:
+      radial-gradient(ellipse 116% 68% at 86% 78%, #000 0%, #000 46%, transparent 96%),
+      linear-gradient(to bottom, transparent 0%, #000 10%, #000 80%, transparent 99%);
+    -webkit-mask-image:
+      radial-gradient(ellipse 116% 68% at 86% 78%, #000 0%, #000 46%, transparent 96%),
+      linear-gradient(to bottom, transparent 0%, #000 10%, #000 80%, transparent 99%);
+    --fg-cell: clamp(100px, 32vw, 148px);
+    --fg-gap: 12px;
+    --fg-ring: clamp(19px, 6.4vw, 30px);
+    /* Sem ponteiro fino não há mouse: o scroll carrega sozinho a amplitude
+       que no desktop é dividida entre os dois. */
+    --fg-drift: 1.7;
+    --fg-hair: 0.2;
+    --fg-glow: 0.22;
+  }
+  /* Ancorada na quina de baixo à direita e sangrando para fora das duas: o
+     que se vê é um punhado de quadros entrando pelo canto. */
+  .grid {
+    top: auto;
+    left: auto;
+    right: 0;
+    bottom: 0;
+    translate: 20% 12%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame { animation: none; }
+  .idle { animation: none; }
+  /* Quem pediu menos movimento não pediu uma malha apagada: uma fase fixa
+     deixa uma composição estática com algumas células acesas. */
+  .field { --fg-t: 0.22; }
+}

@@ -199,7 +199,7 @@
 
 .pautaNota strong { font-weight: 600; color: var(--ink-2); }
 
-/* ── Grupo: um dia de pauta ── */
+/* ── Grupo: uma data de prazo fatal ── */
 .pautaGrupo { margin-bottom: 26px; }
 
 .pautaHead {
@@ -221,8 +221,7 @@
   flex-shrink: 0;
 }
 
-.pautaRelAtraso { color: var(--paper); background: var(--alert); }
-.pautaRelHoje   { color: var(--paper); background: var(--brick); }
+.pautaRelHoje   { color: var(--paper); background: var(--alert); }
 .pautaRelProx   { color: var(--ink-2); background: var(--paper-2); }
 
 .pautaHeadData {

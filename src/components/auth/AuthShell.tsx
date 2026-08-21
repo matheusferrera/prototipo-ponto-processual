@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { FrameGrid } from '@/components/ui/FrameGrid/FrameGrid';
 import styles from './AuthShell.module.css';
 
 export interface AuthFeature {
@@ -33,10 +35,10 @@ export function AuthShell({ eyebrow, headline, description, features, painel, ch
   return (
     <div className={styles.page}>
       <div className={styles.left}>
-        <div className={styles.brandRow}>
+        <Link href="/" className={styles.brandRow}>
           <span className={styles.brandMark} />
           <span className={styles.brandName}>Ponto Processual</span>
-        </div>
+        </Link>
 
         <div className={styles.pitch}>
           <div className={styles.eyebrow}>{eyebrow}</div>
@@ -58,15 +60,19 @@ export function AuthShell({ eyebrow, headline, description, features, painel, ch
           </div>
         )}
 
-        <div className={styles.ornamentA} aria-hidden="true" />
-        <div className={styles.ornamentB} aria-hidden="true" />
+        {/* Mesma malha de quadros do hero da landing, na variante sem scroll:
+            aqui não há percurso para empurrar o desenho, então o padrão de
+            acesas respira sozinho e só o mouse desloca. Substitui os dois
+            ornamentos estáticos (um quadrado de borda grossa e um de fio)
+            que eram justamente o vocabulário de onde a malha saiu. */}
+        <FrameGrid variant="idle" cols={4} rows={4} />
       </div>
 
       <div className={styles.right}>
-        <div className={styles.mobileBrand} aria-hidden="true">
+        <Link href="/" className={styles.mobileBrand}>
           <span className={styles.mobileBrandMark} />
           <span>Ponto Processual</span>
-        </div>
+        </Link>
 
         <div className={styles.formPanel}>{children}</div>
       </div>

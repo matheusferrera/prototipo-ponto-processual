@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ArrowRight, ArrowLeft, Lock, ShieldCheck, RadioTower } from 'lucide-react';
 import { getPrevia } from '@/lib/previa.server';
@@ -12,7 +14,9 @@ import {
   rotuloMes,
   type PreviaOab,
 } from '@/lib/previa';
+import { ROTA_PAINEL } from '@/lib/rotas';
 import { Contador } from './Contador';
+import { MonitorarOab } from './MonitorarOab';
 import { Revelar } from './Revelar';
 import styles from './page.module.css';
 
@@ -38,19 +42,74 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-const hrefCadastro = (numero: string, uf: string) =>
-  `/cadastro?${new URLSearchParams({ oab: numero, uf })}`;
+/**
+ * O que o CTA desta página faz — e isso depende de quem clicou.
+ *
+ * Esta é a **única** rota que resolve uma OAB antes de a conta existir: a busca
+ * da home e a do /cadastro navegam para cá, e é daqui que a OAB entra no
+ * cadastro pela URL. Quem chega, portanto, está de um dos dois lados da porta:
+ *
+ * - **sem conta** → `/cadastro?oab&uf`: criar a conta é o que falta, e a OAB
+ *   viaja junto para ser gravada assim que a sessão abrir;
+ * - **com sessão** → grava a OAB agora (`MonitorarOab`) e vai ao painel. Não há
+ *   tela no meio: os processos já estão nesta página, e repeti-los no onboarding
+ *   era cobrar dois cliques para chegar ao mesmo lugar.
+ */
+interface Cta {
+  /** Destino de quem ainda não tem conta. */
+  href: string;
+  /** `true` quando a pessoa já tem sessão — muda o que o CTA é, não só para onde vai. */
+  logado: boolean;
+}
+
+function ctaDaOab(numero: string, uf: string, logado: boolean): Cta {
+  return { href: `/cadastro?${new URLSearchParams({ oab: numero, uf })}`, logado };
+}
+
+/** O mesmo objeto na tela nos dois casos: link para visitante, botão para quem tem sessão. */
+function CtaOab({
+  cta,
+  oab,
+  className,
+  seta = 16,
+  children,
+}: {
+  cta: Cta;
+  oab: { numero: string; uf: string };
+  className: string;
+  /** A seta acompanha o tamanho do CTA — 14 no bloco travado, 16 nos fechos. */
+  seta?: number;
+  children: ReactNode;
+}) {
+  if (cta.logado) {
+    return (
+      <MonitorarOab oab={oab} className={className} seta={seta}>
+        {children}
+      </MonitorarOab>
+    );
+  }
+  return (
+    <Link href={cta.href} className={className}>
+      {children} <ArrowRight size={seta} aria-hidden="true" />
+    </Link>
+  );
+}
 
 export default async function PaginaOab({ params }: Params) {
   const { slug } = await params;
   const oab = parseSlugOab(slug);
   if (!oab) notFound();
 
-  const resultado = await getPrevia(oab.numero, oab.uf);
-  const cadastro = hrefCadastro(oab.numero, oab.uf);
+  /* Mesmo sinal de sessão que o middleware usa. O `access_token` vale 15
+     minutos e não há renovação: expirado, a pessoa é tratada como visitante
+     aqui e o /cadastro a devolve ao login se a conta já existir — nenhuma
+     conta nasce duplicada por causa disso. */
+  const logado = !!(await cookies()).get('access_token')?.value;
+
+  const [resultado, cta] = [await getPrevia(oab.numero, oab.uf), ctaDaOab(oab.numero, oab.uf, logado)];
 
   if (!resultado.ok) {
-    return <Falha motivo={resultado.motivo} oab={oab} cadastro={cadastro} />;
+    return <Falha motivo={resultado.motivo} oab={oab} cta={cta} />;
   }
 
   const previa = resultado.previa;
@@ -60,9 +119,9 @@ export default async function PaginaOab({ params }: Params) {
       <Revelar alvo="oab" />
       <Topo />
       {previa.totalProcessos === 0 ? (
-        <SemPublicacao previa={previa} oab={oab} cadastro={cadastro} />
+        <SemPublicacao previa={previa} oab={oab} cta={cta} />
       ) : (
-        <ComPublicacao previa={previa} oab={oab} cadastro={cadastro} />
+        <ComPublicacao previa={previa} oab={oab} cta={cta} />
       )}
       <Rodape />
     </main>
@@ -74,11 +133,11 @@ export default async function PaginaOab({ params }: Params) {
 function ComPublicacao({
   previa,
   oab,
-  cadastro,
+  cta,
 }: {
   previa: PreviaOab;
   oab: { numero: string; uf: string };
-  cadastro: string;
+  cta: Cta;
 }) {
   const nome = previa.advogado ? nomeProprio(previa.advogado) : null;
   const tratamento = previa.advogado ? primeiroNome(previa.advogado) : null;
@@ -235,10 +294,12 @@ function ComPublicacao({
               <p className={styles.travaTexto}>
                 Faltam <strong>{previa.totalProcessos - PROCESSOS_ABERTOS}</strong> processos nesta lista.
               </p>
-              <Link href={cadastro} className={styles.travaCta}>
-                Ver a lista completa <ArrowRight size={14} aria-hidden="true" />
-              </Link>
-              <span className={styles.travaMicro}>Grátis para começar, sem cartão.</span>
+              <CtaOab cta={cta} oab={oab} className={styles.travaCta} seta={14}>
+                Ver a lista completa
+              </CtaOab>
+              <span className={styles.travaMicro}>
+                {cta.logado ? 'Sua conta já existe — falta ligar esta OAB.' : 'Grátis para começar, sem cartão.'}
+              </span>
             </div>
           </div>
         )}
@@ -253,12 +314,13 @@ function ComPublicacao({
           só aparecem no painel do PJe — inclusive os que correm em segredo de justiça e nunca
           passam pelo diário.
         </p>
-        <Link href={cadastro} className={styles.fechoCta}>
-          Monitorar {previa.totalProcessos > 0 ? `meus ${previa.totalProcessos} processos` : 'meus processos'}{' '}
-          <ArrowRight size={16} aria-hidden="true" />
-        </Link>
+        <CtaOab cta={cta} oab={oab} className={styles.fechoCta}>
+          Monitorar {previa.totalProcessos > 0 ? `meus ${previa.totalProcessos} processos` : 'meus processos'}
+        </CtaOab>
         <p className={styles.fechoMicro}>
-          Leva dois minutos. A OAB {oab.numero}/{oab.uf} já vai preenchida.
+          {cta.logado
+            ? `A OAB ${oab.numero}/${oab.uf} passa a ser monitorada e você volta para o painel.`
+            : `Leva dois minutos. A OAB ${oab.numero}/${oab.uf} já vai preenchida.`}
         </p>
       </section>
     </>
@@ -301,11 +363,11 @@ function resumoRitmo(previa: PreviaOab): string {
 function SemPublicacao({
   previa,
   oab,
-  cadastro,
+  cta,
 }: {
   previa: PreviaOab;
   oab: { numero: string; uf: string };
-  cadastro: string;
+  cta: Cta;
 }) {
   const nome = previa.advogado ? nomeProprio(previa.advogado) : null;
 
@@ -372,11 +434,13 @@ function SemPublicacao({
           Com a sua credencial do PJe, CPE ou Projudi, o robô abre o painel do advogado e traz o
           que está lá: processos, andamentos, documentos e os expedientes com prazo fatal.
         </p>
-        <Link href={cadastro} className={styles.fechoCta}>
-          Conectar meu tribunal <ArrowRight size={16} aria-hidden="true" />
-        </Link>
+        <CtaOab cta={cta} oab={oab} className={styles.fechoCta}>
+          {cta.logado ? 'Monitorar esta OAB' : 'Conectar meu tribunal'}
+        </CtaOab>
         <p className={styles.fechoMicro}>
-          Leva dois minutos. A OAB {oab.numero}/{oab.uf} já vai preenchida.
+          {cta.logado
+            ? `A OAB ${oab.numero}/${oab.uf} passa a ser monitorada e você volta para o painel.`
+            : `Leva dois minutos. A OAB ${oab.numero}/${oab.uf} já vai preenchida.`}
         </p>
       </section>
     </>
@@ -388,11 +452,11 @@ function SemPublicacao({
 function Falha({
   motivo,
   oab,
-  cadastro,
+  cta,
 }: {
   motivo: 'oab-invalida' | 'limite' | 'indisponivel';
   oab: { numero: string; uf: string };
-  cadastro: string;
+  cta: Cta;
 }) {
   const copy = {
     'oab-invalida': {
@@ -422,11 +486,14 @@ function Falha({
           <h1 className={styles.falhaTitulo}>{copy.titulo}</h1>
           <p className={styles.heroLead}>{copy.texto}</p>
           <div className={styles.falhaAcoes}>
-            <Link href="/home" className={styles.falhaVoltar}>
+            {/* Nenhum dos dois leva a OAB junto: ela é justamente a que não
+                resolveu. Quem já tem sessão volta ao painel, que pede a OAB no
+                estado vazio; quem não tem, à busca da home. */}
+            <Link href={cta.logado ? ROTA_PAINEL : '/'} className={styles.falhaVoltar}>
               <ArrowLeft size={14} aria-hidden="true" /> Consultar outra OAB
             </Link>
-            <Link href={cadastro} className={styles.fechoCta}>
-              Criar conta <ArrowRight size={16} aria-hidden="true" />
+            <Link href={cta.logado ? ROTA_PAINEL : '/cadastro'} className={styles.fechoCta}>
+              {cta.logado ? 'Ir para o painel' : 'Criar conta'} <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -441,7 +508,7 @@ function Falha({
 function Topo() {
   return (
     <header className={styles.topo}>
-      <Link href="/home" className={styles.topoVoltar}>
+      <Link href="/" className={styles.topoVoltar}>
         <ArrowLeft size={14} aria-hidden="true" />
         <span className={styles.topoMarca}>Ponto Processual</span>
       </Link>

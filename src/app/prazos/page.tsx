@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
 import { FilterWorkspace } from '@/components/filters/FilterWorkspace';
-import { getPrazos, getSupportedTribunals } from '@/lib/api.server';
+import { getPrazos, getTribunaisDaCarteira } from '@/lib/api.server';
 import { PrazosView } from '@/components/prazos/PrazosView/PrazosView';
 import { ActivePrazoFilters } from '@/components/prazos/PrazoFilters/ActivePrazoFilters';
 import {
@@ -26,11 +26,13 @@ export default async function PrazosPage({
   searchParams: Promise<PrazoSearchParams>;
 }) {
   const sp = await searchParams;
-  const tribunals = await getSupportedTribunals();
+  /* Só os tribunais em que esta conta tem processo: filtrar por um tribunal
+     vazio nunca devolveu nada, e a lista completa escondia os que chegam
+     pelas fontes públicas. Ver `getTribunaisDaCarteira`. */
+  const tribunals = await getTribunaisDaCarteira();
   const filters = parsePrazoFilters(sp, tribunals.map(tribunal => tribunal.code));
 
-  const { prazos, criticos, pautaAtrasada } =
-    await getPrazos(1, 100, prazoFiltersToApi(filters));
+  const { prazos, criticos } = await getPrazos(1, 100, prazoFiltersToApi(filters));
 
   return (
     <AppLayout
@@ -52,7 +54,6 @@ export default async function PrazosPage({
           sort={filters.sort}
           order={filters.order}
           criticos={criticos}
-          pautaAtrasada={pautaAtrasada}
         />
       </FilterWorkspace>
     </AppLayout>

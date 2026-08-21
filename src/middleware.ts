@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ROTA_PAINEL } from '@/lib/rotas';
 
-/* Rotas só para quem NÃO está logado: logado nelas é redirecionado ao painel. */
-const ANON_ROUTES = ['/login', '/cadastro', '/home'];
+/* Rotas só para quem NÃO está logado: logado nelas é redirecionado ao painel.
+   `/` é a landing — quem já tem sessão não precisa da página de vendas. */
+const ANON_ROUTES = ['/', '/login', '/cadastro', '/home'];
 /* Rotas abertas a todos. `/oab/<numero>-<uf>` é o resultado da busca pública:
    tem URL própria para ser compartilhada, e quem recebe o link pode já ter
    conta — expulsar essa pessoa para o painel quebraria o compartilhamento. */
@@ -18,7 +20,10 @@ export function middleware(req: NextRequest) {
   if (pathname.startsWith(API_PUBLIC_PREFIX)) return NextResponse.next();
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.endsWith('opengraph-image')) return NextResponse.next();
 
-  const casa = (rotas: string[]) => rotas.some(r => pathname === r || pathname.startsWith(r + '/'));
+  /* `/` casa por igualdade apenas: como prefixo, ele casaria com a aplicação
+     inteira e deixaria tudo público. */
+  const casa = (rotas: string[]) =>
+    rotas.some(r => pathname === r || (r !== '/' && pathname.startsWith(r + '/')));
   const isAnon = casa(ANON_ROUTES);
   const isOpen = casa(OPEN_ROUTES);
 
@@ -32,10 +37,10 @@ export function middleware(req: NextRequest) {
   }
 
   if (token && isAnon) {
-    const homeUrl = req.nextUrl.clone();
-    homeUrl.pathname = '/';
-    homeUrl.search = '';
-    return NextResponse.redirect(homeUrl);
+    const painelUrl = req.nextUrl.clone();
+    painelUrl.pathname = ROTA_PAINEL;
+    painelUrl.search = '';
+    return NextResponse.redirect(painelUrl);
   }
 
   return NextResponse.next();

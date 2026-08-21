@@ -10,7 +10,7 @@ import {
   MOVIMENTACAO_PANEL_HOST_ID,
   MovimentacaoFilterControls,
 } from '@/components/movimentacoes/MovimentacaoFilters/MovimentacaoFilterControls';
-import { getMovimentacoes, getSupportedTribunals } from '@/lib/api.server';
+import { getMovimentacoes, getTribunaisDaCarteira } from '@/lib/api.server';
 import {
   movimentacaoFiltersToApi,
   movimentacaoFiltersToRecord,
@@ -32,7 +32,10 @@ export default async function MovimentacoesPage({
   const requestedPage = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
   const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
-  const tribunals = await getSupportedTribunals();
+  /* Só os tribunais em que esta conta tem processo: filtrar por um tribunal
+     vazio nunca devolveu nada, e a lista completa escondia os que chegam
+     pelas fontes públicas. Ver `getTribunaisDaCarteira`. */
+  const tribunals = await getTribunaisDaCarteira();
   const filters = parseMovimentacaoFilters(sp, tribunals.map(tribunal => tribunal.code));
 
   const { groups, total, totalPages, page: backendPage, newToday } =

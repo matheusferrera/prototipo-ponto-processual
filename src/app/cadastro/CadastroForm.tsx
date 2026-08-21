@@ -4,15 +4,22 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AuthField } from '@/components/auth/AuthField';
-import { limparOabNumero, limparOabUf, normalizarOab } from '@/lib/previa';
+import { GoogleButton } from '@/components/auth/GoogleButton';
+import { avisoGoogle, type AvisoGoogle } from '@/components/auth/google-erros';
+import { limparOabNumero, limparOabUf, slugOab } from '@/lib/previa';
+import { ROTA_PAINEL } from '@/lib/rotas';
 import styles from '@/components/auth/AuthForm.module.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SENHA_MIN = 8;
 
 /* Ordem visual dos campos — e, por isso, a ordem em que o primeiro inválido
-   recebe foco no submit. Mexer aqui exige mexer no JSX junto. */
-const CAMPOS = ['nome', 'oabNumero', 'oabUf', 'email', 'senha'] as const;
+   recebe foco no submit. Mexer aqui exige mexer no JSX junto.
+
+   A OAB saiu desta lista: ela não é mais campo deste formulário. Quem digita
+   uma OAB antes de ter conta passa por `/oab/<numero>-<uf>`, a única rota que
+   resolve OAB — de lá ela volta na URL e chega aqui já respondida. */
+const CAMPOS = ['nome', 'email', 'senha'] as const;
 type CampoId = (typeof CAMPOS)[number];
 type Valores = Record<CampoId, string>;
 
@@ -20,12 +27,6 @@ function erroDoCampo(id: CampoId, v: Valores): string {
   switch (id) {
     case 'nome':
       return v.nome.trim() ? '' : 'Informe seu nome completo.';
-    case 'oabNumero':
-      return v.oabNumero ? '' : 'Informe o número da sua OAB.';
-    case 'oabUf':
-      /* Curto de propósito: a mensagem cai numa coluna de 88px, e qualquer
-         frase maior quebra em três linhas e empurra o resto do formulário. */
-      return v.oabUf.length === 2 ? '' : 'Falta a UF.';
     case 'email':
       if (!v.email.trim()) return 'Informe seu e-mail.';
       return EMAIL_RE.test(v.email.trim()) ? '' : 'Informe um e-mail válido.';
@@ -39,29 +40,35 @@ const JA_EXISTE = /j[áa]\s*(existe|cadastrad)|dispon[íi]vel|em uso|already/i;
 
 interface CadastroFormProps {
   /**
-   * OAB vinda da busca pública, quando o visitante chegou por ela. É valor
-   * inicial de um campo deste formulário, não um dado de passagem: a pergunta
-   * "qual é a sua OAB" acontece aqui e em nenhum outro lugar do cadastro.
+   * OAB já resolvida em `/oab/<numero>-<uf>`, recebida pela URL. Não é campo
+   * daqui: é uma resposta que veio pronta e que segue para o onboarding.
    */
   oab: { numero: string; uf: string } | null;
   /** Nome do advogado como o DJEN grafa, já formatado. Vira valor inicial editável. */
   nomeSugerido: string | null;
+  /** Sem client id/secret configurados o botão do Google nem aparece. */
+  googleAtivo: boolean;
+  /** `?erro=` deixado pelo callback do Google quando o fluxo não completou. */
+  erroGoogle?: string;
 }
 
 /**
- * Formulário de criação de conta — e o único lugar do fluxo que pergunta a OAB.
+ * Formulário de criação de conta — nome, e-mail e senha, ou o botão do Google.
  *
- * Antes a OAB era pedida no hero da landing e **de novo** no onboarding, logo
- * depois do cadastro: quem tinha acabado de ver os próprios processos na tela
- * era recebido com "informe sua OAB", como se nada tivesse acontecido. Agora
- * ela é um campo daqui — preenchido quando veio da busca, digitado quando a
- * pessoa entrou direto por "Criar conta" — e o onboarding só recebe a resposta.
+ * A OAB **não** é pedida aqui, e nenhuma porta de cadastro a exige. Ela tem uma
+ * rota só: `/oab/<numero>-<uf>`, que consulta o diário e mostra os processos
+ * antes de qualquer cadastro. A busca da home leva para lá, a busca deste
+ * formulário leva para lá, e é de lá que a OAB chega — pela URL — a esta tela e,
+ * depois, ao onboarding. Quem cria conta sem OAB (pelo Google, inclusive) é
+ * perguntado uma vez no onboarding, que também manda para `/oab`.
+ *
+ * A regra que isso substitui: antes o botão do Google ficava travado sem OAB
+ * preenchida aqui. O efeito era barrar o cadastro mais rápido do produto por um
+ * dado que a conta consegue receber depois — e que agora tem um lugar próprio.
  */
-export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
+export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: CadastroFormProps) {
   const router = useRouter();
   const [nome, setNome] = useState(nomeSugerido ?? '');
-  const [oabNumero, setOabNumero] = useState(oab?.numero ?? '');
-  const [oabUf, setOabUf] = useState(oab?.uf ?? '');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
@@ -71,35 +78,38 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
   /* Conta existente não é erro de preenchimento: vira uma saída para o login,
      não um texto vermelho que deixa a pessoa sem próximo passo. */
   const [contaExiste, setContaExiste] = useState(false);
+  /* ...e quando a conta que existe é do Google, a saída é o botão dele: mandar
+     essa pessoa para o formulário de senha seria mandá-la tentar uma senha que
+     ela nunca escolheu. */
+  const [contaGoogle, setContaGoogle] = useState(false);
+  const [aviso] = useState<AvisoGoogle | null>(() => avisoGoogle(erroGoogle));
 
-  const valores: Valores = { nome, oabNumero, oabUf, email, senha };
+  const valores: Valores = { nome, email, senha };
   const erros = {
     nome: erroDoCampo('nome', valores),
-    oabNumero: erroDoCampo('oabNumero', valores),
-    oabUf: erroDoCampo('oabUf', valores),
     email: erroDoCampo('email', valores),
     senha: erroDoCampo('senha', valores),
   };
 
-  /* A OAB que segue para o onboarding vem do estado do formulário, não do prop:
-     o campo é editável, e é o valor final que vale. */
-  const oabFinal = normalizarOab(oabNumero, oabUf);
-  const repasseOab = oabFinal
-    ? `?${new URLSearchParams({ oab: oabFinal.numero, uf: oabFinal.uf })}`
-    : '';
+  const repasseOab = oab ? `?${new URLSearchParams({ oab: oab.numero, uf: oab.uf })}` : '';
   const hrefLogin = `/login?${new URLSearchParams({
     email,
-    ...(oabFinal ? { next: `/onboarding${repasseOab}` } : {}),
+    ...(oab ? { next: `/onboarding${repasseOab}` } : {}),
   })}`;
 
-  /* Veio da busca e não foi mexido — o rodapé do campo confirma a origem em vez
-     de repetir a instrução genérica. */
-  const oabIntacta = !!oab && oabNumero === oab.numero && oabUf === oab.uf;
+  /* A OAB viaja no cookie de estado do fluxo e volta no onboarding. O Google
+     responde nome e e-mail; a OAB, não — e ela é o que liga o monitoramento.
+     Sem OAB o botão continua valendo: o onboarding pergunta depois. */
+  const hrefGoogle = `/api/auth/google/start?${new URLSearchParams({
+    origem: '/cadastro',
+    ...(oab ? { oab: oab.numero, uf: oab.uf } : {}),
+  })}`;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setErroServidor('');
     setContaExiste(false);
+    setContaGoogle(false);
     setTocado(Object.fromEntries(CAMPOS.map(c => [c, true])));
 
     const primeiroInvalido = CAMPOS.find(id => erros[id]);
@@ -119,15 +129,30 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
 
       if (!res.ok) {
         const msg: string = data.error ?? 'Erro ao criar conta.';
-        if (res.status === 409 || JA_EXISTE.test(msg)) setContaExiste(true);
+        if (data.code === 'GOOGLE_ACCOUNT') setContaGoogle(true);
+        else if (res.status === 409 || JA_EXISTE.test(msg)) setContaExiste(true);
         else setErroServidor(msg);
         return;
       }
 
-      /* `/auth/register` já faz login. A OAB vai na URL porque a conta ainda não
-         a tem: quem a grava é `POST /scraper/monitorar-oab`, que o onboarding
-         dispara assim que a busca volta com resultado. */
-      router.push(`/onboarding${repasseOab}`);
+      /* `/auth/register` já abriu a sessão. Com OAB, a conta recebe agora o que
+         faltava — `POST /scraper/monitorar-oab` grava a OAB e enfileira DJEN e
+         consulta pública — e a pessoa vai direto ao painel, que abre em
+         "sincronizando". Passar pelo onboarding aqui seria mostrar os mesmos
+         processos que ela acabou de ver em `/oab`, um clique antes do painel.
+
+         Se a gravação falhar, o painel recebe essa conta com "falta a sua OAB"
+         e o campo para informá-la: o pedido não some, e a conta — que é o que
+         acabou de ser criada — não fica presa a um erro de outra requisição. */
+      if (oab) {
+        await fetch('/api/scraper/monitorar-oab', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oabNumero: oab.numero, oabUf: oab.uf }),
+        }).catch(() => {});
+      }
+
+      router.push(oab ? ROTA_PAINEL : '/onboarding');
       return;
     } catch {
       setErroServidor('Não foi possível conectar ao servidor.');
@@ -154,6 +179,26 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
         </li>
       </ol>
 
+      {aviso && (
+        <div className={aviso.neutro ? styles.avisoBanner : styles.errorBanner} role="alert">
+          {aviso.texto}
+        </div>
+      )}
+
+      <BlocoOab oab={oab} desabilitado={loading} />
+
+      {googleAtivo && (
+        <>
+          <GoogleButton label="Criar conta com Google" href={hrefGoogle} disabled={loading} />
+
+          <div className={styles.divider}>
+            <div className={styles.dividerLine} />
+            <span className={styles.dividerLabel}>ou</span>
+            <div className={styles.dividerLine} />
+          </div>
+        </>
+      )}
+
       <form onSubmit={handleSubmit} noValidate className={styles.form}>
         <AuthField
           id="nome"
@@ -173,44 +218,6 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
           </p>
         )}
 
-        {/* A OAB fica junto do nome, não no fim: é identidade profissional, e
-            quem veio da busca reencontra aqui o dado que o trouxe — o formulário
-            continua a conversa em vez de recomeçá-la. */}
-        <div className={styles.linhaOab}>
-          <AuthField
-            id="oabNumero"
-            label="Nº da OAB"
-            type="text"
-            autoComplete="off"
-            inputMode="numeric"
-            maxLength={8}
-            value={oabNumero}
-            onChange={v => setOabNumero(limparOabNumero(v))}
-            onBlur={() => setTocado(t => ({ ...t, oabNumero: true }))}
-            placeholder="12345"
-            disabled={loading}
-            error={tocado.oabNumero ? erros.oabNumero : ''}
-          />
-          <AuthField
-            id="oabUf"
-            label="UF"
-            type="text"
-            autoComplete="off"
-            maxLength={2}
-            value={oabUf}
-            onChange={v => setOabUf(limparOabUf(v))}
-            onBlur={() => setTocado(t => ({ ...t, oabUf: true }))}
-            placeholder="SP"
-            disabled={loading}
-            error={tocado.oabUf ? erros.oabUf : ''}
-          />
-        </div>
-        <p className={styles.dicaCampo}>
-          {oabIntacta
-            ? 'É a OAB que você acabou de consultar — ajuste se não for essa.'
-            : 'É por ela que localizamos seus processos nos diários oficiais.'}
-        </p>
-
         <AuthField
           id="email"
           label="E-mail profissional"
@@ -220,6 +227,7 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
           onChange={v => {
             setEmail(v);
             setContaExiste(false);
+            setContaGoogle(false);
           }}
           onBlur={() => setTocado(t => ({ ...t, email: true }))}
           placeholder="voce@escritorio.com.br"
@@ -243,6 +251,21 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
           error={tocado.senha ? erros.senha : ''}
           toggle={{ visible: showSenha, onToggle: () => setShowSenha(v => !v) }}
         />
+
+        {contaGoogle && (
+          <div className={styles.saidaBanner} role="alert">
+            <p>
+              <strong>{email}</strong> já tem conta aqui, criada com o Google.
+            </p>
+            {googleAtivo ? (
+              <GoogleButton label="Entrar com Google" href={hrefGoogle} />
+            ) : (
+              <Link href={hrefLogin} className={styles.saidaCta}>
+                Ir para o login
+              </Link>
+            )}
+          </div>
+        )}
 
         {contaExiste && (
           <div className={styles.saidaBanner} role="alert">
@@ -280,5 +303,104 @@ export function CadastroForm({ oab, nomeSugerido }: CadastroFormProps) {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * A OAB nesta tela: confirmação de quem já passou por `/oab`, convite para quem
+ * não passou — e, nos dois casos, uma busca que **navega** para `/oab/<slug>`.
+ *
+ * Não é um campo de formulário disfarçado: nada aqui é enviado junto do
+ * cadastro. Digitar uma OAB é sair desta página para ver os processos dela, e
+ * voltar por um link que já traz a OAB. É o que mantém uma rota só resolvendo
+ * OAB — e o que impede a resposta "12345/SP" de virar, sem que ninguém veja
+ * nada, uma busca que falha três telas adiante.
+ */
+function BlocoOab({ oab, desabilitado }: { oab: { numero: string; uf: string } | null; desabilitado?: boolean }) {
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+  const [numero, setNumero] = useState('');
+  const [uf, setUf] = useState('');
+  const [erro, setErro] = useState('');
+
+  function buscar(e: FormEvent) {
+    e.preventDefault();
+    if (!numero) {
+      setErro('Informe o número da sua OAB.');
+      document.getElementById('busca-oab-numero')?.focus();
+      return;
+    }
+    if (uf.length !== 2) {
+      setErro('Informe a UF (duas letras).');
+      document.getElementById('busca-oab-uf')?.focus();
+      return;
+    }
+    setErro('');
+    router.push(`/oab/${slugOab(numero, uf)}`);
+  }
+
+  return (
+    <div className={styles.oabBloco}>
+      <p className={styles.oabBlocoLinha}>
+        {oab ? (
+          <>
+            Vamos começar pelos processos da OAB{' '}
+            <strong>
+              {oab.numero}/{oab.uf}
+            </strong>
+            , que você acabou de consultar.
+          </>
+        ) : (
+          <>
+            Tem OAB? Dá para <strong>ver seus processos antes</strong> de criar a conta — a consulta
+            é em base pública e não pede senha de tribunal.
+          </>
+        )}
+      </p>
+
+      {!aberto ? (
+        <button type="button" className={styles.oabBlocoAcao} onClick={() => setAberto(true)}>
+          {oab ? 'Não é essa OAB? Consultar outra' : 'Consultar minha OAB'}
+        </button>
+      ) : (
+        <form className={styles.oabBuscaForm} onSubmit={buscar} noValidate>
+          <div className={styles.linhaOab}>
+            <AuthField
+              id="busca-oab-numero"
+              label="Nº da OAB"
+              type="text"
+              autoComplete="off"
+              inputMode="numeric"
+              maxLength={8}
+              value={numero}
+              onChange={v => setNumero(limparOabNumero(v))}
+              placeholder="12345"
+              disabled={desabilitado}
+              error={!!erro && !numero}
+            />
+            <AuthField
+              id="busca-oab-uf"
+              label="UF"
+              type="text"
+              autoComplete="off"
+              maxLength={2}
+              value={uf}
+              onChange={v => setUf(limparOabUf(v))}
+              placeholder="SP"
+              disabled={desabilitado}
+              error={!!erro && uf.length !== 2}
+            />
+          </div>
+          {erro && <span className={styles.fieldError}>{erro}</span>}
+          <button type="submit" className={styles.btnOutline} disabled={desabilitado}>
+            Ver meus processos
+          </button>
+          <p className={styles.dicaCampo}>
+            Isso abre a consulta pública numa página própria. De lá você volta para o cadastro com a
+            OAB já respondida — o que estiver digitado aqui embaixo não é enviado ainda.
+          </p>
+        </form>
+      )}
+    </div>
   );
 }

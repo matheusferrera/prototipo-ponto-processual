@@ -6,8 +6,12 @@ import { AlertTriangle, Check, KeyRound, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { limparOabNumero, limparOabUf } from '@/lib/previa';
+import { limparOabNumero, limparOabUf, slugOab } from '@/lib/previa';
+import { ROTA_PAINEL } from '@/lib/rotas';
 import { CredentialSheet, type CredentialSheetTarget } from '@/components/credenciais/CredentialSheet/CredentialSheet';
+import { ScannerTribunais } from '@/components/varredura/ScannerTribunais';
+import { EstadoVarredura } from '@/components/varredura/EstadoVarredura';
+import { DicasVarredura } from '@/components/varredura/DicasVarredura';
 import type { SistemaGroup, ScraperSecretView } from '@/lib/credenciais';
 import styles from './OnboardingFlow.module.css';
 
@@ -25,10 +29,12 @@ interface DjenPreview {
 
 /**
  * `buscando` é o estado de abertura de quem chega com OAB — a busca dispara
- * sozinha. `credencial` é o de quem chega sem ela (conta antiga, ou volta pelo
- * painel vazio): em vez de perguntar a OAB aqui, vai direto ao tribunal.
+ * sozinha. `oab` é o de quem chega sem ela (criou a conta pelo Google, ou pelo
+ * /cadastro sem passar pela consulta): a pergunta acontece uma vez, aqui, e a
+ * resposta sai desta tela para `/oab/<numero>-<uf>` em vez de virar uma busca
+ * escondida. `credencial` é para quem dispensa a OAB e vai direto ao tribunal.
  */
-type Stage = 'buscando' | 'resultado' | 'erro' | 'credencial';
+type Stage = 'buscando' | 'oab' | 'resultado' | 'erro' | 'credencial';
 
 function getNomeTribunalFallback(sigla: string): string {
   const ufMap: Record<string, string> = {
@@ -61,18 +67,26 @@ function getNomeTribunalFallback(sigla: string): string {
 }
 
 /**
- * Primeiro acesso — e, deliberadamente, uma tela que **não pergunta a OAB**.
+ * Primeiro acesso. Quem chega **com** OAB não é perguntado nada.
  *
- * A OAB é respondida uma vez só, no formulário de criar conta, e chega aqui
- * pela URL (`/cadastro?oab=…&uf=…` → `/onboarding?oab=…&uf=…`). Esta tela trata
- * isso como resposta dada: dispara a busca sozinha e abre já no resultado.
- * Antes ela repetia o formulário com os campos preenchidos — o que, logo depois
- * de a pessoa ter visto os próprios processos em `/oab/<slug>` e no painel do
- * cadastro, lia como se nada tivesse sido dito. Era onde o funil mais vazava.
+ * A OAB tem uma rota só no produto inteiro: `/oab/<numero>-<uf>`, a consulta
+ * pública. A busca da home e a do /cadastro navegam para lá, e é de lá que ela
+ * chega aqui pela URL (`/oab/<slug>` → `/cadastro?oab=…&uf=…` →
+ * `/onboarding?oab=…&uf=…`). Nesse caminho esta tela trata a OAB como resposta
+ * dada: dispara a busca sozinha e abre já no resultado. Repetir o formulário
+ * com os campos preenchidos, logo depois de a pessoa ter visto os próprios
+ * processos, era onde o funil mais vazava.
  *
- * Restou um único lugar para digitar OAB aqui: a correção, escondida atrás de
- * "não é essa OAB?" nos caminhos de erro e de zero resultados. Ali não é
- * pergunta — é a saída de quem errou um dígito e ficaria sem próximo passo.
+ * Quem chega **sem** OAB (criou a conta pelo Google, ou pelo /cadastro sem
+ * consultar) cai no estágio `oab` — a única pergunta desta tela. Ela não
+ * resolve a OAB aqui: manda para `/oab/<slug>`, que mostra os processos e
+ * devolve a pessoa para cá com a resposta na URL. Quem prefere não responder
+ * agora vai para o painel, que recebe essa conta com "falta a sua OAB" e o
+ * campo para informá-la — o pedido continua vivo, sem travar a entrada.
+ *
+ * O outro lugar onde se digita OAB aqui é a correção, escondida atrás de "não é
+ * essa OAB?" nos caminhos de erro e de zero resultados. Ali não é pergunta — é
+ * a saída de quem errou um dígito e ficaria sem próximo passo.
  */
 export function OnboardingFlow({
   sistemas,
@@ -83,7 +97,7 @@ export function OnboardingFlow({
 }) {
   const router = useRouter();
 
-  const [stage, setStage] = useState<Stage>(oabInicial ? 'buscando' : 'credencial');
+  const [stage, setStage] = useState<Stage>(oabInicial ? 'buscando' : 'oab');
   const [oabNumero, setOabNumero] = useState(oabInicial?.numero ?? '');
   const [oabUf, setOabUf] = useState(oabInicial?.uf ?? '');
   const [buscando, setBuscando] = useState(false);
@@ -233,24 +247,89 @@ export function OnboardingFlow({
               <Button type="button" variant="outline" onClick={() => setSheetTarget({ mode: 'create' })}>
                 <KeyRound size={14} /> Cadastrar outro tribunal
               </Button>
-              <Button type="button" onClick={() => router.push('/')}>
+              <Button type="button" onClick={() => router.push(ROTA_PAINEL)}>
                 Ir para o dashboard →
               </Button>
             </div>
           </div>
         ) : stage === 'buscando' ? (
           /* Sem botão e sem campo: a pessoa já respondeu tudo o que precisávamos
-             no cadastro. Esta tela só presta contas do que está acontecendo. */
-          <div className={styles.card}>
-            <div className={styles.icon}>
-              <Loader2 size={22} className={styles.spin} />
-            </div>
+             no cadastro. Esta tela só presta contas do que está acontecendo.
+
+             O spinner que ficava aqui não prestava conta nenhuma: girava igual
+             no primeiro e no décimo segundo. Trocado pelo scanner de
+             `/oab/[slug]/loading.tsx` — que quem chegou pela consulta pública
+             acabou de ver — mais o estado real (tempo decorrido) e as dicas,
+             que transformam a espera em algo que a pessoa aproveita. */
+          <div className={`${styles.card} ${styles.cardWide}`}>
+            <ScannerTribunais />
             <div className={styles.eyebrow}>OAB {oabNumero}/{oabUf}</div>
             <div className={styles.title}>Procurando seus processos</div>
             <p className={styles.desc}>
               Estamos varrendo as bases públicas para descobrir em quais tribunais você tem
-              atividade. Leva alguns segundos.
+              atividade.
             </p>
+            <EstadoVarredura />
+            <DicasVarredura />
+          </div>
+        ) : stage === 'oab' ? (
+          <div className={styles.card}>
+            <div className={styles.icon}>
+              <Search size={22} />
+            </div>
+            <div className={styles.eyebrow}>Primeiro acesso</div>
+            <div className={styles.title}>Qual é a sua OAB?</div>
+            <p className={styles.desc}>
+              É por ela que localizamos seus processos nos diários oficiais — a consulta é
+              pública e não pede a senha de tribunal nenhum. Vamos mostrar o que encontramos
+              antes de ligar o monitoramento.
+            </p>
+            <form
+              className={styles.trocarForm}
+              onSubmit={e => {
+                e.preventDefault();
+                /* Não resolvemos a OAB aqui: quem consulta é `/oab/<slug>`, e é
+                   de lá que ela volta para esta tela pela URL. */
+                router.push(`/oab/${slugOab(oabNumero, oabUf)}`);
+              }}
+            >
+              <FieldSet className={styles.oabFieldSet}>
+                <div className={styles.oabRow}>
+                  <Field>
+                    <FieldLabel htmlFor="onb-primeira-oab-numero">Número da OAB</FieldLabel>
+                    <Input
+                      id="onb-primeira-oab-numero"
+                      value={oabNumero}
+                      onChange={e => setOabNumero(limparOabNumero(e.target.value))}
+                      placeholder="12345"
+                      inputMode="numeric"
+                      autoFocus
+                    />
+                  </Field>
+                  <Field className={styles.oabUfField}>
+                    <FieldLabel htmlFor="onb-primeira-oab-uf">UF</FieldLabel>
+                    <Input
+                      id="onb-primeira-oab-uf"
+                      value={oabUf}
+                      onChange={e => setOabUf(limparOabUf(e.target.value))}
+                      placeholder="DF"
+                      maxLength={2}
+                    />
+                  </Field>
+                </div>
+              </FieldSet>
+              <div className={styles.actions}>
+                <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
+                  Pular por agora
+                </Button>
+                <Button type="submit" disabled={!oabNumero || oabUf.length !== 2}>
+                  <Search size={14} /> Ver meus processos
+                </Button>
+              </div>
+            </form>
+            <button type="button" className={styles.trocarLink} onClick={() => setStage('credencial')}>
+              Prefiro conectar o login de um tribunal
+            </button>
           </div>
         ) : stage === 'credencial' ? (
           <div className={styles.card}>
@@ -265,7 +344,7 @@ export function OnboardingFlow({
               inclusive nos autos em segredo de justiça.
             </p>
             <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push('/')}>
+              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
                 Pular por agora
               </Button>
               <Button type="button" onClick={abrirCredencial}>
@@ -282,7 +361,7 @@ export function OnboardingFlow({
             <div className={styles.title}>Não conseguimos realizar a consulta pública agora</div>
             <p className={styles.desc}>{erro || 'Tente novamente em instantes, ou cadastre a credencial do tribunal direto.'}</p>
             <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push('/')}>
+              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
                 Pular por agora
               </Button>
               <Button type="button" variant="outline" onClick={abrirCredencial}>
@@ -307,7 +386,7 @@ export function OnboardingFlow({
               Você ainda pode cadastrar a credencial de um tribunal diretamente para ter acesso completo.
             </p>
             <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push('/')}>
+              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
                 Pular por agora
               </Button>
               <Button type="button" onClick={abrirCredencial}>
@@ -353,7 +432,7 @@ export function OnboardingFlow({
             </div>
 
             <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push('/')}>
+              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
                 Pular por agora
               </Button>
               <Button type="button" onClick={abrirCredencial}>

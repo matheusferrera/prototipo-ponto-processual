@@ -10,7 +10,7 @@ import {
   ProcessFilterControls,
 } from '@/components/processos/ProcessFilters/ProcessFilterControls';
 import { ProcessTableProvider } from '@/components/processos/ProcessTable/ProcessTableProvider';
-import { getProcessos, getSupportedTribunals } from '@/lib/api.server';
+import { getProcessos, getTribunaisDaCarteira } from '@/lib/api.server';
 import {
   parseProcessFilters,
   processFiltersToApi,
@@ -31,7 +31,10 @@ export default async function ProcessosPage({
   const sp = await searchParams;
   const requestedPage = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
   const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const tribunals = await getSupportedTribunals();
+  /* Só os tribunais em que esta conta tem processo: filtrar por um tribunal
+     vazio nunca devolveu nada, e a lista completa escondia os que chegam
+     pelas fontes públicas. Ver `getTribunaisDaCarteira`. */
+  const tribunals = await getTribunaisDaCarteira();
   const tribunalCodes = tribunals.map(tribunal => tribunal.code);
   const filters = parseProcessFilters(sp, tribunalCodes);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type React from 'react';
 import { Sidebar } from '../Sidebar/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -43,10 +44,10 @@ export function AppLayout({ active, children, mobileTitle, mobileBreadcrumb, mob
               {mobileBreadcrumb && <span className={styles.mobileBreadcrumb}>{mobileBreadcrumb}</span>}
             </div>
           ) : (
-            <span className={styles.brand}>
+            <Link href="/" className={styles.brand}>
               <span className={styles.brandDot} />
               Ponto
-            </span>
+            </Link>
           )}
           {mobileActions}
         </div>

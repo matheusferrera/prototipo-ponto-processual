@@ -1,0 +1,96 @@
+/* Fita contínua de tribunais/sistemas, na posição do eyebrow do hero.
+   Mantém o registro tipográfico do eyebrow que ela substitui (mono, caixa
+   alta, tracking largo, brick-soft) — é uma legenda que anda, não um banner. */
+
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  /* Mesma altura de linha do eyebrow estático, para o h1 não pular quando
+     esta faixa entra no lugar dele. */
+  min-height: 14px;
+}
+
+/* O quadradinho do eyebrow continua parado à esquerda: é ele que ancora a
+   fita e a liga à marca (mesmo quadrado do brandMark e da malha do fundo). */
+.mark {
+  width: 7px;
+  height: 7px;
+  background: var(--brick-soft);
+  flex-shrink: 0;
+}
+
+.viewport {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  /* As pontas dissolvem em vez de cortar: sem isso os nomes aparecem e somem
+     em aresta viva e a fita lê como um campo com scroll, não como uma fita. */
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 88%, transparent);
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  animation: ticker 42s linear infinite;
+  will-change: transform;
+}
+
+/* Pausa para quem quiser ler um tribunal específico. Só em ponteiro fino —
+   no toque não existe hover e um :hover grudado deixaria a fita parada. */
+@media (hover: hover) and (pointer: fine) {
+  .viewport:hover .track {
+    animation-play-state: paused;
+  }
+}
+
+.copia {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* O respiro entre itens é padding do próprio item, não `gap` do flex — e isso
+   não é preferência de estilo, é o que faz a emenda fechar.
+
+   Com `gap: G`, a trilha mede 2·S + (2n−1)·G: há gap ENTRE as duas cópias,
+   mas nenhum depois da última. Metade disso cai meio gap antes do início da
+   segunda cópia, então a cada volta o translateX(-50%) dá um salto de G/2.
+   Com o respiro dentro do item, cada unidade mede sempre (largura + padding),
+   a trilha mede exatamente 2·U, e -50% cai no início da cópia 2 na bala. */
+.item {
+  position: relative;
+  flex-shrink: 0;
+  padding-right: 26px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--brick-soft);
+  white-space: nowrap;
+}
+
+/* Separador: o mesmo quadrado da marca, miúdo, centrado no respiro. */
+.item::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  width: 3px;
+  height: 3px;
+  margin-top: -1.5px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track { animation: none; }
+}

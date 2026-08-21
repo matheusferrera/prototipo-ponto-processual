@@ -12,12 +12,9 @@ import type {
   ProximoPrazo,
   DocumentoMovimentacao,
 } from '@/types';
-import {
-  FALLBACK_TRIBUNALS,
-  normalizeTribunalOptions,
-  type TribunalOption,
-} from '@/lib/tribunals';
+import { normalizeTribunalOptions, type TribunalOption } from '@/lib/tribunals';
 import { TIPOS_MOVIMENTACAO, type MovimentacaoSort } from '@/lib/movimentacao-filters';
+import type { UsuarioAtual } from '@/lib/usuario';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -742,28 +739,6 @@ function diasAteVencimento(dataLimite: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-/** Antecedência da pauta interna em relação ao prazo fatal, em dias corridos. */
-const DIAS_ANTECEDENCIA_PAUTA = 3;
-
-/**
- * Data da pauta interna: `DIAS_ANTECEDENCIA_PAUTA` dias antes do fatal.
- * Se cair no fim de semana antecipa para a sexta — sábado/domingo não é dia de trabalho.
- */
-function dataDaPauta(fatal: Date): Date {
-  const d = new Date(fatal.getFullYear(), fatal.getMonth(), fatal.getDate() - DIAS_ANTECEDENCIA_PAUTA);
-  if (d.getDay() === 0) d.setDate(d.getDate() - 2); // domingo → sexta
-  if (d.getDay() === 6) d.setDate(d.getDate() - 1); // sábado  → sexta
-  return d;
-}
-
-/** Dias corridos entre hoje (meia-noite local) e `alvo` — negativo quando já passou. */
-function diasCorridosAte(alvo: Date): number {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const dia = new Date(alvo.getFullYear(), alvo.getMonth(), alvo.getDate());
-  return Math.round((dia.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 const toISODate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -779,7 +754,6 @@ function toPrazo(d: BackendDeadline): Prazo {
     ? `${String(venc.getDate()).padStart(2, '0')}/${String(venc.getMonth() + 1).padStart(2, '0')}`
     : null;
   const vencimentoISO = venc ? toISODate(venc) : null;
-  const pauta = venc ? dataDaPauta(venc) : null;
 
   // A parte do próprio expediente é a mais precisa para um prazo; o polo ativo
   // do processo entra só como fallback quando o PJe não a informou.
@@ -802,8 +776,6 @@ function toPrazo(d: BackendDeadline): Prazo {
     natureza: d.natureza ?? null,
     vencimento,
     vencimentoISO,
-    pautaISO: pauta ? toISODate(pauta) : null,
-    diasParaPauta: pauta ? diasCorridosAte(pauta) : null,
     diasRestantes: dias,
     state,
   };
@@ -818,8 +790,6 @@ export type PrazoFilters = {
   origem?: 'scraper' | 'djen' | string;
   /** Faixa de dias até o fatal: crítico ≤3, urgente ≤7, atenção ≤14, normal >14. */
   urgencia?: string;
-  /** Janela da data da pauta: "atrasada" | "hoje" | "semana". */
-  pauta?: string;
   /** Expediente "pendente" (fechado=false) ou "fechado". */
   situacao?: string;
   /** Tipo do expediente (contém). */
@@ -833,10 +803,7 @@ export type PrazoFilters = {
   /** Faixa do prazo fatal (yyyy-mm-dd). */
   fatalFrom?: string;
   fatalTo?: string;
-  /** Faixa da data da pauta (yyyy-mm-dd). */
-  pautaFrom?: string;
-  pautaTo?: string;
-  sort?: 'fatal' | 'pauta' | 'tribunal' | 'cliente' | 'expediente' | string;
+  sort?: 'fatal' | 'tribunal' | 'cliente' | 'expediente' | string;
   order?: 'asc' | 'desc' | string;
 };
 
@@ -846,8 +813,6 @@ export type PrazoPage = {
   total: number;
   /** Quantos vencem em ≤3 dias — alimenta o alerta crítico. */
   criticos: number;
-  /** Quantos já passaram da data da pauta sem terem sido trabalhados. */
-  pautaAtrasada: number;
 };
 
 const contem = (valor: string, termo?: string) =>
@@ -866,8 +831,8 @@ function filtraPrazos(list: Prazo[], f: PrazoFilters): Prazo[] {
     }
     if (f.origem && p.origem !== f.origem) return false;
 
-    const exigeData = Boolean(f.urgencia || f.pauta || f.fatalFrom || f.fatalTo || f.pautaFrom || f.pautaTo);
-    if (exigeData && (p.diasRestantes === null || p.diasParaPauta === null || !p.vencimentoISO || !p.pautaISO)) {
+    const exigeData = Boolean(f.urgencia || f.fatalFrom || f.fatalTo);
+    if (exigeData && (p.diasRestantes === null || !p.vencimentoISO)) {
       return false;
     }
 
@@ -876,14 +841,8 @@ function filtraPrazos(list: Prazo[], f: PrazoFilters): Prazo[] {
     if (f.urgencia === 'atencao' && p.diasRestantes! > 14) return false;
     if (f.urgencia === 'normal'  && p.diasRestantes! <= 14) return false;
 
-    if (f.pauta === 'atrasada' && p.diasParaPauta! >= 0) return false;
-    if (f.pauta === 'hoje'     && p.diasParaPauta !== 0) return false;
-    if (f.pauta === 'semana'   && (p.diasParaPauta! < 0 || p.diasParaPauta! > 7)) return false;
-
     if (f.fatalFrom && p.vencimentoISO! < f.fatalFrom) return false;
     if (f.fatalTo   && p.vencimentoISO! > f.fatalTo)   return false;
-    if (f.pautaFrom && p.pautaISO!      < f.pautaFrom) return false;
-    if (f.pautaTo   && p.pautaISO!      > f.pautaTo)   return false;
 
     if (!contem(p.tipo, f.tipo))              return false;
     if (!contem(p.assunto, f.assunto))        return false;
@@ -905,9 +864,6 @@ function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
   const porFatal = (a: Prazo, b: Prazo) => datas(a.vencimentoISO, b.vencimentoISO);
 
   switch (sort) {
-    case 'pauta':
-      list.sort((a, b) => datas(a.pautaISO, b.pautaISO) || porFatal(a, b));
-      break;
     case 'tribunal':
       list.sort((a, b) => dir * (a.tribunal.localeCompare(b.tribunal, 'pt-BR') || a.grau.localeCompare(b.grau)) || porFatal(a, b));
       break;
@@ -930,7 +886,7 @@ function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
  *
  * `/deadlines` filtra no banco o que sabe filtrar (busca livre, tipo de
  * documento, expediente fechado e faixa de `dataLimite`, incluindo nulos);
- * tribunal, grau, urgência, pauta e os "contém" restantes são aplicados aqui
+ * tribunal, grau, urgência e os "contém" restantes são aplicados aqui
  * sobre a página. Filtros cronológicos excluem os itens sem data.
  */
 export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<PrazoPage> {
@@ -958,7 +914,6 @@ export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {
     prazos: list,
     total: list.length,
     criticos: list.filter(p => p.diasRestantes !== null && p.diasRestantes <= 3).length,
-    pautaAtrasada: list.filter(p => p.diasParaPauta !== null && p.diasParaPauta < 0).length,
   };
 }
 
@@ -1024,19 +979,34 @@ export async function getTribunaisStatus(): Promise<TribunaisStatusResult> {
   return { tribunals: [], unavailable: true };
 }
 
-export async function getSupportedTribunals(): Promise<TribunalOption[]> {
+/**
+ * Os tribunais **da carteira de quem está pedindo** — o que alimenta o filtro
+ * por tribunal em /processos, /movimentacoes e /prazos.
+ *
+ * Não confundir com `GET /tribunals`, o catálogo do que a plataforma sabe
+ * varrer — que é o que estas três telas usavam. O catálogo respondia a pergunta
+ * errada nas duas direções: oferecia dez caixas de seleção para uma carteira de
+ * dois tribunais e não listava os que só existem pelas fontes públicas (TJSP,
+ * TRTs, TREs, que chegam pelo DJEN e não estão no enum do backend). Ele segue
+ * valendo onde a pergunta é "o que dá para conectar" — mas quem responde isso
+ * no front é `getTribunaisStatus()`, e por isso o catálogo não é mais lido
+ * daqui.
+ *
+ * Sem fallback, de propósito: se o backend não responde, a resposta honesta é
+ * "não sei quais são" (lista vazia, e o filtro some), não o catálogo inteiro —
+ * que é exatamente a lista errada que esta função existe para não mostrar.
+ */
+export async function getTribunaisDaCarteira(): Promise<TribunalOption[]> {
   try {
-    const body = await backendGet('/tribunals') as { tribunals?: unknown };
-    const tribunals = normalizeTribunalOptions(body?.tribunals);
-    if (tribunals.length) return tribunals;
+    const body = await backendGet('/processes/tribunais') as { tribunals?: unknown };
+    return normalizeTribunalOptions(body?.tribunals);
   } catch (err: unknown) {
     if (err instanceof Error && err.message?.includes('NEXT_REDIRECT')) {
       throw err;
     }
-    console.error('Falha ao buscar catálogo de tribunais no backend:', err);
+    console.error('Falha ao buscar os tribunais da carteira no backend:', err);
+    return [];
   }
-
-  return [...FALLBACK_TRIBUNALS];
 }
 
 export type { ScraperSecretView } from '@/lib/credenciais';
@@ -1058,4 +1028,16 @@ export async function getScraperSecrets(): Promise<ScraperSecretView[]> {
     console.error('Falha ao buscar credenciais no backend:', err);
     return [];
   }
+}
+
+/**
+ * Quem está logado. Mesma disciplina dos outros `get*`: 401 vira
+ * `redirect('/login')`, porque só telas autenticadas perguntam isso.
+ *
+ * O par client-side é `useUsuarioAtual` (menu). São dois caminhos para o mesmo
+ * dado de propósito: o menu vive dentro de um Client Component e o painel
+ * precisa da resposta antes de decidir o que renderizar.
+ */
+export async function getUsuarioAtual(): Promise<UsuarioAtual> {
+  return await backendGet('/users/me') as UsuarioAtual;
 }

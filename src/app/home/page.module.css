@@ -145,6 +145,12 @@
   letter-spacing: -0.01em;
   color: #fff;
   margin: 0 0 20px;
+  /* A 68px num quadro de 680px, nenhuma linha desta manchete cabe inteira: a
+     quebra natural largava "tribunais." órfão na última linha. `balance`
+     redistribui as palavras sem mudar o número de linhas nem a altura, e vale
+     para qualquer frase que venha a ocupar este lugar — ao contrário de um
+     <br> fixo, que só serve para o texto do dia em que foi escrito. */
+  text-wrap: balance;
 }
 .h2 {
   font-family: var(--serif);
@@ -273,12 +279,27 @@
     content: '';
     position: absolute;
     inset: 0;
+    /* O véu foi calibrado para o leque de faixas, que chegava a 0,29 de
+       opacidade. A malha de quadros é mais discreta e, com os valores
+       antigos (0,96 no topo, transparente só a 97%), ficava coberta a ponto
+       de sumir no celular.
+
+       O afrouxamento é deliberadamente desigual: a faixa que cobre as linhas
+       de texto cede pouco (0,96→0,94 e 0,90→0,86) e o fim do percurso cede
+       muito (transparente a 94% em vez de 97%, com 0,62→0,55 antes disso).
+       É a quina de baixo à direita que a malha ocupa, então é só ela que
+       precisa abrir.
+
+       O limite é contraste, não gosto: atrás do lead, com um anel de 0,22
+       branco por baixo, paper-2 sobre este fundo fica em ~5,3:1 — acima do
+       mínimo de 4,5:1 para corpo de texto. Um véu mais frouxo que este
+       derruba para ~4,4:1 e reprova. */
     background: linear-gradient(
       104deg,
-      rgba(20, 83, 45, 0.96) 6%,
-      rgba(20, 83, 45, 0.9) 46%,
-      rgba(20, 83, 45, 0.62) 72%,
-      rgba(20, 83, 45, 0) 97%
+      rgba(20, 83, 45, 0.94) 4%,
+      rgba(20, 83, 45, 0.86) 42%,
+      rgba(20, 83, 45, 0.55) 70%,
+      rgba(20, 83, 45, 0) 94%
     );
   }
 }
@@ -651,12 +672,13 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
+    /* Mesmo afrouxamento do véu do hero — ver a nota lá em cima. */
     background: linear-gradient(
       104deg,
-      rgba(20, 83, 45, 0.96) 6%,
-      rgba(20, 83, 45, 0.9) 48%,
-      rgba(20, 83, 45, 0.62) 74%,
-      rgba(20, 83, 45, 0) 97%
+      rgba(20, 83, 45, 0.94) 4%,
+      rgba(20, 83, 45, 0.86) 44%,
+      rgba(20, 83, 45, 0.55) 72%,
+      rgba(20, 83, 45, 0) 94%
     );
   }
 }
@@ -707,4 +729,14 @@
 @media (min-width: 768px) {
   .footer { padding: 56px 40px; flex-direction: row; justify-content: space-between; align-items: flex-start; }
   .footerCols { grid-template-columns: repeat(3, 1fr); gap: 56px; }
+}
+
+/* A marca leva de volta para a raiz: como link, precisa desfazer o que o
+   navegador dá de graça a uma âncora. */
+a.footerBrand {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
 }

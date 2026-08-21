@@ -179,30 +179,28 @@
   line-height: 1.5;
 }
 
-.ornamentA,
-.ornamentB {
-  position: absolute;
-  pointer-events: none;
-}
-
-.ornamentA {
-  bottom: -60px;
-  right: -60px;
-  width: 200px;
-  height: 200px;
-  border: 40px solid rgba(255, 255, 255, 0.05);
-}
-
-.ornamentB {
-  top: 80px;
-  right: -90px;
-  width: 200px;
-  height: 200px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
 @media (min-width: 1024px) {
   .headline {
     font-size: 32px;
   }
+}
+
+/* A marca leva de volta para a raiz: como link, precisa desfazer o que o
+   navegador dá de graça a uma âncora. */
+a.brandRow {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+}
+
+/* A marca leva de volta para a raiz: como link, precisa desfazer o que o
+   navegador dá de graça a uma âncora. */
+a.mobileBrand {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
 }

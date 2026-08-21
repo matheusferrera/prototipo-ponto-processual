@@ -16,11 +16,6 @@ const LABELS = {
     atencao: 'Atenção · até 14d',
     normal: 'Normal · +14d',
   },
-  pauta: {
-    atrasada: 'Pauta em atraso',
-    hoje: 'Trabalhar hoje',
-    semana: 'Pauta · próximos 7d',
-  },
   situacao: { pendente: 'Expediente pendente', fechado: 'Expediente fechado' },
   origem: { scraper: 'Sincronização Integrada', djen: 'Diário Oficial' },
 } as const;
@@ -91,7 +86,6 @@ function buildChips(filters: PrazoFilterState): Chip[] {
   });
   if (filters.origem) chips.push({ id: 'origem', label: LABELS.origem[filters.origem], remove: c => ({ ...c, origem: '' }) });
   if (filters.urgencia) chips.push({ id: 'urgencia', label: LABELS.urgencia[filters.urgencia], remove: c => ({ ...c, urgencia: '' }) });
-  if (filters.pauta) chips.push({ id: 'pauta', label: LABELS.pauta[filters.pauta], remove: c => ({ ...c, pauta: '' }) });
   if (filters.situacao) chips.push({ id: 'situacao', label: LABELS.situacao[filters.situacao], remove: c => ({ ...c, situacao: '' }) });
   if (filters.cliente) chips.push({ id: 'cliente', label: `Cliente: ${filters.cliente}`, remove: c => ({ ...c, cliente: '' }) });
   if (filters.natureza) chips.push({
@@ -106,11 +100,6 @@ function buildChips(filters: PrazoFilterState): Chip[] {
     id: 'fatal',
     label: rangeLabel('Fatal', filters.fatalFrom, filters.fatalTo),
     remove: c => ({ ...c, fatalFrom: '', fatalTo: '' }),
-  });
-  if (filters.pautaFrom || filters.pautaTo) chips.push({
-    id: 'pauta-range',
-    label: rangeLabel('Pauta', filters.pautaFrom, filters.pautaTo),
-    remove: c => ({ ...c, pautaFrom: '', pautaTo: '' }),
   });
   return chips;
 }

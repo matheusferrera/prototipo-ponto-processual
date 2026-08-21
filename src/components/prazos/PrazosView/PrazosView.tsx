@@ -16,16 +16,12 @@ export type PrazoView = 'lista' | 'kanban' | 'calendario';
 type PrazoComData = Prazo & {
   vencimento: string;
   vencimentoISO: string;
-  pautaISO: string;
-  diasParaPauta: number;
   diasRestantes: number;
 };
 
 function temDataDefinida(prazo: Prazo): prazo is PrazoComData {
   return prazo.vencimento !== null
     && prazo.vencimentoISO !== null
-    && prazo.pautaISO !== null
-    && prazo.diasParaPauta !== null
     && prazo.diasRestantes !== null;
 }
 
@@ -60,26 +56,24 @@ function diasColorClass(dias: number, s: typeof styles) {
 }
 
 // ─── Pauta (lista) ───────────────────────────────────────────────────────────
-// Agrupada pela DATA DA PAUTA (3 dias antes do fatal, antecipada p/ sexta quando
-// cai no fim de semana): é a data em que o prazo precisa ser trabalhado. Cada
-// linha carrega o PRAZO FATAL na coluna da esquerda, então as duas datas
-// aparecem sem se repetirem.
+// Agrupada pelo PRAZO FATAL: cada bloco é uma data de vencimento, e a linha
+// carrega quantos dias faltam para ela.
 
-interface PautaGrupo {
+interface FatalGrupo {
   key: string;
   data: Date;
-  /** dias corridos até a data da pauta — negativo = pauta atrasada */
+  /** dias corridos até o prazo fatal */
   dias: number;
   itens: PrazoComData[];
 }
 
 /** Preserva a ordem de `prazos` dentro de cada grupo, respeitando o sort escolhido. */
-function agruparPorPauta(prazos: PrazoComData[], desc: boolean): PautaGrupo[] {
+function agruparPorFatal(prazos: PrazoComData[], desc: boolean): FatalGrupo[] {
   const mapa = new Map<string, PrazoComData[]>();
   for (const pz of prazos) {
-    const atual = mapa.get(pz.pautaISO);
+    const atual = mapa.get(pz.vencimentoISO);
     if (atual) atual.push(pz);
-    else mapa.set(pz.pautaISO, [pz]);
+    else mapa.set(pz.vencimentoISO, [pz]);
   }
 
   return [...mapa.entries()]
@@ -87,15 +81,14 @@ function agruparPorPauta(prazos: PrazoComData[], desc: boolean): PautaGrupo[] {
     .map(([key, itens]) => ({
       key,
       data: parseISODate(key),
-      dias: itens[0].diasParaPauta,
+      dias: itens[0].diasRestantes,
       itens,
     }));
 }
 
-function rotuloPauta(dias: number): { texto: string; className: string } {
-  if (dias < 0)   return { texto: 'Em atraso', className: styles.pautaRelAtraso };
-  if (dias === 0) return { texto: 'Hoje',      className: styles.pautaRelHoje   };
-  if (dias === 1) return { texto: 'Amanhã',    className: styles.pautaRelProx   };
+function rotuloGrupo(dias: number): { texto: string; className: string } {
+  if (dias <= 0)  return { texto: 'Vence hoje', className: styles.pautaRelHoje };
+  if (dias === 1) return { texto: 'Amanhã',     className: styles.pautaRelProx };
   return { texto: `em ${dias} dias`, className: styles.pautaRelProx };
 }
 
@@ -174,8 +167,8 @@ function ListView({
   hasSemData?: boolean;
 }) {
   // A pauta é cronológica; só uma ordenação por data explicitamente decrescente a inverte.
-  const desc = order === 'desc' && (sort === 'fatal' || sort === 'pauta');
-  const grupos = agruparPorPauta(prazos, desc);
+  const desc = order === 'desc' && sort === 'fatal';
+  const grupos = agruparPorFatal(prazos, desc);
 
   return (
     <div className={`px-page ${styles.listView}`}>
@@ -189,8 +182,7 @@ function ListView({
       </div>
 
       <p className={styles.pautaNota}>
-        Agrupado pela <strong>data da pauta</strong> — 3 dias antes do prazo fatal, antecipada para a
-        sexta quando cai no fim de semana.
+        Agrupado pelo <strong>prazo fatal</strong> — a data em que o expediente vence.
       </p>
 
       {grupos.length === 0 && !hasSemData && (
@@ -198,9 +190,9 @@ function ListView({
       )}
 
       {grupos.map(g => {
-        const rot = rotuloPauta(g.dias);
+        const rot = rotuloGrupo(g.dias);
         return (
-          <section key={g.key} className={styles.pautaGrupo} aria-label={`Pauta de ${fmtDataLonga(g.data)}`}>
+          <section key={g.key} className={styles.pautaGrupo} aria-label={`Prazo fatal em ${fmtDataLonga(g.data)}`}>
             <div className={styles.pautaHead}>
               <span className={`${styles.pautaRel} ${rot.className}`}>{rot.texto}</span>
               <span className={styles.pautaHeadData}>
@@ -441,7 +433,7 @@ function ExpedientesSemData({ prazos }: { prazos: Prazo[] }) {
       </div>
 
       <p className={styles.semDataNote}>
-        O PJe ainda não informou uma data limite. Estes expedientes não entram nos cálculos de pauta ou urgência.
+        O PJe ainda não informou uma data limite. Estes expedientes não entram nos cálculos de prazo fatal ou urgência.
       </p>
 
       <div className={styles.semDataList}>
@@ -486,15 +478,13 @@ export function PrazosView({
   sort,
   order,
   criticos,
-  pautaAtrasada,
 }: {
   prazos: Prazo[];
   view: PrazoView;
   sort?: string;
   order?: string;
-  /** Contagens já calculadas no servidor sobre o conjunto filtrado. */
+  /** Contagem já calculada no servidor sobre o conjunto filtrado. */
   criticos?: number;
-  pautaAtrasada?: number;
 }) {
   const now                     = new Date();
   const [calYear, setCalYear]   = useState(now.getFullYear());
@@ -504,7 +494,6 @@ export function PrazosView({
   const prazosComData = prazos.filter(temDataDefinida);
   const prazosSemData = prazos.filter(prazo => !temDataDefinida(prazo));
   const criticalCount = criticos ?? prazosComData.filter(p => p.diasRestantes <= 3).length;
-  const atrasadaCount = pautaAtrasada ?? prazosComData.filter(p => p.diasParaPauta < 0).length;
   const firstCritical = prazosComData.find(p => p.diasRestantes <= 3);
 
   const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth() + 1;
@@ -532,7 +521,6 @@ export function PrazosView({
   return (
     <div className={styles.root}>
       <div className={styles.exportBar}>
-        <ExportPrazosPdfButton prazos={prazosComData} format="pauta" />
         <ExportPrazosPdfButton prazos={prazos} />
       </div>
 
@@ -558,7 +546,6 @@ export function PrazosView({
             {firstCritical && (
               <AlertDescription className={styles.alertDesc}>
                 — {clientePrazo(firstCritical)}: {expedientePrazo(firstCritical)} vence em {firstCritical.diasRestantes} dia{firstCritical.diasRestantes !== 1 ? 's' : ''}
-                {atrasadaCount > 0 && ` · ${atrasadaCount} com a pauta em atraso`}
               </AlertDescription>
             )}
           </Alert>

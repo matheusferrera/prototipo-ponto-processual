@@ -235,29 +235,34 @@ export function ProcessFilterControls({
                 <FieldSet className={styles.filterSection}>
                   <FieldLegend variant="label">Filtros frequentes</FieldLegend>
 
-                  <FieldSet className={styles.nestedGroup}>
-                    <FieldLegend variant="label">Tribunal</FieldLegend>
-                    <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
-                      {tribunals.map(tribunal => (
-                        <Field key={tribunal.code} orientation="horizontal" className={styles.checkField}>
-                          <Checkbox
-                            id={`${variant}-tribunal-${tribunal.code}`}
-                            checked={draft.tribunal.includes(tribunal.code)}
-                            onCheckedChange={checked => changeDraft(current => ({
-                              ...current,
-                              tribunal: checked
-                                ? [...new Set([...current.tribunal, tribunal.code])]
-                                : current.tribunal.filter(item => item !== tribunal.code),
-                            }), true)}
-                          />
-                          <FieldLabel className={styles.tribunalLabel} htmlFor={`${variant}-tribunal-${tribunal.code}`}>
-                            <span>{tribunal.code}</span>
-                            <small>{tribunal.system}</small>
-                          </FieldLabel>
-                        </Field>
-                      ))}
-                    </FieldGroup>
-                  </FieldSet>
+                  {/* Sem tribunal na carteira não há o que filtrar: a seção some em vez
+                      de mostrar uma legenda com nada embaixo. Acontece na conta nova
+                      e quando o backend não responde (ver `getTribunaisDaCarteira`). */}
+                  {tribunals.length > 0 && (
+                    <FieldSet className={styles.nestedGroup}>
+                      <FieldLegend variant="label">Tribunal</FieldLegend>
+                      <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
+                        {tribunals.map(tribunal => (
+                          <Field key={tribunal.code} orientation="horizontal" className={styles.checkField}>
+                            <Checkbox
+                              id={`${variant}-tribunal-${tribunal.code}`}
+                              checked={draft.tribunal.includes(tribunal.code)}
+                              onCheckedChange={checked => changeDraft(current => ({
+                                ...current,
+                                tribunal: checked
+                                  ? [...new Set([...current.tribunal, tribunal.code])]
+                                  : current.tribunal.filter(item => item !== tribunal.code),
+                              }), true)}
+                            />
+                            <FieldLabel className={styles.tribunalLabel} htmlFor={`${variant}-tribunal-${tribunal.code}`}>
+                              <span>{tribunal.code}</span>
+                              <small>{tribunal.system}</small>
+                            </FieldLabel>
+                          </Field>
+                        ))}
+                      </FieldGroup>
+                    </FieldSet>
+                  )}
 
                   <div className={styles.fieldGrid}>
                     <Field>

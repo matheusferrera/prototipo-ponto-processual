@@ -19,13 +19,6 @@ function reportDate(date: Date) {
   }).format(date);
 }
 
-/** yyyy-mm-dd → dd/mm, no mesmo formato de `Prazo.vencimento`. */
-function shortISODate(iso: string | null) {
-  if (!iso) return '-';
-  const [, month, day] = iso.split('-');
-  return month && day ? `${day}/${month}` : '-';
-}
-
 function fileDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -73,7 +66,6 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
     // Mesma hierarquia da pauta na tela: cliente lidera, expediente diz o que
     // fazer, assunto entra encurtado (só a folha do caminho do PJe).
     head: [[
-      'Pauta',
       'Prazo fatal',
       'Dias',
       'Tribunal',
@@ -87,7 +79,6 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
     body: prazos.map((prazo) => {
       const cliente = clientePrazo(prazo);
       return [
-        textOrFallback(shortISODate(prazo.pautaISO)),
         prazo.vencimento ?? 'Sem prazo definido',
         prazo.diasRestantes === null ? '-' : String(prazo.diasRestantes),
         textOrFallback(prazo.grau ? `${prazo.tribunal}-${prazo.grau}` : prazo.tribunal),
@@ -122,16 +113,15 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
     },
     // Larguras somam 273mm = A4 paisagem (297) menos as margens laterais (2 × 12)
     columnStyles: {
-      0: { cellWidth: 18 },
-      1: { cellWidth: 18, fontStyle: 'bold' },
-      2: { cellWidth: 11, halign: 'center' },
-      3: { cellWidth: 17 },
-      4: { cellWidth: 42, fontStyle: 'bold' },
-      5: { cellWidth: 32 },
-      6: { cellWidth: 20 },  // Prazo para (ciência / manifestação)
-      7: { cellWidth: 29 },
-      8: { cellWidth: 38 },
-      9: { cellWidth: 48 },
+      0: { cellWidth: 18, fontStyle: 'bold' },
+      1: { cellWidth: 11, halign: 'center' },
+      2: { cellWidth: 17 },
+      3: { cellWidth: 50, fontStyle: 'bold' },
+      4: { cellWidth: 32 },
+      5: { cellWidth: 20 },  // Prazo para (ciência / manifestação)
+      6: { cellWidth: 33 },
+      7: { cellWidth: 38 },
+      8: { cellWidth: 54 },
     },
     didDrawPage: ({ pageNumber }) => {
       if (pageNumber > 1) {

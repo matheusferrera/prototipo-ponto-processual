@@ -1,0 +1,384 @@
+/* ===== A espera da varredura =====
+   O mesmo scanner de `/oab/[slug]/loading.tsx`, transposto para o fundo claro
+   das telas autenticadas. Repetir o desenho é de propósito: quem veio da
+   consulta pública já viu essa varredura acontecer uma vez, e reconhecê-la
+   aqui diz "é o mesmo trabalho, continuando" sem precisar de texto.
+
+   Tudo o que se move é CSS. As únicas coisas que dependem de JS são as que
+   dependem de dado real (o que já foi encontrado, e a troca de dica). */
+
+.scanner {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  height: 116px;
+  overflow: hidden;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  /* Apaga as pontas: as siglas nascem e morrem no gradiente, não numa borda. */
+  mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent);
+}
+
+.trilha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* -50% = exatamente uma volta da lista duplicada, então o laço não emenda. */
+  animation: varredura-rolar 9s linear infinite;
+}
+
+@keyframes varredura-rolar {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}
+
+.sigla {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 11px 0;
+  color: var(--ink-4);
+}
+
+/* Sigla onde a varredura já achou alguma coisa. É o único elemento do scanner
+   que afirma um fato — por isso só acende quando o fato existe. */
+.siglaAchada {
+  color: var(--brick);
+}
+
+/* A faixa que atravessa o scanner — é o que dá a leitura de "lendo agora".
+
+   No original (fundo escuro) isto é um fio de 2px com brilho. No claro o fio
+   cruzava a sigla e virava **tachado**: parecia que aquele tribunal tinha sido
+   descartado, exatamente o oposto do que a animação quer dizer. Aqui vira uma
+   janela de leitura — uma banda que desliza *por cima* da lista, que é como se
+   lê um scanner sem riscar nada. */
+.linha {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 36px;
+  margin-top: -18px;
+  background: color-mix(in srgb, var(--brick) 7%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--brick) 32%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--brick) 32%, transparent);
+  animation: varredura-varrer 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes varredura-varrer {
+  0%, 100% { transform: translate3d(0, -30px, 0); }
+  50%      { transform: translate3d(0, 30px, 0); }
+}
+
+/* Reticências que preenchem em vez de piscar — `ch` fixa a largura, então o
+   texto ao lado não dança. */
+.reticencias::after {
+  content: '';
+  display: inline-block;
+  width: 3ch;
+  text-align: left;
+  animation: varredura-pontos 1.5s steps(4, end) infinite;
+}
+@keyframes varredura-pontos {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: '...'; }
+}
+
+/* ===== Linha de estado =====
+   O que está acontecendo agora, em números reais. Nunca uma porcentagem: não
+   sabemos o denominador, e uma barra que trava em 90% custa mais confiança do
+   que a espera inteira. */
+.estado {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+
+.estadoForte {
+  color: var(--brick);
+  font-weight: 700;
+}
+
+/* A mensagem de "está demorando" é uma frase inteira, e mono em frase inteira
+   custa leitura justamente na hora em que a pessoa já está impaciente. */
+.estadoLongo {
+  font-family: var(--ui);
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: normal;
+  max-width: 400px;
+}
+
+/* ===== O que já foi encontrado =====
+   O antídoto de verdade para a espera: aos 30 segundos já há processo na tela.
+   Deixa de ser uma tela de espera e passa a ser a carteira se enchendo. */
+.achados {
+  width: 100%;
+  max-width: 540px;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  text-align: left;
+}
+
+.achadosHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.achadosTitulo {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+
+.achadosContagem {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick);
+}
+
+.achadoRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.achadoRow:first-child { border-top: none; }
+
+/* Cada linha entra sozinha quando chega. Sem stagger por índice: elas não
+   chegam todas de uma vez, chegam de fato uma a uma. */
+.achadoNovo {
+  animation: varredura-entrar 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes varredura-entrar {
+  from { opacity: 0; transform: translate3d(0, -6px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+.achadoCnj {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+
+.achadoParte {
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.achadosRodape {
+  padding: 9px 14px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* ===== Dicas =====
+   O que ocupa a espera. Não é entretenimento: cada uma é uma coisa que a
+   pessoa pode fazer ou passar a esperar do produto, e a maioria leva a uma
+   tela de verdade. A rotação é lenta de propósito — dá para ler inteira. */
+.dicas {
+  width: 100%;
+  max-width: 540px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  text-align: left;
+}
+
+.dicasLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-4);
+  margin-bottom: 10px;
+}
+
+.dica {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  /* Altura reservada para a dica mais alta: sem isto o card pulsa de tamanho a
+     cada troca, e o botão embaixo foge do cursor. */
+  min-height: 76px;
+}
+
+.dicaFade {
+  animation: varredura-dica 0.4s ease both;
+}
+
+@keyframes varredura-dica {
+  from { opacity: 0; transform: translate3d(0, 4px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+.dicaIcone {
+  color: var(--brick);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.dicaCorpo { min-width: 0; }
+
+.dicaTexto {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.dicaLink {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick);
+  text-decoration: none;
+}
+.dicaLink:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Marcadores das dicas: também servem de controle. Quem quer reler a anterior
+   não precisa esperar a volta inteira do ciclo. */
+.dicaPontos {
+  display: flex;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.dicaPonto {
+  width: 16px;
+  height: 3px;
+  padding: 0;
+  border: none;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.dicaPonto:hover { background: var(--ink-4); }
+.dicaPontoAtivo { background: var(--brick); }
+.dicaPonto:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trilha,
+  .linha,
+  .reticencias::after,
+  .achadoNovo,
+  .dicaFade {
+    animation: none;
+  }
+  .linha { transform: none; }
+  .reticencias::after { content: '...'; }
+}
+
+@media (max-width: 640px) {
+  .achadoCnj { font-size: 11px; }
+  .achadoParte { display: none; }
+  .dica { min-height: 96px; }
+}
+
+/* ===== Moldura no painel =====
+   Espelha `.dashEmpty` de `painel/page.module.css` de propósito: é um dos três
+   estados vazios do painel e precisa ser lido como irmão dos outros dois. Vive
+   aqui, e não lá, porque este virou Client Component e não deve depender do
+   módulo da página para existir. */
+.wrapper {
+  margin: 16px;
+  border: 1px dashed var(--line);
+  background: var(--paper);
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.titulo {
+  margin-top: 6px;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  max-width: 440px;
+  margin: 0;
+}
+
+.acoes {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.botaoPrimario {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  background: var(--brick);
+  border: none;
+  padding: 11px 24px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.botaoSecundario {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+.botaoSecundario:hover { color: var(--brick); }
+
+@media (min-width: 768px) {
+  .wrapper { margin: 24px 32px 32px; padding: 64px 32px; }
+}

@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { AuthShell, type AuthFeature } from '@/components/auth/AuthShell';
 import { getPrevia } from '@/lib/previa.server';
+import { googleAtivo } from '@/lib/google-oauth.server';
 import { nomeProprio, normalizarOab } from '@/lib/previa';
 import { CadastroForm } from './CadastroForm';
 import { PainelContexto, PainelEsqueleto, ResumoMobile } from './PainelContexto';
@@ -17,16 +18,17 @@ export const metadata: Metadata = {
 const FEATURES: AuthFeature[] = [
   { icon: '§', title: 'Todos os tribunais', desc: 'TRF1, TRF3, TJDFT, STJ e mais em uma única plataforma.' },
   { icon: '◎', title: 'Movimentação no mesmo dia', desc: 'O robô entra nos autos várias vezes por dia e mostra o que mudou.' },
-  { icon: '▣', title: 'Controle de prazos', desc: 'Prazo fatal e data de pauta calculados a partir do expediente.' },
+  { icon: '▣', title: 'Controle de prazos', desc: 'Prazo fatal calculado a partir do expediente.' },
 ];
 
-type Params = { searchParams: Promise<{ oab?: string; uf?: string }> };
+type Params = { searchParams: Promise<{ oab?: string; uf?: string; erro?: string }> };
 
 export default async function CadastroPage({ searchParams }: Params) {
   const sp = await searchParams;
-  /* A OAB da URL é só um valor inicial do formulário: quem chegou pela busca
-     pública encontra o campo preenchido, quem chegou por "Criar conta" o
-     encontra vazio. Em ambos os casos o campo é o mesmo. */
+  /* A OAB da URL é uma resposta que já veio pronta de `/oab/<numero>-<uf>`, a
+     única rota que consulta uma OAB antes de a conta existir. Ela não é campo
+     deste formulário: quem chega sem ela cria a conta do mesmo jeito (inclusive
+     pelo Google) e é perguntado uma vez no onboarding. */
   const oab = normalizarOab(sp.oab, sp.uf);
 
   return (
@@ -62,7 +64,12 @@ export default async function CadastroPage({ searchParams }: Params) {
           dá para deixá-lo esperando em Suspense sem segurar o form junto. A
           prévia está em cache de 300s (o visitante acabou de vê-la em /oab),
           então na prática isso não custa uma segunda ida ao DJEN. */}
-      <CadastroForm oab={oab} nomeSugerido={oab ? await nomeDaOab(oab.numero, oab.uf) : null} />
+      <CadastroForm
+        oab={oab}
+        nomeSugerido={oab ? await nomeDaOab(oab.numero, oab.uf) : null}
+        googleAtivo={googleAtivo()}
+        erroGoogle={sp.erro}
+      />
     </AuthShell>
   );
 }

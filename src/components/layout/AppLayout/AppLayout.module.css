@@ -122,3 +122,13 @@
     display: none;
   }
 }
+
+/* A marca leva de volta para a raiz: como link, precisa desfazer o que o
+   navegador dá de graça a uma âncora. */
+a.brand {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+}

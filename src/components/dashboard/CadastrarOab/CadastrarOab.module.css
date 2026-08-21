@@ -1,0 +1,98 @@
+/* Formulário de OAB do painel vazio. Uma linha só no desktop (número, UF,
+   botão) porque é o pedido inteiro: três toques e acabou. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 4px auto 0;
+  text-align: left;
+}
+
+.campos {
+  display: grid;
+  grid-template-columns: 1fr 72px;
+  gap: 8px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rotulo {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.input {
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  min-height: 44px;
+  width: 100%;
+  outline: none;
+}
+
+.input:focus-visible { outline: 2px solid var(--brick); outline-offset: 1px; }
+.input:disabled { opacity: 0.6; }
+.input::placeholder { color: var(--ink-4); }
+.input[aria-invalid='true'] { border-color: var(--alert); }
+
+.botao {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--brick);
+  border: none;
+  min-height: 44px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.botao:disabled { background: var(--ink-3); cursor: not-allowed; }
+
+.girando { animation: girar 1s linear infinite; }
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; }
+}
+
+.erro {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--alert);
+  margin: 0;
+}
+
+/* A partir do desktop os três controles dividem a mesma linha — o botão sobe
+   para o lado dos campos, alinhado pela base. */
+@media (min-width: 640px) {
+  .campos {
+    grid-template-columns: 1fr 72px auto;
+    align-items: end;
+  }
+  .botao { grid-column: auto; }
+  .input { font-size: 14px; min-height: 40px; padding: 9px 12px; }
+  .botao { min-height: 40px; }
+}

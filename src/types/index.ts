@@ -120,10 +120,6 @@ export interface Prazo {
   vencimento: string | null;
   /** Data fatal yyyy-mm-dd; nula para expediente sem data definida. */
   vencimentoISO: string | null;
-  /** Data da pauta yyyy-mm-dd; nula quando não há prazo fatal. */
-  pautaISO: string | null;
-  /** Dias até a pauta; nulo quando não há data para calcular. */
-  diasParaPauta: number | null;
   /** Dias até o vencimento; nulo quando não há data para calcular. */
   diasRestantes: number | null;
   state: StatusType;

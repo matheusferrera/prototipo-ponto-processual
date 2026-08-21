@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { ROTA_PAINEL } from '@/lib/rotas';
 import { getScraperSecrets, getTribunaisStatus } from '@/lib/api.server';
 import { agruparPorSistema } from '@/lib/credenciais';
 import { normalizarOab } from '@/lib/previa';
@@ -21,18 +22,21 @@ export default async function OnboardingPage({
     getTribunaisStatus(),
   ]);
 
-  // Já tem credencial cadastrada — onboarding não tem mais o que fazer aqui.
-  if (secrets.length > 0) {
-    redirect('/');
+  /* A OAB foi resolvida em `/oab/<numero>-<uf>` e chega pela URL. Sanitizada de
+     novo aqui porque a barra de endereço é do usuário, não nossa. Quando falta,
+     o fluxo pergunta — uma vez, na primeira tela — e a resposta volta a passar
+     por `/oab`. */
+  const oabInicial = normalizarOab(oab, uf) ?? undefined;
+
+  /* Já tem credencial cadastrada — o onboarding não tem mais o que fazer aqui.
+     Com OAB na URL, tem: é alguém que acabou de consultar em `/oab` e clicou
+     para monitorar aquela OAB. Devolver essa pessoa ao painel faria o clique
+     não fazer nada, que é o beco em que a rota única de OAB não pode terminar. */
+  if (secrets.length > 0 && !oabInicial) {
+    redirect(ROTA_PAINEL);
   }
 
   const sistemas = agruparPorSistema(tribunals);
-
-  /* A OAB foi respondida no /cadastro e chega pela URL. Sanitizada de novo
-     aqui porque a barra de endereço é do usuário, não nossa. Quando falta
-     (conta antiga, ou volta pelo painel vazio), o fluxo não pergunta: vai
-     direto para a conexão do tribunal. */
-  const oabInicial = normalizarOab(oab, uf) ?? undefined;
 
   return <OnboardingFlow sistemas={sistemas} oabInicial={oabInicial} />;
 }

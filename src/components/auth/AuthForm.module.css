@@ -150,6 +150,17 @@
   letter-spacing: 0.1em;
 }
 
+/* Aviso que não é erro — "você cancelou no Google" é informação, não falha.
+   Vermelho ali acusaria a pessoa de um problema que ela mesma escolheu. */
+.avisoBanner {
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--paper-2);
+  border-left: 3px solid var(--line);
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
 .errorBanner {
   font-size: 12px;
   color: var(--alert);
@@ -198,9 +209,22 @@
   width: 100%;
 }
 
-.btnOutline:disabled {
+.btnOutline:disabled,
+.btnOutline[aria-disabled='true'] {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* O botão do Google é uma âncora (o destino é uma navegação real), então
+   precisa desfazer o que o navegador dá de graça a um link. */
+a.btnOutline {
+  text-decoration: none;
+}
+
+.btnOutlineEspera {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
 }
 
 .btnLink {
@@ -312,6 +336,50 @@
   line-height: 1.5;
   color: var(--ink-4);
 }
+
+/* ===== A OAB nesta tela =====
+   Não é campo do formulário: é confirmação (para quem veio de /oab) ou convite
+   (para quem não veio), e a busca daqui NAVEGA para /oab/<numero>-<uf>. Uma
+   rota só resolve OAB antes da conta existir; o bloco tem cara de nota, e não
+   de campo obrigatório, justamente para não parecer parte do cadastro. */
+.oabBloco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  background: var(--paper-2);
+  border-left: 3px solid var(--line);
+}
+
+.oabBlocoLinha {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  margin: 0;
+}
+.oabBlocoLinha strong { color: var(--ink); font-weight: 700; }
+
+.oabBlocoAcao {
+  align-self: flex-start;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--brick);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.oabBuscaForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* A dica fecha o bloco; a margem negativa de `.dicaCampo` existe para colar
+   num campo logo acima, e aqui só encostaria o texto no botão. */
+.oabBuscaForm .dicaCampo { margin-top: 0; }
 
 /* ===== Saída para o login =====
    "E-mail já cadastrado" não é erro de digitação: é a pessoa certa na porta

@@ -36,8 +36,6 @@ const VIEWS: { value: PrazoView; label: string }[] = [
 const SORT_OPTIONS: { value: `${PrazoSort}:${'asc' | 'desc'}`; label: string }[] = [
   { value: 'fatal:asc', label: 'Prazo fatal · mais próximo' },
   { value: 'fatal:desc', label: 'Prazo fatal · mais distante' },
-  { value: 'pauta:asc', label: 'Data da pauta · mais próxima' },
-  { value: 'pauta:desc', label: 'Data da pauta · mais distante' },
   { value: 'cliente:asc', label: 'Cliente · A–Z' },
   { value: 'cliente:desc', label: 'Cliente · Z–A' },
   { value: 'tribunal:asc', label: 'Tribunal · A–Z' },
@@ -84,7 +82,7 @@ export function PrazoFilterControls({
 
   function changeSort(value: string) {
     const [sortValue, orderValue] = value.split(':') as [PrazoSort, 'asc' | 'desc'];
-    navigate({ ...filters, sort: sortValue, order: orderValue ?? defaultOrderFor(sortValue) });
+    navigate({ ...filters, sort: sortValue, order: orderValue ?? defaultOrderFor() });
   }
 
   // Sincroniza o rascunho quando a URL muda (voltar/avançar, chip removido…)
@@ -96,7 +94,7 @@ export function PrazoFilterControls({
   // Campos de texto/data aplicam sozinhos, com folga para o usuário terminar de digitar
   useEffect(() => {
     const campos: (keyof PrazoFilterState)[] = [
-      'tipo', 'assunto', 'orgao', 'cliente', 'fatalFrom', 'fatalTo', 'pautaFrom', 'pautaTo',
+      'tipo', 'assunto', 'orgao', 'cliente', 'fatalFrom', 'fatalTo',
     ];
     if (!campos.some(key => draft[key] !== filters[key])) return;
     const timer = window.setTimeout(() => navigate(draft), 400);
@@ -105,7 +103,7 @@ export function PrazoFilterControls({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     draft.tipo, draft.assunto, draft.orgao, draft.cliente,
-    draft.fatalFrom, draft.fatalTo, draft.pautaFrom, draft.pautaTo,
+    draft.fatalFrom, draft.fatalTo,
     filters,
   ]);
 
@@ -214,29 +212,34 @@ export function PrazoFilterControls({
                 <FieldSet className={styles.filterSection}>
                   <FieldLegend variant="label">Filtros frequentes</FieldLegend>
 
-                  <FieldSet className={styles.nestedGroup}>
-                    <FieldLegend variant="label">Tribunal</FieldLegend>
-                    <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
-                      {tribunals.map(tribunal => (
-                        <Field key={tribunal.code} orientation="horizontal" className={styles.checkField}>
-                          <Checkbox
-                            id={`${variant}-prazo-tribunal-${tribunal.code}`}
-                            checked={draft.tribunal.includes(tribunal.code)}
-                            onCheckedChange={checked => changeDraft(current => ({
-                              ...current,
-                              tribunal: checked
-                                ? [...new Set([...current.tribunal, tribunal.code])]
-                                : current.tribunal.filter(item => item !== tribunal.code),
-                            }), true)}
-                          />
-                          <FieldLabel className={styles.tribunalLabel} htmlFor={`${variant}-prazo-tribunal-${tribunal.code}`}>
-                            <span>{tribunal.code}</span>
-                            <small>{tribunal.system}</small>
-                          </FieldLabel>
-                        </Field>
-                      ))}
-                    </FieldGroup>
-                  </FieldSet>
+                  {/* Sem tribunal na carteira não há o que filtrar: a seção some em vez
+                      de mostrar uma legenda com nada embaixo. Acontece na conta nova
+                      e quando o backend não responde (ver `getTribunaisDaCarteira`). */}
+                  {tribunals.length > 0 && (
+                    <FieldSet className={styles.nestedGroup}>
+                      <FieldLegend variant="label">Tribunal</FieldLegend>
+                      <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
+                        {tribunals.map(tribunal => (
+                          <Field key={tribunal.code} orientation="horizontal" className={styles.checkField}>
+                            <Checkbox
+                              id={`${variant}-prazo-tribunal-${tribunal.code}`}
+                              checked={draft.tribunal.includes(tribunal.code)}
+                              onCheckedChange={checked => changeDraft(current => ({
+                                ...current,
+                                tribunal: checked
+                                  ? [...new Set([...current.tribunal, tribunal.code])]
+                                  : current.tribunal.filter(item => item !== tribunal.code),
+                              }), true)}
+                            />
+                            <FieldLabel className={styles.tribunalLabel} htmlFor={`${variant}-prazo-tribunal-${tribunal.code}`}>
+                              <span>{tribunal.code}</span>
+                              <small>{tribunal.system}</small>
+                            </FieldLabel>
+                          </Field>
+                        ))}
+                      </FieldGroup>
+                    </FieldSet>
+                  )}
 
                   <div className={styles.fieldGrid}>
                     <Field>
@@ -251,19 +254,6 @@ export function PrazoFilterControls({
                         <NativeSelectOption value="urgente">Urgente · até 7 dias</NativeSelectOption>
                         <NativeSelectOption value="atencao">Atenção · até 14 dias</NativeSelectOption>
                         <NativeSelectOption value="normal">Normal · mais de 14 dias</NativeSelectOption>
-                      </NativeSelect>
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor={`${variant}-prazo-pauta`}>Pauta</FieldLabel>
-                      <NativeSelect
-                        id={`${variant}-prazo-pauta`}
-                        value={draft.pauta}
-                        onChange={event => changeDraft(current => ({ ...current, pauta: event.target.value as PrazoFilterState['pauta'] }), true)}
-                      >
-                        <NativeSelectOption value="">Toda a pauta</NativeSelectOption>
-                        <NativeSelectOption value="atrasada">Em atraso</NativeSelectOption>
-                        <NativeSelectOption value="hoje">Trabalhar hoje</NativeSelectOption>
-                        <NativeSelectOption value="semana">Próximos 7 dias</NativeSelectOption>
                       </NativeSelect>
                     </Field>
                     <Field>
@@ -347,14 +337,6 @@ export function PrazoFilterControls({
                     to={draft.fatalTo}
                     onFrom={value => setDraft(current => ({ ...current, fatalFrom: value }))}
                     onTo={value => setDraft(current => ({ ...current, fatalTo: value }))}
-                  />
-                  <RangeFields
-                    id={`${variant}-prazo-pauta-range`}
-                    label="Data da pauta"
-                    from={draft.pautaFrom}
-                    to={draft.pautaTo}
-                    onFrom={value => setDraft(current => ({ ...current, pautaFrom: value }))}
-                    onTo={value => setDraft(current => ({ ...current, pautaTo: value }))}
                   />
                 </FieldSet>
               </FieldGroup>

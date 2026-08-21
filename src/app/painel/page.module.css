@@ -98,9 +98,8 @@
   border-right: none;
   border-bottom: 1px solid var(--line-soft);
 }
-.statCard:nth-child(odd)    { border-right: 1px solid var(--line-soft); }
-.statCard:last-child        { border-bottom: none; }
-.statCard:nth-last-child(2) { border-bottom: none; }
+.statCard:nth-child(odd) { border-right: 1px solid var(--line-soft); }
+.statCard:last-child     { flex-basis: 100%; border-right: none; border-bottom: none; }
 .statLabel {
   font-size: 10px;
   font-weight: 600;
@@ -163,6 +162,20 @@
   background: var(--brick);
   padding: 11px 24px;
 }
+
+/* Saída secundária do painel vazio — o caminho mais caro (login de tribunal)
+   fica visível, mas sem competir com o pedido barato que está acima dele. */
+.dashEmptySecundario {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 4px 0;
+}
+.dashEmptySecundario:hover { color: var(--brick); }
 
 /* ===== Faixa dos próximos dias =====
    Uma coluna por dia: dia da semana, número, barra proporcional ao pico da
@@ -270,7 +283,7 @@
   .dashAlert      { margin: 24px 32px 0; padding: 12px 20px; gap: 12px; flex-wrap: nowrap; }
   .dashAlertPart { display: inline; }
 
-  /* stat cards → 4 numa linha só */
+  /* stat cards → 3 numa linha só */
   .statCards { margin: 24px 32px 0; flex-wrap: nowrap; }
   .statCard {
     flex: 1;
@@ -278,7 +291,7 @@
     border-right: 1px solid var(--line-soft);
     border-bottom: none;
   }
-  .statCard:last-child { border-right: none; }
+  .statCard:last-child { flex-basis: 0; border-right: none; }
   .statNum { font-size: 48px; }
 
   .dashEmpty { margin: 24px 32px 32px; padding: 64px 32px; }

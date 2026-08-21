@@ -1,533 +1,428 @@
 import type { Metadata } from 'next';
+import { type CSSProperties } from 'react';
 import Link from 'next/link';
-import { Plus, RefreshCw, Scale, ShieldAlert } from 'lucide-react';
-import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import {
-  getProcessos,
-  getMovimentacoes,
-  getPrazos,
-  getScraperSecrets,
-} from '@/lib/api.server';
-import { tituloPrazo } from '@/lib/prazo';
-import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { Seal } from '@/components/ui/Seal/Seal';
-import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
-import type { Processo } from '@/types';
-import styles from './page.module.css';
+  Radar,
+  MessageCircleMore,
+  FileSearch,
+  ShieldCheck,
+  Gauge,
+  ScanSearch,
+  Scale,
+  Lock,
+  EyeOff,
+} from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
+import { fraunces } from './home/fonts';
+import { ScrollFx } from './home/ScrollFx';
+import { TribunalFlow } from './home/TribunalFlow';
+import { HeroSection } from './home/HeroSection';
+import { TRIBUNAIS } from './home/tribunais';
+import { LinedIcon } from './home/LinedIcon';
+import { OabSearch } from './home/OabSearch';
+import { CustoRonda } from './home/CustoRonda';
+import { ProvaAlerta } from './home/ProvaAlerta';
+import { Faq } from './home/Faq';
+import { FrameGrid } from '@/components/ui/FrameGrid/FrameGrid';
+import styles from './home/page.module.css';
 
 export const metadata: Metadata = {
-  title: 'Dashboard — Ponto Processual',
-  description: 'Visão geral da carteira.',
+  title: 'Ponto Processual — a ronda nos sistemas dos tribunais, sem você',
+  description:
+    'Acompanhamento de processos no PJe, e-SAJ, Projudi e no diário nacional, com aviso no WhatsApp no dia da publicação. Consulte pela sua OAB, sem senha de tribunal.',
 };
 
-/** Amostra usada para as agregações que o backend não expõe (composição da carteira). */
-const AMOSTRA_CARTEIRA = 100;
-/** Horizonte da faixa de prazos, em dias corridos a partir de hoje. */
-const HORIZONTE_DIAS = 14;
+const PILARES = [
+  {
+    icon: 'ronda' as const,
+    pain: 'A publicação pode estar no diário nacional ou dentro do PJe, do e-SAJ, do Projudi. Cada um com login e formato próprios.',
+    title: 'A ronda deixa de ser sua',
+    desc: 'A plataforma abre os sistemas, lê o que saiu e arquiva cada publicação no processo a que ela pertence.',
+  },
+  {
+    icon: 'prazo' as const,
+    pain: 'Você descobre o prazo relendo a movimentação e contando os dias úteis na mão.',
+    title: 'O prazo já vem contado',
+    desc: 'Quando a movimentação abre prazo, a data de vencimento entra no calendário já em dias úteis, com o feriado do tribunal descontado.',
+  },
+  {
+    icon: 'aviso' as const,
+    pain: 'O cliente liga perguntando o andamento e a planilha de controle está parada desde terça.',
+    title: 'Quando o cliente liga, você já sabe',
+    desc: 'O alerta chega no WhatsApp no mesmo dia da publicação, com o número do processo e o que saiu.',
+  },
+];
 
-const DIA_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const NARRATIVA = [
+  'Você informa a sua OAB. A partir daí a plataforma acompanha tudo que sai no seu nome, sem você abrir sistema nenhum.',
+  'Cada publicação é lida e ligada ao processo a que pertence, venha do diário nacional ou do sistema do tribunal.',
+  'Se aquilo abre prazo, a data entra no seu calendário contada em dias úteis.',
+  'O alerta chega no seu WhatsApp no mesmo dia, com o que saiu e o que aquilo exige de você.',
+  'No fim do mês sobram as horas que você gastava conferindo sistema de tribunal.',
+];
 
-const toISODate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const EXCELENCIA = [
+  {
+    icon: ScanSearch,
+    title: 'Lê PDF, diário e tela de sistema',
+    desc: 'Publicação chega em PDF, em texto corrido de diário e em tela de sistema. A plataforma lê os três no mesmo ritmo, todo dia, feriado incluído.',
+  },
+  {
+    icon: FileSearch,
+    title: 'Prazo com data e com responsável',
+    desc: 'Identificamos o que está pendente em cada processo, a data em que vence e quem precisa agir. O aviso se repete enquanto o prazo estiver em aberto.',
+  },
+  {
+    icon: Radar,
+    title: 'Mudou de vara, de instância ou de sistema',
+    desc: 'Redistribuição e subida de instância são onde o processo costuma se perder. A plataforma detecta a mudança e segue o processo até o novo juízo.',
+  },
+  {
+    icon: MessageCircleMore,
+    title: 'Alerta onde você já olha',
+    desc: 'O aviso vai para o WhatsApp que já está na sua mão, com o resumo do dia e o que exige ação de você.',
+  },
+  {
+    icon: Gauge,
+    title: 'A carteira inteira em uma tela',
+    desc: 'O que está parado, o que precisa de ação hoje e o que vence esta semana, sem planilha paralela.',
+  },
+];
 
-/** "há 12 min" / "há 3h" / "há 2d" — null quando não houve sincronização alguma. */
-function haQuanto(iso: string | null): string | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  if (Number.isNaN(ms)) return null;
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return 'agora';
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  return `há ${Math.floor(h / 24)}d`;
-}
+const PARA_QUEM = [
+  {
+    tag: 'Autônomo',
+    title: 'Advogado sozinho, sem estagiário para fazer a conferência diária dos sistemas',
+  },
+  {
+    tag: 'Banca',
+    title: 'Escritório em que a carteira cresceu mais rápido que o time de operacional',
+  },
+  {
+    tag: 'Volume',
+    title: 'Prática de massa em trabalhista, previdenciário ou consumidor, com processos espalhados em muitos tribunais',
+  },
+];
 
-const moeda = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-  notation: 'compact',
-  maximumFractionDigits: 1,
-});
+const GARANTIAS = [
+  {
+    icon: Lock,
+    title: 'Você começa sem entregar senha nenhuma',
+    desc: 'A consulta inicial usa a base pública do diário nacional, a mesma que qualquer pessoa pode consultar. Para ver o resultado, nenhuma credencial de tribunal é pedida.',
+  },
+  {
+    icon: EyeOff,
+    title: 'Se você cadastrar credencial, nós não conseguimos ler',
+    desc: 'Ela fica criptografada em repouso e em trânsito. Ninguém da equipe tem como abrir a sua senha: quem usa é a máquina que lê as suas movimentações.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'O acesso é só de leitura',
+    desc: 'Nada é protocolado nem assinado em seu nome. O ato processual continua inteiramente seu, e você revoga o acesso quando quiser.',
+  },
+];
 
-const plural = (n: number, um: string, muitos: string) => (n === 1 ? um : muitos);
+const SELOS = [
+  { icon: ShieldCheck, label: 'LGPD', desc: 'Tratamento de dados conforme a lei' },
+  { icon: Scale, label: 'Sigilo profissional', desc: 'Acesso restrito à sua própria credencial' },
+  { icon: Lock, label: 'Criptografia', desc: 'Em trânsito e em repouso' },
+];
 
-/**
- * O radar público do DJEN é modelado como uma credencial de sigla `DJEN`
- * (ver `setup-djen-secret.ts` no backend). Ela não é acesso autenticado a
- * tribunal nenhum — por isso não conta para a cobertura.
- */
-const SIGLA_DJEN = 'DJEN';
-
-export default async function DashboardPage() {
-  const [
-    { processos, total: totalProcessos, comNovidade, comErro },
-    { groups: movimentacoes, newToday, total: totalMovs },
-    { prazos, criticos, pautaAtrasada },
-    secrets,
-  ] = await Promise.all([
-    getProcessos(1, AMOSTRA_CARTEIRA),
-    getMovimentacoes(1, 50),
-    getPrazos(),
-    getScraperSecrets(),
-  ]);
-
-  const semCredenciais = secrets.length === 0;
-  // Credencial de tribunal = a que dá login no sistema (PJe/CPE/Projudi).
-  // Só com ela o robô entra nos autos; sem nenhuma, a carteira inteira vem do
-  // que é publicado no diário — e a tela precisa dizer isso.
-  const semAutenticacao = !secrets.some(
-    s => s.isActive && s.tribunais.some(t => t !== SIGLA_DJEN),
-  );
-  const sincronizandoPelaPrimeiraVez = !semCredenciais && totalProcessos === 0;
-
-  // `counts` é global (vem do backend); a amostra só entra como rede de segurança
-  // caso o contrato mude e o campo suma.
-  const novidades = comNovidade || processos.filter(p => p.state === 'signal').length;
-  const comFalha = comErro || processos.filter(p => p.state === 'alert').length;
-
-  const allMovs = movimentacoes.flatMap(g => g.items);
-
-  const prazosOrdenados = [...prazos].sort((a, b) => {
-    if (a.diasRestantes === null && b.diasRestantes === null) return 0;
-    if (a.diasRestantes === null) return 1;
-    if (b.diasRestantes === null) return -1;
-    return a.diasRestantes - b.diasRestantes;
-  });
-  const prazosCriticos = prazosOrdenados.filter(p => p.diasRestantes !== null && p.diasRestantes <= 3);
-  const prazos7 = prazos.filter(p => p.diasRestantes !== null && p.diasRestantes <= 7).length;
-  const prazosSemData = prazos.filter(p => p.vencimentoISO === null).length;
-
-  // Faixa de HORIZONTE_DIAS dias: bucket por data-calendário (`vencimentoISO`),
-  // não por `diasRestantes` — este último arredonda a partir de "agora", não da
-  // meia-noite, e deslocaria itens de véspera para a coluna seguinte.
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const faixa = Array.from({ length: HORIZONTE_DIAS }, (_, i) => {
-    const data = new Date(hoje);
-    data.setDate(hoje.getDate() + i);
-    const iso = toISODate(data);
-    return {
-      iso,
-      offset: i,
-      dia: data.getDate(),
-      semana: DIA_SEMANA[data.getDay()],
-      fimDeSemana: data.getDay() === 0 || data.getDay() === 6,
-      count: prazos.filter(p => p.vencimentoISO === iso).length,
-    };
-  });
-  const picoFaixa = Math.max(1, ...faixa.map(d => d.count));
-
-  // `lastScrapedAt` já vem normalizado em ISO por `normalizeDate`, então o
-  // maior lexicográfico é o mais recente.
-  const ultimaSync = processos.reduce<string | null>(
-    (best, p) => (p.lastScrapedAt && (!best || p.lastScrapedAt > best) ? p.lastScrapedAt : best),
-    null,
-  );
-  const sincronizadoHa = haQuanto(ultimaSync);
-
-  // Composição da carteira — derivada da amostra; `totalProcessos` é global.
-  const amostrado = processos.length;
-  const parcial = totalProcessos > amostrado;
-  const porTribunal = contarPorTribunal(processos);
-  const grau1 = processos.filter(p => p.grau === '1º').length;
-  const grau2 = processos.filter(p => p.grau === '2º').length;
-  const porScraper = processos.filter(p => p.origem === 'scraper').length;
-  const porDjen = processos.filter(p => p.origem === 'djen').length;
-  const valorCausa = processos.reduce((acc, p) => acc + (p.valorCausa ?? 0), 0);
-
+export default function HomePage() {
   return (
-    <AppLayout active="Dashboard" mobileTitle="Dashboard" mobileBreadcrumb="Início / Dashboard">
-      {/* Topbar */}
-      <div
-        className={styles.topbar}
-        style={{
-          borderBottom: '1px solid var(--line)',
-          background: 'var(--paper)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div className={styles.topbarTitle}>Dashboard</div>
-          <div className={styles.topbarBreadcrumb}>Início / Dashboard</div>
+    <div className={`${styles.page} ${fraunces.variable}`}>
+      <ScrollFx />
+      <header className={styles.nav} data-nav data-theme="light">
+        <Link href="/" className={styles.brand}>
+          <span className={styles.brandMark} aria-hidden="true" />
+          Ponto Processual
+        </Link>
+        <nav className={styles.navLinks}>
+          <a href="#produto">Produto</a>
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#seguranca">Sua senha</a>
+          <a href="#perguntas">Perguntas</a>
+        </nav>
+        <div className={styles.navCtas}>
+          <Link href="/login" className={styles.navSecondary}>
+            Entrar
+          </Link>
+          <Link href="/cadastro" className={buttonVariants({ className: styles.navPrimary })}>
+            CRIAR CONTA
+          </Link>
         </div>
-        {!semCredenciais && !sincronizandoPelaPrimeiraVez && (
-          <SyncBadge sincronizadoHa={sincronizadoHa} />
-        )}
-      </div>
+      </header>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        {semCredenciais ? (
-          <DashboardEmptyState variant="no-credentials" />
-        ) : sincronizandoPelaPrimeiraVez ? (
-          <DashboardEmptyState variant="syncing" />
-        ) : (
-        <>
-        {/* Cobertura — precede os alertas: muda como tudo abaixo deve ser lido */}
-        {semAutenticacao && <AvisoDadosPublicos totalProcessos={totalProcessos} />}
+      <HeroSection />
 
-        {/* Alertas — só o que exige ação agora */}
-        {prazosCriticos.length > 0 && (
-          <div className={styles.dashAlert} style={{ background: 'var(--alert-soft)', borderLeft: '3px solid var(--alert)', display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)', flexShrink: 0 }}>
-              {prazosCriticos.length} prazo{plural(prazosCriticos.length, '', 's')} crítico{plural(prazosCriticos.length, '', 's')}
-            </span>
-            <span className={styles.dashAlertPart} style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-              — {tituloPrazo(prazosCriticos[0])} vence em {prazosCriticos[0].diasRestantes} dia{plural(prazosCriticos[0].diasRestantes ?? 0, '', 's')}
-            </span>
-            <Link href="/prazos?urgencia=critico" className={styles.dashAlertLink} style={{ color: 'var(--alert)' }}>
-              Ver prazos →
-            </Link>
+      {/* O CUSTO DA RONDA — primeira seção depois do hero de propósito: quem
+          não buscou a OAB precisa levar o número da própria dor antes de
+          qualquer explicação de produto. */}
+      <section className={styles.section} data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>
+            <span className={styles.sectionGlyph} aria-hidden="true">§</span>
+            Faça a conta do seu plantão
+          </h2>
+          <p className={styles.sectionLead}>
+            Ninguém contrata advogado para abrir sistema de tribunal. Mas alguém tem que abrir, e essa
+            hora sai do seu dia.
+          </p>
+        </div>
+        <CustoRonda />
+      </section>
+
+      {/* EM RESUMO — o diagrama mostra literalmente o que a seção descreve:
+          tribunais heterogêneos convergindo pro produto, saindo em um único
+          fluxo pro WhatsApp do usuário. */}
+      <section className={`${styles.section} ${styles.sectionAlt}`} id="produto" data-nav-theme="light">
+        <div className={styles.resumoGrid}>
+          <div>
+            <h2 className={styles.h2}>Um endereço só para o que hoje está espalhado</h2>
+            <p className={styles.sectionLead}>
+              Cada tribunal do país tem o seu sistema e nenhum deles conversa com o outro. A plataforma
+              fala com todos: PJe, e-SAJ, Projudi, CPE e o diário nacional. Seus processos,
+              movimentações e prazos voltam reunidos em um lugar só.
+            </p>
           </div>
-        )}
+          <TribunalFlow />
+        </div>
+      </section>
 
-        {/* Stat cards */}
-        <div className={styles.statCards} style={{ display: 'flex', border: '1px solid var(--line)', background: 'var(--paper)' }}>
-          {[
-            {
-              label: 'Processos monitorados',
-              value: totalProcessos,
-              sub: comFalha > 0
-                ? `${comFalha} com erro de sincronização`
-                : `${totalMovs} movimentaç${plural(totalMovs, 'ão', 'ões')} capturada${plural(totalMovs, '', 's')}`,
-              color: 'var(--ink)',
-              href: '/processos',
-            },
-            {
-              label: 'Com novidade',
-              value: novidades,
-              sub: newToday > 0
-                ? `${newToday} movimentaç${plural(newToday, 'ão', 'ões')} nova${plural(newToday, '', 's')} em 48h`
-                : 'nada novo nas últimas 48h',
-              color: novidades > 0 ? 'var(--brick)' : 'var(--ink)',
-              href: '/processos?state=signal',
-            },
-            {
-              label: 'Vencendo em 7 dias',
-              value: prazos7,
-              sub: criticos > 0
-                ? `${criticos} crítico${plural(criticos, '', 's')} (≤ 3 dias)`
-                : 'nenhum crítico',
-              color: criticos > 0 ? 'var(--alert)' : prazos7 > 0 ? 'var(--brick)' : 'var(--ink)',
-              href: '/prazos?urgencia=urgente',
-            },
-            {
-              label: 'Pauta atrasada',
-              value: pautaAtrasada,
-              sub: pautaAtrasada > 0
-                ? 'passaram da data de trabalho'
-                : 'nada acumulado',
-              color: pautaAtrasada > 0 ? 'var(--signal)' : 'var(--quiet)',
-              href: '/prazos?pauta=atrasada',
-            },
-          ].map((card, i) => (
-            <Link key={i} href={card.href} className={styles.statCard}>
-              <div className={styles.statLabel}>{card.label}</div>
-              <div className={styles.statNum} style={{ color: card.color }}>{card.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 10 }}>{card.sub}</div>
-            </Link>
+      {/* O RESULTADO */}
+      <section className={styles.section} id="como-funciona" data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>
+            Você não perde prazo por desorganização.{' '}
+            <br className={styles.brWide} />
+            Perde porque a informação não chega até você.
+          </h2>
+          <p className={styles.sectionLead}>
+            A informação está espalhada em sistemas que não se falam, e alguém precisa ir buscar pedaço
+            por pedaço. É esse trabalho que a plataforma assume.
+          </p>
+        </div>
+        <div className={styles.pillarsList}>
+          {PILARES.map((p, i) => (
+            <div
+              key={p.title}
+              className={styles.pillar}
+              data-reveal
+              style={{ '--reveal-delay': `${i * 90}ms` } as CSSProperties}
+            >
+              <LinedIcon variant={p.icon} />
+              <p className={styles.pillarPain}>{p.pain}</p>
+              <h3 className={styles.pillarTitle}>{p.title}</h3>
+              <p className={styles.pillarDesc}>{p.desc}</p>
+            </div>
           ))}
         </div>
+        <a href="#excelencia" className={styles.textCta}>
+          CONHEÇA O PRODUTO →
+        </a>
+      </section>
 
-        {/* Faixa dos próximos 14 dias */}
-        <div className={styles.faixaPanel} style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-          <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className={styles.panelTitle}>§ PRÓXIMOS {HORIZONTE_DIAS} DIAS</span>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-              {prazosSemData > 0
-                ? `${prazosSemData} expediente${plural(prazosSemData, '', 's')} sem data definida`
-                : `${prazos.length} prazo${plural(prazos.length, '', 's')} em aberto`}
+      {/* PROVA DE PRODUTO — substitui os depoimentos: mostra o formato real do
+          alerta em vez de citação anônima não verificável. */}
+      <section className={`${styles.section} ${styles.sectionAlt}`} data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>É isso que chega no seu WhatsApp</h2>
+        </div>
+        <ProvaAlerta />
+      </section>
+
+      {/* COBERTURA */}
+      <section className={styles.section} data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>
+            <span className={styles.sectionGlyph} aria-hidden="true">§</span>
+            Cobrimos o país inteiro
+          </h2>
+          <p className={styles.sectionLead}>
+            O diário nacional alcança todos os tribunais do Brasil. Acima dele, sincronizamos direto
+            dentro dos sistemas, e essa lista cresce a cada mês. Consulte pela sua OAB para ver quais
+            dos seus tribunais já entram na sincronização direta.
+          </p>
+        </div>
+      </section>
+      <div className={styles.marqueeWrap} aria-hidden="false">
+        <div className={styles.marqueeTrack}>
+          {[...TRIBUNAIS, ...TRIBUNAIS].map((t, i) => (
+            <span key={`${t}-${i}`} className={styles.marqueeItem}>
+              {t}
             </span>
-          </div>
-          <div className={styles.faixa}>
-            {faixa.map(d => {
-              const cor = d.count === 0
-                ? 'var(--line)'
-                : d.offset <= 3 ? 'var(--alert)' : d.offset <= 7 ? 'var(--brick)' : 'var(--ink-3)';
-              return (
-                <Link
-                  key={d.iso}
-                  href={`/prazos?fatalFrom=${d.iso}&fatalTo=${d.iso}`}
-                  className={styles.faixaDia}
-                  data-vazio={d.count === 0 ? '' : undefined}
-                  data-fds={d.fimDeSemana ? '' : undefined}
-                  title={`${d.count} prazo${plural(d.count, '', 's')} em ${d.iso.split('-').reverse().join('/')}`}
-                >
-                  <span className={styles.faixaSemana}>{d.semana}</span>
-                  <span className={styles.faixaData} style={{ color: d.offset === 0 ? 'var(--brick)' : undefined }}>
-                    {d.dia}
-                  </span>
-                  <span className={styles.faixaBarraTrilho}>
-                    <span
-                      className={styles.faixaBarra}
-                      style={{ height: `${d.count === 0 ? 2 : Math.round((d.count / picoFaixa) * 100)}%`, background: cor }}
-                    />
-                  </span>
-                  <span className={styles.faixaCount} style={{ color: d.count === 0 ? 'var(--ink-4)' : cor }}>
-                    {d.count}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
+          ))}
         </div>
+      </div>
 
-        {/* Grade — feed + coluna lateral */}
-        <div className={`${styles.dashGrid} ${styles.dashGridLast}`} style={{ display: 'grid', alignItems: 'start' }}>
-          {/* Movimentações recentes */}
-          <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-            <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className={styles.panelTitle}>§ MOVIMENTAÇÕES RECENTES</span>
-              {newToday > 0 && (
-                <span style={{ flexShrink: 0 }} title="detectadas nas últimas 48h">
-                  <Seal variant="nova" label={`${newToday} NOVAS`} />
-                </span>
-              )}
-              <Link href="/movimentacoes" className={styles.panelLink} style={{ marginLeft: 'auto' }}>
-                Ver todas ({totalMovs}) →
-              </Link>
-            </div>
-
-            {allMovs.length === 0 ? (
-              <PanelVazio texto="Nenhuma movimentação capturada ainda." />
-            ) : allMovs.slice(0, 6).map((mov, i, arr) => (
-              <Link
-                key={mov.id}
-                href={`/movimentacoes/${mov.id}`}
-                className={styles.movRow}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--line-soft)' : 'none',
-                  background:
-                    mov.state === 'signal' ? 'var(--brick-soft)'
-                    : mov.state === 'alert' ? 'var(--alert-soft)'
-                    : 'transparent',
-                }}
-              >
-                <StatusDot state={mov.state} />
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', minWidth: 36 }}>
-                  {mov.time}
-                </div>
-                <TribTag label={mov.tribunal} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {mov.parte}
-                </div>
-                <span className={styles.movTipo} style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ink-3)', flexShrink: 0 }}>
-                  {mov.tipo}
-                </span>
-                {mov.state === 'signal' && <Seal variant="nova" />}
-                {mov.state === 'alert' && <Seal variant="erro" />}
-              </Link>
-            ))}
-          </div>
-
-          {/* Coluna lateral — prazos e composição da carteira */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Próximos prazos */}
-            <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-              <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className={styles.panelTitle}>§ PRÓXIMOS PRAZOS</span>
-                <Link href="/prazos" className={styles.panelLink}>Ver todos ({prazos.length}) →</Link>
-              </div>
-
-              {prazosOrdenados.length === 0 ? (
-                <PanelVazio texto="Nenhum prazo em aberto." />
-              ) : prazosOrdenados.slice(0, 6).map((pz, i, arr) => {
-                const semData = pz.diasRestantes === null;
-                const isCrit = pz.diasRestantes !== null && pz.diasRestantes <= 3;
-                const isUrg = pz.diasRestantes !== null && pz.diasRestantes <= 7;
-                return (
-                  <div
-                    key={pz.id}
-                    className={styles.prazoRow}
-                    style={{ display: 'flex', alignItems: 'center', borderBottom: i < arr.length - 1 ? '1px solid var(--line-soft)' : 'none' }}
-                  >
-                    <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 18, lineHeight: 1, color: isCrit ? 'var(--alert)' : isUrg ? 'var(--brick)' : 'var(--ink-3)', minWidth: 36, textAlign: 'right' }}>
-                      {semData ? '—' : `${pz.diasRestantes}d`}
-                    </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {pz.parte || tituloPrazo(pz)}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
-                        {pz.tipo} · {pz.vencimento ?? 'sem prazo definido'}
-                      </div>
-                    </div>
-                    <TribTag label={pz.tribunal} />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Composição da carteira */}
-            <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-              <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className={styles.panelTitle}>§ CARTEIRA</span>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--ink-2)' }}>
-                  {totalProcessos}
-                </span>
-              </div>
-
-              <div className={styles.carteiraBody} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {porTribunal.slice(0, 5).map(row => (
-                  <div key={row.tribunal} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', width: 72, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {row.tribunal}
-                    </div>
-                    <div style={{ flex: 1, height: 6, background: 'var(--paper-2)', position: 'relative' }}>
-                      <div style={{ position: 'absolute', inset: '0 auto 0 0', height: '100%', width: `${(row.count / porTribunal[0].count) * 100}%`, background: 'var(--brick)' }} />
-                    </div>
-                    <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13, color: 'var(--ink-2)', minWidth: 20, textAlign: 'right' }}>
-                      {row.count}
-                    </div>
-                  </div>
-                ))}
-
-                <div style={{ marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--line-soft)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <CarteiraLinha rotulo="1º / 2º grau" valor={`${grau1} / ${grau2}`} />
-                <CarteiraLinha rotulo="Autenticado / público" valor={`${porScraper} / ${porDjen}`} />
-                  {valorCausa > 0 && (
-                    <CarteiraLinha rotulo="Valor em causa" valor={moeda.format(valorCausa)} destaque />
-                  )}
-                  {parcial && (
-                    <div style={{ fontSize: 10, color: 'var(--ink-4)', lineHeight: 1.5 }}>
-                      Composição sobre os {amostrado} processos mais recentes de {totalProcessos}.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Link href="/processos" className={styles.panelFooterLink}>
-                Ver todos os processos →
-              </Link>
-            </div>
-          </div>
+      {/* NARRATIVA — sequência real (5 etapas do fluxo), por isso a
+          numeração é legítima aqui: usamos o § do próprio vocabulário
+          processual (§1º, §2º...) em vez de um marcador genérico. */}
+      <section className={`${styles.section} ${styles.sectionAlt}`} data-nav-theme="light">
+        <h2 className={styles.h2}>
+          <span className={styles.sectionGlyph} aria-hidden="true">§</span>
+          Da sua OAB até o seu bolso
+        </h2>
+        <div className={styles.narrativa}>
+          {NARRATIVA.map((p, i) => (
+            <p
+              key={i}
+              className={styles.narrativaP}
+              data-reveal
+              style={{ '--reveal-delay': `${i * 90}ms` } as CSSProperties}
+            >
+              <span className={styles.narrativaMark}>§{i + 1}</span>
+              {p}
+            </p>
+          ))}
         </div>
-        </>
-        )}
-      </div>
-    </AppLayout>
-  );
-}
+      </section>
 
-/** Distribuição por tribunal na amostra, do maior para o menor. */
-function contarPorTribunal(processos: Processo[]): { tribunal: string; count: number }[] {
-  const counts = new Map<string, number>();
-  for (const p of processos) counts.set(p.tribunal, (counts.get(p.tribunal) ?? 0) + 1);
-  return [...counts.entries()]
-    .map(([tribunal, count]) => ({ tribunal, count }))
-    .sort((a, b) => b.count - a.count || a.tribunal.localeCompare(b.tribunal));
-}
-
-function SyncBadge({ sincronizadoHa }: { sincronizadoHa: string | null }) {
-  const [cor, texto] = sincronizadoHa
-    ? ['var(--quiet)', `● SINCRONIZADO · ${sincronizadoHa}`]
-    : ['var(--ink-3)', '○ SEM DADOS DE SINCRONIZAÇÃO'];
-
-  return (
-    <div
-      className={styles.syncBadge}
-      style={{
-        fontFamily: 'var(--mono)',
-        fontSize: 11,
-        color: cor,
-        background: sincronizadoHa ? 'var(--quiet-soft)' : 'var(--paper-2)',
-        padding: '4px 12px',
-        border: `1px solid ${cor}`,
-        flexShrink: 0,
-      }}
-    >
-      {texto}
-    </div>
-  );
-}
-
-/**
- * Sem credencial de tribunal, a carteira inteira vem do diário oficial: dá para
- * saber que algo foi publicado, não o que está nos autos. O aviso fica acima de
- * tudo porque muda como os números abaixo devem ser lidos.
- */
-function AvisoDadosPublicos({ totalProcessos }: { totalProcessos: number }) {
-  return (
-    <div className={styles.avisoCobertura}>
-      <div className={styles.avisoIcone}>
-        <ShieldAlert size={16} />
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className={styles.avisoTitulo}>Somente dados públicos</div>
-        <p className={styles.avisoTexto}>
-          Você ainda não configurou a autenticação de nenhum tribunal. {totalProcessos > 0
-            ? `Os ${totalProcessos} processos abaixo vieram`
-            : 'Tudo que aparece aqui vem'}{' '}
-          do diário oficial eletrônico (DJEN) — o que é publicado, e só isso.
-          Sem o login do tribunal, o robô não entra nos autos: andamentos internos,
-          documentos e os expedientes que só aparecem no painel do PJe ficam de fora.
-        </p>
-      </div>
-      <Link href="/credenciais" className={styles.avisoCta}>
-        Configurar tribunal →
-      </Link>
-    </div>
-  );
-}
-
-function CarteiraLinha({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{rotulo}</span>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: destaque ? 'var(--brick)' : 'var(--ink-2)' }}>
-        {valor}
-      </span>
-    </div>
-  );
-}
-
-function PanelVazio({ texto }: { texto: string }) {
-  return (
-    <div style={{ padding: '24px 20px', fontSize: 12, color: 'var(--ink-3)', textAlign: 'center' }}>
-      {texto}
-    </div>
-  );
-}
-
-function DashboardEmptyState({ variant }: { variant: 'no-credentials' | 'syncing' }) {
-  if (variant === 'syncing') {
-    return (
-      <div className={styles.dashEmpty}>
-        <div className={styles.dashEmptyIcon}>
-          <RefreshCw size={22} />
+      {/* EXCELÊNCIA OPERACIONAL — lista corrida dividida por friso, não
+          grid de cards: o mesmo módulo (ícone + título + texto) já apareceu
+          em "O resultado"; repeti-lo em caixas idênticas leria como
+          template. Aqui vira índice denso, à la sumário processual. */}
+      <section className={`${styles.section} ${styles.sectionDark}`} id="excelencia" data-nav-theme="dark">
+        <div>
+          <h2 className={`${styles.h2} ${styles.h2Light}`}>O que a plataforma faz enquanto você advoga</h2>
+          <p className={`${styles.sectionLead} ${styles.sectionLeadLight}`}>
+            Tudo aqui é trabalho que consome a sua manhã e que ninguém está pagando para você fazer.
+          </p>
         </div>
-        <div className={styles.dashEmptyTitle}>Sincronizando seus processos</div>
-        <p className={styles.dashEmptyDesc}>
-          Sua credencial foi cadastrada — o sistema está buscando e centralizando seus processos pela OAB agora.
-          Isso pode levar alguns minutos na primeira vez.
-        </p>
-        <Link
-          href="/credenciais"
-          style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', textDecoration: 'none' }}
-        >
-          Ver status da credencial →
+        <div className={styles.excelenciaList}>
+          {EXCELENCIA.map((f, i) => (
+            <div
+              key={f.title}
+              className={styles.excelenciaItem}
+              data-reveal
+              style={{ '--reveal-delay': `${i * 70}ms` } as CSSProperties}
+            >
+              <f.icon size={20} strokeWidth={1.75} className={styles.cardIconLight} />
+              <div>
+                <h3 className={styles.cardTitleLight}>{f.title}</h3>
+                <p className={styles.cardDescLight}>{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Link href="/cadastro" className={styles.ctaLight}>
+          CRIAR CONTA
         </Link>
-      </div>
-    );
-  }
+      </section>
 
-  return (
-    <div className={styles.dashEmpty}>
-      <div className={styles.dashEmptyIcon}>
-        <Scale size={22} />
-      </div>
-      <div className={styles.dashEmptyTitle}>Vamos monitorar seu primeiro processo</div>
-      <p className={styles.dashEmptyDesc}>
-        Cadastre o login que você usa no tribunal (PJe, CPE, Projudi…) e a gente cuida do resto:
-        descobrimos seus processos pela OAB e acompanhamos cada movimentação e prazo por você.
-      </p>
-      <Link href="/onboarding" className={styles.dashEmptyCta}>
-        <Plus size={14} /> Cadastrar meu primeiro tribunal
-      </Link>
+      {/* PARA QUEM É — três linhas cheias (formato "andamento/docket"),
+          não três caixas iguais lado a lado. */}
+      <section className={styles.section} data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>Para quem o Ponto Processual foi feito</h2>
+        </div>
+        <div className={styles.casosList}>
+          {PARA_QUEM.map((c, i) => (
+            <div
+              key={c.title}
+              className={styles.caso}
+              data-reveal
+              style={{ '--reveal-delay': `${i * 90}ms` } as CSSProperties}
+            >
+              <span className={styles.casoTag}>{c.tag}</span>
+              <p className={styles.casoTitle}>{c.title}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* SEGURANÇA — trata a objeção nº1 de frente e pelo nome, porque é ela
+          que trava o cadastro. Selos genéricos sozinhos não respondem "vocês
+          vão pegar minha senha do PJe?". */}
+      <section className={`${styles.section} ${styles.sectionAlt}`} id="seguranca" data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>
+            <span className={styles.sectionGlyph} aria-hidden="true">§</span>
+            Sim, vamos falar da sua senha do PJe
+          </h2>
+          <p className={styles.sectionLead}>
+            É a primeira pergunta de todo advogado que chega aqui. Três selos no rodapé não respondem.
+          </p>
+        </div>
+        <div className={styles.garantiasList}>
+          {GARANTIAS.map((g, i) => (
+            <div
+              key={g.title}
+              className={styles.garantia}
+              data-reveal
+              style={{ '--reveal-delay': `${i * 90}ms` } as CSSProperties}
+            >
+              <span className={styles.garantiaMark}>§{i + 1}</span>
+              <g.icon size={20} strokeWidth={1.75} className={styles.garantiaIcon} />
+              <div>
+                <h3 className={styles.garantiaTitulo}>{g.title}</h3>
+                <p className={styles.garantiaDesc}>{g.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={styles.selosGrid}>
+          {SELOS.map(s => (
+            <div key={s.label} className={styles.selo}>
+              <s.icon size={18} strokeWidth={1.75} />
+              <div>
+                <div className={styles.seloLabel}>{s.label}</div>
+                <div className={styles.seloDesc}>{s.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* PERGUNTAS — último obstáculo antes do CTA. */}
+      <section className={styles.section} id="perguntas" data-nav-theme="light">
+        <div>
+          <h2 className={styles.h2}>Antes que você pergunte</h2>
+        </div>
+        <Faq />
+      </section>
+
+      {/* CTA FINAL — repete a busca por OAB, não um botão genérico: quem
+          chegou até aqui já entendeu o produto e está pronto para o mesmo
+          microcompromisso do topo. */}
+      <section className={styles.finalCta} data-nav-theme="dark">
+        <FrameGrid />
+        <div className={styles.finalCtaInner} data-reveal>
+          <h2 className={`${styles.h2} ${styles.h2Light}`}>
+            Amanhã de manhã ainda vai ser você abrindo os sistemas?
+          </h2>
+          <p className={styles.finalCtaLead}>
+            Consulte pela sua OAB e veja quantos processos seus estão publicando neste momento.
+          </p>
+          <OabSearch />
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className={styles.footer} data-nav-theme="dark">
+        <Link href="/" className={styles.footerBrand}>
+          <span className={styles.brandMark} aria-hidden="true" />
+          Ponto Processual
+        </Link>
+        <div className={styles.footerCols}>
+          <div className={styles.footerCol}>
+            <span className={styles.footerColTitle}>Produto</span>
+            <a href="#produto">Como funciona</a>
+            <a href="#excelencia">Recursos</a>
+            <a href="#perguntas">Perguntas</a>
+          </div>
+          <div className={styles.footerCol}>
+            <span className={styles.footerColTitle}>Conta</span>
+            <Link href="/login">Entrar</Link>
+            <Link href="/cadastro">Criar conta</Link>
+          </div>
+          <div className={styles.footerCol}>
+            <span className={styles.footerColTitle}>Legal</span>
+            <a href="#seguranca">Segurança</a>
+            <a href="#seguranca">Privacidade</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

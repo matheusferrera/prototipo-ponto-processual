@@ -19,23 +19,54 @@ const FONTS = [
   { name: 'JetBrains Mono', data: font('JetBrainsMono-Bold.ttf'), weight: 700 as const, style: 'normal' as const },
 ];
 
-// Leque de faixas diagonais — versão estática do HeroRays, encostada na
-// direita: a primeira faixa começa depois da coluna de texto e a última sai
-// pela borda.
-//
-// O skewY(-31) do SVG sobe cada coluna em tan(31°)·x, então o `y` do rect não
-// é o topo que se vê. `RAY_TOP` descreve onde o canto superior esquerdo deve
-// cair no quadro (mesmo escalonamento do `top` no HeroRays.module.css) e o `y`
-// desfaz o levantamento do skew — é isso que mantém o corte diagonal do topo
-// dentro da imagem, que é o que faz o desenho ler como leque em vez de listras.
-const RAYS = 9;
-const RAY_X0 = 700;
-const RAY_STEP = 58;
-const RAY_WIDTH = 210;
-const RAY_HEIGHT = 1100;
-const RAY_TOP = -189; // canto superior da 1ª faixa (-30% de 630, como no site)
-const RAY_TOP_STEP = 50; // cada camada desce um degrau (+8% no site)
-const SKEW_LIFT = Math.tan((31 * Math.PI) / 180);
+// Malha de quadros — versão estática do FrameGrid, encostada na direita: a
+// primeira coluna começa depois do bloco de texto e as últimas saem pela
+// borda. O satori não tem `mask-image`, então o recorte que no site é feito
+// por máscara aqui vira opacidade calculada célula a célula: a mesma elipse
+// (centro em 83%/36%, núcleo sólido até 30% do raio, transparente a 88%)
+// cruzada com a mesma rampa vertical do pé. Sem isso a malha terminaria em
+// quatro arestas duras e leria como papel de parede.
+const G_COLS = 7;
+const G_ROWS = 5;
+const G_CELL = 150;
+const G_GAP = 16;
+const G_RING = 20;
+const G_HAIR = 0.1;   // opacidade do fio de 1px — igual ao --fg-hair do CSS
+const G_GLOW = 0.09;  // opacidade do anel grosso — igual ao --fg-glow
+const G_STEP = G_CELL + G_GAP;
+const G_CX = size.width * 0.83;
+const G_CY = size.height * 0.36;
+const G_LEFT = G_CX - (G_COLS * G_STEP - G_GAP) / 2;
+const G_TOP = G_CY - (G_ROWS * G_STEP - G_GAP) / 2;
+
+// Mesmo hash do FrameGrid.tsx: fases descorrelacionadas entre vizinhos, para
+// as células acesas ficarem espalhadas em vez de marcharem em fileira.
+const hash01 = (n: number) => {
+  let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+};
+
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+/** Quanto a célula `i` está acesa, na fase escolhida para o banner. */
+const litOf = (i: number) => {
+  const FASE = 0.22;
+  const rate = 1 + (hash01(i * 3 + 3) - 0.5) * 1.6 * 0.6;
+  const w1 = (FASE * 1.8 * rate + hash01(i * 3 + 1)) * Math.PI * 2;
+  const w2 = (FASE * 1.8 * rate * 0.618 + hash01(i * 3 + 2)) * Math.PI * 2;
+  return Math.pow(clamp01(0.5 + 0.3 * Math.sin(w1) + 0.3 * Math.sin(w2)), 3);
+};
+
+/** A máscara do CSS reproduzida como número: elipse × rampa do pé. */
+const maskAt = (x: number, y: number) => {
+  const r = Math.hypot((x - G_CX) / (size.width * 0.56), (y - G_CY) / (size.height * 1.04));
+  const elipse = r <= 0.3 ? 1 : clamp01(1 - (r - 0.3) / (0.88 - 0.3));
+  const rampa = clamp01(1 - (y / size.height - 0.58) / (0.96 - 0.58));
+  return elipse * rampa;
+};
 
 export default function Image() {
   return new ImageResponse(
@@ -54,30 +85,43 @@ export default function Image() {
           overflow: 'hidden',
         }}
       >
-        {/* Efeito Hero Rays via SVG puro para garantir suporte no satori/resvg */}
-        <svg
-          width="1200"
-          height="630"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            opacity: 0.8,
-          }}
-        >
-          {Array.from({ length: RAYS }).map((_, i) => {
-            const x = RAY_X0 + i * RAY_STEP;
+        {/* Malha via SVG puro para garantir suporte no satori/resvg. O anel
+            grosso é um rect com stroke da espessura do anel, encolhido de
+            meia espessura: o stroke do SVG é centrado no traço, então sem o
+            encolhimento ele vazaria metade para fora do quadro em vez de
+            ficar por dentro, como faz um `border` no CSS. */}
+        <svg width={size.width} height={size.height} style={{ position: 'absolute', top: 0, left: 0 }}>
+          {Array.from({ length: G_COLS * G_ROWS }).map((_, i) => {
+            const x = G_LEFT + (i % G_COLS) * G_STEP;
+            const y = G_TOP + Math.floor(i / G_COLS) * G_STEP;
+            const m = maskAt(x + G_CELL / 2, y + G_CELL / 2);
+            if (m <= 0.01) return null;
+            const lit = litOf(i);
             return (
-              <rect
-                key={i}
-                x={x}
-                y={RAY_TOP + i * RAY_TOP_STEP + x * SKEW_LIFT}
-                width={RAY_WIDTH}
-                height={RAY_HEIGHT}
-                fill="#f8faf8"
-                opacity={0.03 + i * 0.02}
-                transform="skewY(-31)"
-              />
+              <g key={i}>
+                <rect
+                  x={x + 0.5}
+                  y={y + 0.5}
+                  width={G_CELL - 1}
+                  height={G_CELL - 1}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth={1}
+                  opacity={G_HAIR * m}
+                />
+                {lit > 0.02 && (
+                  <rect
+                    x={x + G_RING / 2}
+                    y={y + G_RING / 2}
+                    width={G_CELL - G_RING}
+                    height={G_CELL - G_RING}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth={G_RING}
+                    opacity={G_GLOW * m * lit}
+                  />
+                )}
+              </g>
             );
           })}
         </svg>

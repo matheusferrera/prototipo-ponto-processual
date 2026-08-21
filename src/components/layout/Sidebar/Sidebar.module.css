@@ -122,9 +122,35 @@
   font-size: 11px;
 }
 
-.userInfo { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.avatar[data-vazio] { background: var(--paper-3); border-color: var(--line-soft); }
+
+/* Foto da conta Google entra no mesmo quadrado das iniciais. */
+img.avatar { object-fit: cover; padding: 0; }
+
+.userInfo { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
+
+/* Nome e e-mail vêm de gente real: cabem em qualquer tamanho, então cortam
+   com reticências em vez de empurrar o botão "Sair" para fora do menu. */
+.userName,
+.userOAB {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .userName { font-size: 13px; font-weight: 600; }
 .userOAB  { font-size: 11px; color: var(--ink-3); }
+
+/* Enquanto /api/me não responde: duas barras, sem texto. Um nome falso durante
+   o carregamento seria pior que nenhum. */
+.userName[data-esqueleto],
+.userOAB[data-esqueleto] {
+  background: var(--paper-3);
+  height: 9px;
+  border-radius: 0;
+}
+.userName[data-esqueleto] { width: 70%; }
+.userOAB[data-esqueleto]  { width: 45%; }
 
 .logoutBtn {
   font-family: var(--ui);
@@ -154,4 +180,14 @@
     font-size: 11px;
     padding: 0;
   }
+}
+
+/* A marca leva de volta para a raiz: como link, precisa desfazer o que o
+   navegador dá de graça a uma âncora. */
+.brandLink {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
 }

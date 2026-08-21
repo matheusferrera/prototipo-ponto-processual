@@ -578,3 +578,22 @@
   .heroConteudo, .ato > *, .fecho > * { max-width: 940px; }
   .barraTrilho { height: 200px; }
 }
+
+/* ===== CTA de quem já tem sessão =====
+   Para quem está logado o CTA vira <button> (ver `MonitorarOab.tsx`): o clique
+   grava a OAB na conta antes de navegar, então não pode ser um link. O botão
+   precisa desfazer o que o navegador impõe a ele e a âncora não tem. */
+button.travaCta,
+button.fechoCta {
+  border: none;
+  cursor: pointer;
+  font-family: var(--ui);
+}
+button.travaCta:disabled,
+button.fechoCta:disabled {
+  cursor: progress;
+  background: var(--ink-3);
+}
+
+.girando { animation: girar 900ms linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
