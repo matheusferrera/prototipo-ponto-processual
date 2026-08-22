@@ -95,7 +95,12 @@ export default async function DashboardPage() {
           sem publicação recente no diário. */
   const semProcessos = totalProcessos === 0;
   const semOab = !usuario.oab;
-  const jaVarreu = secrets.some(s => s.lastSuccessAt);
+  /* Só credencial ATIVA conta. Trocar a OAB desativa a anterior sem apagá-la
+     (o acervo dela fica arquivado, recuperável), e ela guarda o `lastSuccessAt`
+     da própria varredura — que não diz nada sobre a OAB de agora. Sem o filtro,
+     quem acabou de trocar veria "já varremos e não achamos nada" enquanto a
+     varredura nova ainda estava rodando. */
+  const jaVarreu = secrets.some(s => s.isActive && s.lastSuccessAt);
 
   // `counts` é global (vem do backend); a amostra só entra como rede de segurança
   // caso o contrato mude e o campo suma.

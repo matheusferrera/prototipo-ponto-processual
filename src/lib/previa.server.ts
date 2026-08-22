@@ -35,10 +35,27 @@ export const getPrevia = cache(async function getPrevia(
 
     if (res.status === 400) return { ok: false, motivo: 'oab-invalida' };
     if (res.status === 429) return { ok: false, motivo: 'limite' };
-    if (!res.ok) return { ok: false, motivo: 'indisponivel' };
+    if (!res.ok) {
+      console.error(`[previa] ${BACKEND} devolveu HTTP ${res.status} para ${numero}/${uf}`);
+      return { ok: false, motivo: 'indisponivel' };
+    }
+
+    // Resposta 200 que não é JSON quer dizer que `BACKEND_URL` não aponta para a
+    // API: quem respondeu foi outra coisa (o próprio Next, um proxy, uma tela de
+    // login). Sem esta checagem o `res.json()` estoura, cai no catch abaixo e a
+    // página acusa o DJEN de estar fora do ar por um erro que é de configuração.
+    const tipo = res.headers.get('content-type') ?? '';
+    if (!tipo.includes('application/json')) {
+      console.error(
+        `[previa] ${BACKEND} respondeu 200 com content-type "${tipo}" (esperado JSON) — ` +
+          `BACKEND_URL provavelmente não aponta para a API. URL final: ${res.url}`,
+      );
+      return { ok: false, motivo: 'indisponivel' };
+    }
 
     return { ok: true, previa: (await res.json()) as PreviaOab };
-  } catch {
+  } catch (erro) {
+    console.error(`[previa] falha ao chamar ${BACKEND} para ${numero}/${uf}:`, erro);
     return { ok: false, motivo: 'indisponivel' };
   }
 });

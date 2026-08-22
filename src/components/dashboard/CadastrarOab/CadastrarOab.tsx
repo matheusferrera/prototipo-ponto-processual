@@ -4,6 +4,8 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Search } from 'lucide-react';
 import { limparOabNumero, limparOabUf, normalizarOab } from '@/lib/previa';
+import { ligarMonitoramento, type ConflitoOab } from '@/lib/monitorar-oab';
+import { ConfirmarTrocaOab } from '@/components/oab/ConfirmarTrocaOab';
 import styles from './CadastrarOab.module.css';
 
 interface CadastrarOabProps {
@@ -24,6 +26,11 @@ interface CadastrarOabProps {
  * varreduras públicas (DJEN e consulta pública). O resultado não vem nesta
  * resposta — o `router.refresh()` devolve o painel no estado "sincronizando", e
  * é o próprio painel que conta o que encontrou.
+ *
+ * Um caminho aqui SEMPRE colide, e de propósito: o "confira a sua OAB" do
+ * painel sem resultado já chega com uma OAB monitorada. Corrigir um dígito é
+ * trocar a OAB da conta, e trocar arquiva o acervo da anterior — por isso a
+ * confirmação aparece em vez de a correção passar direto.
  */
 export function CadastrarOab({ oabInicial, rotuloBotao }: CadastrarOabProps) {
   const router = useRouter();
@@ -31,6 +38,30 @@ export function CadastrarOab({ oabInicial, rotuloBotao }: CadastrarOabProps) {
   const [uf, setUf] = useState(oabInicial?.uf ?? '');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
+  const [conflito, setConflito] = useState<ConflitoOab | null>(null);
+
+  async function enviar(oab: { numero: string; uf: string }, confirmarTroca: boolean) {
+    setEnviando(true);
+    setErro('');
+    const resultado = await ligarMonitoramento(oab, { confirmarTroca });
+    setEnviando(false);
+
+    switch (resultado.status) {
+      case 'ok':
+        setConflito(null);
+        // O painel é Server Component: quem relê o estado da conta é o servidor.
+        router.refresh();
+        return;
+      case 'conflito':
+        setConflito(resultado.conflito);
+        return;
+      case 'nao-autenticado':
+        setErro('Sua sessão expirou. Entre de novo para salvar a OAB.');
+        return;
+      default:
+        setErro(resultado.mensagem);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,27 +73,20 @@ export function CadastrarOab({ oabInicial, rotuloBotao }: CadastrarOabProps) {
       return;
     }
 
-    setEnviando(true);
-    try {
-      const res = await fetch('/api/scraper/monitorar-oab', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oabNumero: oab.numero, oabUf: oab.uf }),
-      });
+    await enviar(oab, false);
+  }
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setErro(data.error ?? 'Não foi possível salvar sua OAB agora.');
-        return;
-      }
-
-      // O painel é Server Component: quem relê o estado da conta é o servidor.
-      router.refresh();
-    } catch {
-      setErro('Não foi possível conectar ao servidor.');
-    } finally {
-      setEnviando(false);
-    }
+  if (conflito) {
+    return (
+      <ConfirmarTrocaOab
+        conflito={conflito}
+        trocando={enviando}
+        erro={erro}
+        rotuloManter="Cancelar"
+        onTrocar={() => void enviar(conflito.pedida, true)}
+        onManter={() => { setConflito(null); setErro(''); }}
+      />
+    );
   }
 
   return (

@@ -91,18 +91,25 @@ export async function GET(req: NextRequest) {
      numa tela seguinte: o front só tem esta passagem pelo servidor antes de o
      navegador seguir para o destino. Falhar aqui não pode custar o login — o
      painel recebe a conta com "falta a sua OAB" e o campo para informá-la. */
-  if (estado.oab && estado.uf) {
-    await monitorarOab(dados.accessToken, estado.oab, estado.uf);
-  }
+  const conflitoDeOab = estado.oab && estado.uf
+    ? await monitorarOab(dados.accessToken, estado.oab, estado.uf)
+    : false;
 
   /* Para onde vai quem acabou de entrar:
      — com OAB, ao painel: os processos dela já foram vistos em `/oab` e o
        monitoramento acabou de ser ligado; o painel abre em "sincronizando";
+     — com OAB que CONFLITA com a que a conta já monitora, ao onboarding com a
+       OAB na URL: aqui não existe tela para perguntar (quem está do outro lado
+       é um redirect), e trocar por conta própria é exatamente o bug que este
+       fluxo tinha — entrar pelo Google com um e-mail já cadastrado trocava a
+       OAB da conta sem nada na tela. O onboarding faz a pergunta;
      — conta recém-criada sem OAB (o botão do /login), ao onboarding, que
        pergunta a OAB uma vez — o painel não teria o que mostrar;
      — o resto volta para onde tentava ir. */
   const destino = estado.oab && estado.uf
-    ? ROTA_PAINEL
+    ? conflitoDeOab
+      ? `/onboarding?${new URLSearchParams({ oab: estado.oab, uf: estado.uf })}`
+      : ROTA_PAINEL
     : dados.criado
       ? '/onboarding'
       : destinoSeguro(estado.next, ROTA_PAINEL);
@@ -114,22 +121,31 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Grava a OAB na conta que acabou de entrar. Silencioso de propósito.
+ * Grava a OAB na conta que acabou de entrar. Silencioso de propósito — com uma
+ * exceção, que é o retorno.
  *
  * O `accessToken` é o da sessão recém-aberta — este handler o tem em mãos antes
  * de gravá-lo no cookie, então a chamada vai direto ao backend em vez de passar
  * pelo proxy `/api/*`, que leria um cookie que ainda não existe.
+ *
+ * NUNCA manda `confirmarTroca`: este caminho não tem tela, e trocar a OAB de
+ * uma conta é decisão que precisa de uma. O `409` volta como `true` para o
+ * destino virar a tela que pergunta.
+ *
+ * @returns `true` quando a conta já monitora OUTRA OAB e nada foi gravado.
  */
-async function monitorarOab(accessToken: string, oab: string, uf: string) {
+async function monitorarOab(accessToken: string, oab: string, uf: string): Promise<boolean> {
   try {
-    await fetch(`${BACKEND}/scraper/monitorar-oab`, {
+    const res = await fetch(`${BACKEND}/scraper/monitorar-oab`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ oabNumero: oab, oabUf: uf }),
       cache: 'no-store',
     });
+    return res.status === 409;
   } catch {
     // Sem rede para o backend: o login continua valendo e o painel pede a OAB.
+    return false;
   }
 }
 

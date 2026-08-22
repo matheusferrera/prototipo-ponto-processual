@@ -1,0 +1,83 @@
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-signal, #d97706);
+  background: var(--color-signal-soft, #fef3c7);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.titulo {
+  font-family: var(--font-ui);
+  font-size: var(--text-h3, 14px);
+  font-weight: 700;
+  color: var(--color-ink, #141a15);
+}
+
+.texto {
+  font-family: var(--font-ui);
+  font-size: var(--text-small, 13px);
+  line-height: 1.5;
+  color: var(--color-ink-2, #3a4a3d);
+  margin: 0;
+}
+
+.oab {
+  font-family: var(--font-jetbrains-family, monospace);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn {
+  font-family: var(--font-ui);
+  font-size: var(--text-small, 13px);
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btnTrocar {
+  composes: btn;
+  background: var(--color-ink, #141a15);
+  color: var(--color-paper, #f8faf8);
+}
+
+.btnManter {
+  composes: btn;
+  background: transparent;
+  border-color: var(--color-line, #cdd7cf);
+  color: var(--color-ink-2, #3a4a3d);
+}
+
+.erro {
+  font-family: var(--font-ui);
+  font-size: var(--text-small, 13px);
+  color: var(--color-alert, #991b1b);
+  margin: 0;
+}
+
+.girando {
+  animation: girar 1s linear infinite;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}

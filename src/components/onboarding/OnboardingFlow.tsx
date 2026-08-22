@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { limparOabNumero, limparOabUf, slugOab } from '@/lib/previa';
+import { ligarMonitoramento, type ConflitoOab } from '@/lib/monitorar-oab';
+import { ConfirmarTrocaOab } from '@/components/oab/ConfirmarTrocaOab';
 import { ROTA_PAINEL } from '@/lib/rotas';
 import { CredentialSheet, type CredentialSheetTarget } from '@/components/credenciais/CredentialSheet/CredentialSheet';
 import { ScannerTribunais } from '@/components/varredura/ScannerTribunais';
@@ -104,6 +106,12 @@ export function OnboardingFlow({
   const [preview, setPreview] = useState<DjenPreview | null>(null);
   const [erro, setErro] = useState('');
 
+  /* A conta já monitora outra OAB — quem chegou aqui por um e-mail que já
+     existia. Nada foi gravado: a decisão de trocar é de quem está na tela. */
+  const [conflito, setConflito] = useState<ConflitoOab | null>(null);
+  const [trocando, setTrocando] = useState(false);
+  const [erroTroca, setErroTroca] = useState('');
+
   const [sheetTarget, setSheetTarget] = useState<CredentialSheetTarget | null>(null);
   const [saved, setSaved] = useState<ScraperSecretView | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -152,12 +160,14 @@ export function OnboardingFlow({
       // DJEN. Sem isto, "pular por agora" levava a um painel vazio. Roda em
       // segundo plano: falhar aqui não deve derrubar o resultado já na tela, e
       // o usuário reobtém o monitoramento cadastrando a credencial.
+      //
+      // A ÚNICA resposta que sobe para a tela é o conflito: a conta já monitora
+      // outra OAB. Engolir isso (o `catch(() => {})` de antes) era o que fazia a
+      // OAB anterior ser substituída sem que ninguém visse.
       if (djen.totalProcessos > 0) {
-        void fetch('/api/scraper/monitorar-oab', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oabNumero: numero, oabUf: uf }),
-        }).catch(() => {});
+        void ligarMonitoramento({ numero, uf }).then(resultado => {
+          if (resultado.status === 'conflito') setConflito(resultado.conflito);
+        });
       }
     } catch {
       setErro('Falha ao conectar ao servidor.');
@@ -176,6 +186,22 @@ export function OnboardingFlow({
     jaBuscou.current = true;
     void buscar(oabInicial.numero, oabInicial.uf);
   }, [oabInicial, buscar]);
+
+  async function trocarOabDaConta() {
+    if (!conflito) return;
+    setTrocando(true);
+    setErroTroca('');
+    const resultado = await ligarMonitoramento(conflito.pedida, { confirmarTroca: true });
+    setTrocando(false);
+
+    if (resultado.status === 'ok') {
+      setConflito(null);
+      return;
+    }
+    setErroTroca(
+      resultado.status === 'erro' ? resultado.mensagem : 'Não foi possível trocar a OAB agora.',
+    );
+  }
 
   function abrirCredencial() {
     setSheetTarget({
@@ -405,12 +431,34 @@ export function OnboardingFlow({
               {preview.totalProcessos} {preview.totalProcessos === 1 ? 'processo' : 'processos'} em{' '}
               {preview.tribunais.length} {preview.tribunais.length === 1 ? 'tribunal' : 'tribunais'}
             </div>
-            <p className={styles.desc}>
-              Já estamos trazendo esses processos e prazos para o seu painel — pode levar alguns
-              minutos. Esses são apenas os processos com publicação nos últimos 6 meses em consultas
-              públicas. Para puxar <strong>todos os seus processos</strong>, inclusive os{' '}
-              <strong>sigilosos</strong> e em segredo de justiça, faça o login no tribunal abaixo.
-            </p>
+            {conflito ? (
+              /* Nada foi trazido para o painel: a conta já monitora outra OAB e a
+                 gravação parou de pé, esperando a decisão. Prometer sincronização
+                 aqui seria descrever o que não aconteceu. */
+              <p className={styles.desc}>
+                Estes são os processos públicos da OAB {oabNumero}/{oabUf} nos últimos 6 meses.
+                Eles ainda <strong>não</strong> foram trazidos para o seu painel — decida abaixo o
+                que fazer com a OAB que esta conta já acompanha.
+              </p>
+            ) : (
+              <p className={styles.desc}>
+                Já estamos trazendo esses processos e prazos para o seu painel — pode levar alguns
+                minutos. Esses são apenas os processos com publicação nos últimos 6 meses em consultas
+                públicas. Para puxar <strong>todos os seus processos</strong>, inclusive os{' '}
+                <strong>sigilosos</strong> e em segredo de justiça, faça o login no tribunal abaixo.
+              </p>
+            )}
+
+            {conflito && (
+              <ConfirmarTrocaOab
+                conflito={conflito}
+                trocando={trocando}
+                erro={erroTroca}
+                rotuloManter={`Manter a OAB ${conflito.atual.numero}/${conflito.atual.uf}`}
+                onTrocar={() => void trocarOabDaConta()}
+                onManter={() => router.push(ROTA_PAINEL)}
+              />
+            )}
 
             <div className={styles.resultList}>
               {preview.tribunais.map(t => (

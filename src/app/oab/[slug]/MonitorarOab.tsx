@@ -4,6 +4,8 @@ import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { slugOab } from '@/lib/previa';
+import { ligarMonitoramento, type ConflitoOab } from '@/lib/monitorar-oab';
+import { ConfirmarTrocaOab } from '@/components/oab/ConfirmarTrocaOab';
 import { ROTA_PAINEL } from '@/lib/rotas';
 import styles from './page.module.css';
 
@@ -19,6 +21,10 @@ import styles from './page.module.css';
  *
  * No painel, esta conta cai em `PainelSincronizando`: tem OAB, ainda não tem
  * varredura concluída. É o estado certo, e ele já existia.
+ *
+ * O caso que este botão precisa tratar e antes não tratava: a conta logada já
+ * monitora OUTRA OAB. O servidor recusa (`409`) em vez de sobrescrever, e aqui
+ * isso vira a pergunta — trocar ou manter — em vez de uma troca silenciosa.
  */
 export function MonitorarOab({
   oab,
@@ -36,43 +42,54 @@ export function MonitorarOab({
   const router = useRouter();
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
+  /* Conta que já monitora outra OAB: não é erro, é uma decisão pendente. */
+  const [conflito, setConflito] = useState<ConflitoOab | null>(null);
 
-  async function ligar() {
+  async function ligar(confirmarTroca = false) {
     setEnviando(true);
     setErro('');
-    try {
-      const res = await fetch('/api/scraper/monitorar-oab', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oabNumero: oab.numero, oabUf: oab.uf }),
-      });
+    const resultado = await ligarMonitoramento(oab, { confirmarTroca });
+    setEnviando(false);
 
-      if (!res.ok) {
-        const dados = await res.json().catch(() => ({}));
+    switch (resultado.status) {
+      case 'ok':
+        setConflito(null);
+        router.push(ROTA_PAINEL);
+        // O painel é Server Component: sem isto ele pode ser servido do cache do
+        // roteador, de antes de a OAB existir na conta.
+        router.refresh();
+        return;
+      case 'conflito':
+        setConflito(resultado.conflito);
+        return;
+      case 'nao-autenticado':
         // Sessão vencida no meio do caminho: a conta existe, só falta entrar de
         // novo — e o `next` traz a pessoa de volta com a OAB intacta.
-        if (res.status === 401) {
-          router.push(`/login?next=/oab/${slugOab(oab.numero, oab.uf)}`);
-          return;
-        }
-        setErro(dados.error ?? 'Não foi possível ligar o monitoramento agora.');
+        router.push(`/login?next=/oab/${slugOab(oab.numero, oab.uf)}`);
         return;
-      }
-
-      router.push(ROTA_PAINEL);
-      // O painel é Server Component: sem isto ele pode ser servido do cache do
-      // roteador, de antes de a OAB existir na conta.
-      router.refresh();
-    } catch {
-      setErro('Não foi possível conectar ao servidor.');
-    } finally {
-      setEnviando(false);
+      default:
+        setErro(resultado.mensagem);
     }
+  }
+
+  if (conflito) {
+    return (
+      <ConfirmarTrocaOab
+        conflito={conflito}
+        trocando={enviando}
+        erro={erro}
+        onTrocar={() => void ligar(true)}
+        onManter={() => {
+          router.push(ROTA_PAINEL);
+          router.refresh();
+        }}
+      />
+    );
   }
 
   return (
     <>
-      <button type="button" className={className} onClick={ligar} disabled={enviando}>
+      <button type="button" className={className} onClick={() => void ligar()} disabled={enviando}>
         {enviando ? (
           <>
             Ligando o monitoramento… <Loader2 size={seta} className={styles.girando} aria-hidden="true" />
