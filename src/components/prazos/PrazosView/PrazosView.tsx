@@ -29,6 +29,26 @@ const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julh
 const DAY_NAMES   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const WEEKDAY_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 
+/**
+ * "ver o ato" — o link para a movimentação que abriu este prazo.
+ *
+ * Devolve `null` quando não há ato, e isso é caminho normal, não erro: prazo
+ * de origem `painel`/`grid` vem da agenda que o próprio tribunal calculou e
+ * não tem movimentação correspondente gravada. A linha do prazo continua
+ * inteira sem o link — o que não pode é o prazo sumir por faltar o ato.
+ */
+function LinkDoAto({ pz, className }: { pz: Prazo; className?: string }) {
+  if (!pz.movementId) return null;
+  return (
+    <Link
+      href={`/movimentacoes/${pz.movementId}`}
+      className={className ? `${styles.atoLink} ${className}` : styles.atoLink}
+    >
+      ver o ato
+    </Link>
+  );
+}
+
 function accentColor(state: Prazo['state']) {
   if (state === 'alert')  return 'var(--alert)';
   if (state === 'signal') return 'var(--brick)';
@@ -104,7 +124,13 @@ function PautaItem({ pz }: { pz: PrazoComData }) {
     styles.pautaItemQuiet;
 
   return (
-    <Link href={`/processos/${encodeURIComponent(pz.cnj)}`} className={`${styles.pautaItem} ${stateClass}`}>
+    <div className={`${styles.pautaItem} ${stateClass}`}>
+      <Link
+        href={`/processos/${encodeURIComponent(pz.cnj)}`}
+        className={styles.cardLink}
+        aria-label={`Abrir o processo ${pz.cnj}`}
+      />
+
       <div className={styles.pautaFatal}>
         <span className={styles.pautaFatalLabel}>prazo fatal</span>
         <span className={`${styles.pautaFatalData} ${diasColorClass(pz.diasRestantes, styles)}`}>
@@ -147,11 +173,17 @@ function PautaItem({ pz }: { pz: PrazoComData }) {
               <span className={styles.prazoOrgao}>{pz.orgaoJulgador}</span>
             </>
           )}
+          {pz.movementId && (
+            <>
+              <span className={styles.metaSep} aria-hidden="true">·</span>
+              <LinkDoAto pz={pz} />
+            </>
+          )}
         </div>
       </div>
 
       <span className={styles.pautaGo} aria-hidden="true">→</span>
-    </Link>
+    </div>
   );
 }
 
@@ -267,6 +299,7 @@ function KanbanView({ prazos }: { prazos: PrazoComData[] }) {
                     <span className={styles.kanbanCardOrgao}>{pz.orgaoJulgador}</span>
                   )}
                 </div>
+                <LinkDoAto pz={pz} className={styles.kanbanCardAto} />
                 <div className={styles.kanbanCardFoot}>
                   <span className={styles.kanbanDias} style={{ color: col.accent }}>{pz.diasRestantes}d</span>
                   <span className={styles.kanbanVence}>{pz.vencimento}</span>
@@ -287,11 +320,16 @@ function AgendaItem({ pz, showDay }: { pz: PrazoComData; showDay?: number }) {
   const titulo = tituloPrazo(pz);
   const parte  = parteSecundaria(pz, titulo);
   return (
-    <Link
-      href={`/processos/${encodeURIComponent(pz.cnj)}`}
+    <div
       className={styles.agendaItem}
       style={{ borderLeftColor: accentColor(pz.state) }}
     >
+      <Link
+        href={`/processos/${encodeURIComponent(pz.cnj)}`}
+        className={styles.cardLink}
+        aria-label={`Abrir o processo ${pz.cnj}`}
+      />
+
       <div className={styles.agendaItemHead}>
         {showDay != null && <span className={styles.agendaDayBadge}>dia {String(showDay).padStart(2, '0')}</span>}
         <TribTag label={pz.tribunal} />
@@ -309,7 +347,8 @@ function AgendaItem({ pz, showDay }: { pz: PrazoComData; showDay?: number }) {
         </div>
       )}
       <div className={styles.agendaCnj}>{pz.cnj}</div>
-    </Link>
+      <LinkDoAto pz={pz} />
+    </div>
   );
 }
 
@@ -442,11 +481,13 @@ function ExpedientesSemData({ prazos }: { prazos: Prazo[] }) {
           const assunto = assuntoSecundario(pz, cliente);
           const natureza = rotuloNatureza(pz);
           return (
-            <Link
-              key={pz.id}
-              href={`/processos/${encodeURIComponent(pz.cnj)}`}
-              className={styles.semDataItem}
-            >
+            <div key={pz.id} className={styles.semDataItem}>
+              <Link
+                href={`/processos/${encodeURIComponent(pz.cnj)}`}
+                className={styles.cardLink}
+                aria-label={`Abrir o processo ${pz.cnj}`}
+              />
+
               <div className={styles.semDataBadge}>SEM DATA</div>
               <div className={styles.semDataBody}>
                 <div className={styles.semDataTags}>
@@ -459,10 +500,11 @@ function ExpedientesSemData({ prazos }: { prazos: Prazo[] }) {
                 <div className={styles.semDataMeta}>
                   <span>autos nº {pz.cnj}</span>
                   {pz.orgaoJulgador !== '—' && <span>{pz.orgaoJulgador}</span>}
+                  <LinkDoAto pz={pz} />
                 </div>
               </div>
               <span className={styles.semDataGo} aria-hidden="true">→</span>
-            </Link>
+            </div>
           );
         })}
       </div>

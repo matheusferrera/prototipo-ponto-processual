@@ -4,7 +4,11 @@ import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { buttonVariants } from '@/components/ui/button';
 import { cn, buildQuery } from '@/lib/utils';
-import { clienteMovimentacao, assuntoSecundario, descricaoMovimentacao } from '@/lib/movimentacao';
+import {
+  clienteMovimentacao, assuntoSecundario, descricaoMovimentacao,
+  resumoMovimentacao, temLeituraIa, acaoMovimentacao, seloOrigem,
+  vencimentoDoAto, pedeConferencia,
+} from '@/lib/movimentacao';
 import type { Movimentacao } from '@/types';
 import styles from './PageContent.module.css';
 
@@ -121,15 +125,47 @@ function MovItem({ m }: { m: Movimentacao }) {
 
   const cliente = clienteMovimentacao(m);
   const assunto = assuntoSecundario(m, cliente);
+  const resumo = resumoMovimentacao(m);
+  const comIa = temLeituraIa(m);
+  const acao = acaoMovimentacao(m);
+  const selo = seloOrigem(m);
+  const vencimento = vencimentoDoAto(m);
+  const conferir = pedeConferencia(m);
+  // O rótulo do ato ("Despacho — 8ª Turma Cível") só vira linha própria quando
+  // NÃO é ele que está no corpo: com a leitura da IA no lugar dele, repeti-lo
+  // logo abaixo seria dizer duas vezes a mesma coisa.
+  const rotulo = comIa ? descricaoMovimentacao(m) : null;
 
   return (
     <Link href={`/movimentacoes/${m.id}`} className={`${styles.item} ${itemStateClass}`}>
-      <div className={styles.timeCol}>
-        <span className={styles.timeLabel}>horário</span>
-        <span className={`${styles.time} ${m.state === 'signal' ? styles.timeSignal : styles.timeNormal}`}>
-          {m.time}
-        </span>
-      </div>
+      {/* A coluna do PRAZO. Só existe quando o ato abre um — que é a minoria —,
+          e some inteira quando não, em vez de desenhar um travessão. Ver
+          `.prazoCol` no CSS para o histórico. */}
+      {!vencimento ? (
+        <div className={`${styles.prazoCol} ${styles.prazoVazio}`} aria-hidden="true" />
+      ) : (
+        <div className={styles.prazoCol}>
+          <span className={styles.prazoLabel}>
+            {vencimento.emDias < 0 ? 'venceu' : 'vence'}
+          </span>
+          <span
+            className={`${styles.prazoData} ${
+              vencimento.emDias < 0 ? styles.prazoVencido :
+              vencimento.urgente    ? styles.prazoUrgente : ''
+            }`}
+          >
+            {/* "≈" quando a data é cálculo nosso, não o vencimento publicado
+                pelo tribunal. Fica COLADO na data, dentro do mesmo bloco: solto
+                numa linha própria ele viraria um símbolo sem referente. A
+                ressalva cabe num caractere; o detalhe explica por extenso. */}
+            {vencimento.estimado && (
+              <span className={styles.prazoEstimado} title="data estimada — ver o detalhe">≈ </span>
+            )}
+            {vencimento.curto}
+          </span>
+          {vencimento.dias && <span className={styles.prazoQuando}>{vencimento.dias}</span>}
+        </div>
+      )}
 
       <div className={styles.bodyCol}>
         <div className={styles.bodyHeader}>
@@ -139,12 +175,31 @@ function MovItem({ m }: { m: Movimentacao }) {
           </span>
           {m.state === 'signal' && <Seal variant="nova" />}
           {m.state === 'alert'  && <Seal variant="erro" />}
+          {/* Publicação no diário não é movimento do tribunal — sem este selo,
+              ela e a linha do DataJud sobre o mesmo ato parecem duplicata. */}
+          {selo && <Seal variant="outline" label={selo} />}
         </div>
 
         {/* Título — o cliente, o que o advogado procura ao varrer o feed */}
         <div className={styles.cliente}>{cliente}</div>
-        {/* Subtítulo — a movimentação em si: o que aconteceu no processo */}
-        <div className={styles.detail}>{descricaoMovimentacao(m)}</div>
+        {/* Corpo — o que aconteceu: a leitura da IA quando há, o rótulo quando não */}
+        <div className={styles.detail}>{resumo}</div>
+        {/* Só quando o corpo é a leitura da IA: aí o rótulo do ato ainda informa */}
+        {rotulo && <div className={styles.rotuloAto}>{rotulo}</div>}
+        {acao && (
+          <div className={acao.minha ? styles.acaoMinha : styles.acao}>
+            <span className={styles.acaoLabel}>
+              {acao.minha ? 'você precisa' : 'providência de outra parte'}
+            </span>
+            {acao.texto}
+            {/* A IA leu com confiança baixa (ato truncado, dispositivo ausente).
+                Dizer isso é o oposto de esconder: o advogado decide prazo com
+                este campo, e palpite apresentado como fato é o erro caro. */}
+            {conferir && acao.minha && (
+              <span className={styles.conferir}>confira o texto do ato</span>
+            )}
+          </div>
+        )}
         {assunto && <div className={styles.assunto}>{assunto}</div>}
 
         <div className={styles.processMeta}>

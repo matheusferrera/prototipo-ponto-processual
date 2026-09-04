@@ -1,5 +1,71 @@
 export type StatusType = 'signal' | 'quiet' | 'alert';
 
+/**
+ * De onde a linha do tempo veio — espelha `OrigemMovimento` da API.
+ *
+ * `djen` não é um movimento do tribunal: é a **publicação** do ato no Diário
+ * de Justiça Eletrônico Nacional, e desde 03/09/2026 é ela que faz a linha do
+ * tempo pública inteira.
+ *
+ * `datajud` continua no union por ser LEGADO, não por ser produzido: desde a
+ * mesma data ele enriquece só a CAPA do processo (classe, assunto, autuação,
+ * grau) e não grava mais movimentação. Numa carteira real rendia 818 linhas
+ * contra 29 do DJEN, e 75% delas eram trâmite de cartório ("Recebimento",
+ * "Conclusão", "Remessa") sem texto do ato — para o mesmo despacho o DJEN dava
+ * uma linha nomeada com o inteiro teor e o DataJud dava três de serventia.
+ * Linhas gravadas antes disso ainda chegam da API, então tirá-lo do tipo faria
+ * a tela quebrar num dado que existe.
+ */
+export type OrigemMovimentacao = 'scraper' | 'tribunalPublico' | 'datajud' | 'djen';
+
+/** A leitura do ato pela IA. Só a origem `djen` traz o inteiro teor, logo só ela é analisada. */
+export interface LeituraIa {
+  /** O que o juízo decidiu, em linguagem humana. */
+  resumo: string | null;
+  /** O que o destinatário precisa fazer. `null` = nada a fazer. */
+  acao: string | null;
+  /**
+   * De onde saiu o número de dias — o dispositivo legal, ou o próprio ato.
+   *
+   * É o que separa "15 dias" de "15 dias porque o art. 1.003, § 5º, do CPC
+   * manda". Sem a procedência a tela pede confiança cega num número, e a
+   * conferência custa uma ida ao tribunal.
+   */
+  fundamento: string | null;
+  /**
+   * `alta` | `media` | `baixa` — quanto o modelo confia na própria leitura.
+   *
+   * A tela usa isto para PEDIR CONFERÊNCIA em vez de afirmar. `baixa` sai
+   * quando o ato chegou sem dispositivo, e esconder isso é apresentar palpite
+   * como fato num campo que o advogado usa para não perder prazo.
+   */
+  confianca: string | null;
+  deQuem: 'destinatario' | 'parteContraria' | 'terceiro' | 'indefinido' | null;
+  analisadoEm: string | null;
+}
+
+/**
+ * O prazo que ESTE ato abriu — no máximo um, e só quando abre.
+ *
+ * `null` na movimentação é a resposta comum e correta: mera ciência, pauta e
+ * ata não abrem prazo, e eram 46% dos atos numa medição real.
+ */
+export interface PrazoDoAto {
+  id: string;
+  /** ISO. Vazio quando o texto não declarou os dias — prazo sem data é estado válido. */
+  dataLimite: string | null;
+  /** Dias declarados no ato. */
+  dias: number | null;
+  natureza: 'ciencia' | 'manifestacao' | null;
+  /**
+   * COMO a data foi obtida. Só `textoExplicito` é o ato dizendo; os demais são
+   * cálculo nosso, e a tela precisa poder dizer isso em vez de apresentar
+   * estimativa como vencimento oficial do tribunal.
+   */
+  metodoPrazo: 'textoExplicito' | 'prazoLegal' | 'padraoCpc218' | 'cienciaPublicacao' | 'analiseIa' | null;
+  fechado: boolean;
+}
+
 export interface Movimentacao {
   id: string;
   tribunal: string;
@@ -9,8 +75,25 @@ export interface Movimentacao {
   assunto: string;
   tipo: string;
   detail: string;
-  time: string;
+  /**
+   * `HH:MM` do ato. **Ausente quando o ato só tem data** — a publicação no
+   * diário é assim: o DJEN publica numa data, não num horário, e mostrar
+   * "00:00" (ou, pior, "21:00" depois de um fuso aplicado por engano) inventa
+   * precisão que o dado não tem.
+   */
+  time?: string;
   state: StatusType;
+  origem: OrigemMovimentacao;
+  /** Todos os campos `null` quando a IA não rodou — caminho degradado, não erro. */
+  ia: LeituraIa;
+  /** O prazo que este ato abriu. `null` na maioria — a maioria dos atos não abre. */
+  prazo: PrazoDoAto | null;
+  /**
+   * O ato ÍNTEGRO, em texto plano. **Só vem no detalhe** — a listagem o omite
+   * no banco, porque a média é de 3,8 KB e o maior medido tem 288 KB.
+   * `undefined` = não foi pedido; `null` = este ato não tem texto.
+   */
+  textoOriginal?: string | null;
 }
 
 export interface MovimentacaoGroup {
@@ -78,7 +161,17 @@ export interface DocumentoMovimentacao {
 
 export interface TimelineEvent {
   id: string;
+  /** Dia e mês — `"24 set"`. O ano vem separado em `ano`. */
   date: string;
+  /**
+   * O ano do ato — `"2026"`, sempre presente.
+   *
+   * Campo próprio, e não colado em `date`, porque a timeline o empilha numa
+   * segunda linha sob o dia: junto na mesma string, a quebra ficava por conta
+   * da largura do flex, e bastava a coluna mudar de tamanho para umas linhas
+   * quebrarem e outras não.
+   */
+  ano: string;
   time?: string;
   label?: string;
   title: string;
@@ -88,6 +181,19 @@ export interface TimelineEvent {
   n: string;
   rawDate?: string;
   documentos: DocumentoMovimentacao[];
+  origem?: OrigemMovimentacao;
+  /** Leitura do ato pela IA — só existe na origem `djen`. */
+  ia?: LeituraIa;
+  /**
+   * Há certidão de publicação deste ato.
+   *
+   * É a peça que faltava para a aba de documentos do processo: `documentos`
+   * acima vem de `Movement.documentos`, que **só o scraper autenticado
+   * preenche** — numa carteira 100% DJEN a aba mostrava "nenhum documento
+   * extraído das movimentações" para um acervo inteiro que TEM documento, só
+   * que por outra via.
+   */
+  temCertidao?: boolean;
 }
 
 /**
@@ -122,6 +228,18 @@ export interface Prazo {
   vencimentoISO: string | null;
   /** Dias até o vencimento; nulo quando não há data para calcular. */
   diasRestantes: number | null;
+  /**
+   * O ato que abriu este prazo — id da movimentação, destino de
+   * `/movimentacoes/{id}`.
+   *
+   * **`null` é caminho normal, não erro.** O prazo vindo do painel do tribunal
+   * (origens `painel` e `grid`) não tem ato correspondente gravado: ali o PJe
+   * entrega a agenda já com o vencimento calculado, e não há texto de ato para
+   * pendurar. No DJEN, o ato sem data também nasce solto. A tela tem que
+   * renderizar a linha inteira sem o vínculo — nunca esconder o prazo por
+   * faltar o ato.
+   */
+  movementId: string | null;
   state: StatusType;
 }
 
@@ -156,3 +274,5 @@ export interface TribunalStatusItem {
   successJobsLast24h?: number;
   failedJobsLast24h?: number;
 }
+
+

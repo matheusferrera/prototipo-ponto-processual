@@ -113,6 +113,7 @@
 .semDataList { display: grid; gap: 8px; }
 
 .semDataItem {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
@@ -129,7 +130,7 @@
 
 .semDataItem:hover { background: var(--paper-2); }
 .semDataItem:active { background: var(--paper-3); transform: scale(0.99); }
-.semDataItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+.semDataItem:has(.cardLink:focus-visible) { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .semDataBadge {
   align-self: auto;
@@ -241,6 +242,7 @@
 
 /* ── Linha da pauta ── */
 .pautaItem {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
@@ -258,7 +260,7 @@
 
 .pautaItem:hover { background: var(--paper-2); }
 .pautaItem:active { background: var(--paper-3); transform: scale(0.99); }
-.pautaItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+.pautaItem:has(.cardLink:focus-visible) { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .pautaItemSignal { border-left-color: var(--brick); }
 .pautaItemAlert  { border-left-color: var(--alert); }
@@ -601,6 +603,7 @@
 .agendaEmpty { padding: 20px 0; font-size: 13px; color: var(--ink-3); }
 
 .agendaItem {
+  position: relative;
   display: block;
   border: 1px solid var(--line);
   border-left: 3px solid var(--line);
@@ -615,7 +618,7 @@
 
 .agendaItem:hover { background: var(--paper-2); }
 .agendaItem:active { background: var(--paper-3); transform: scale(0.99); }
-.agendaItem:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+.agendaItem:has(.cardLink:focus-visible) { outline: 2px solid var(--brick); outline-offset: -2px; }
 
 .agendaItemHead {
   display: flex;
@@ -724,3 +727,37 @@
   .agendaItem,
   .calCellFilled { transition: none; }
 }
+
+/* ── Dois destinos no mesmo card ──────────────────────────────────────────────
+   O card leva ao PROCESSO — isto é uma agenda, e o destino natural de um item
+   de agenda é o caso — e "ver o ato" leva à MOVIMENTAÇÃO que abriu o prazo.
+
+   São duas âncoras, e uma dentro da outra é HTML inválido: <a> aninhado quebra
+   a hidratação do React. Por isso o link do card não envolve nada — é uma
+   camada esticada por cima do item — e o link do ato sobe uma casa no
+   empilhamento para ficar acima dela. Efeito colateral bem-vindo: o texto do
+   card volta a ser selecionável, o que um card-âncora não permitia.
+
+   Quem recebe o foco passou a ser a camada, não a caixa; por isso o
+   :focus-visible dos itens virou :has(.cardLink:focus-visible). */
+.cardLink {
+  position: absolute;
+  inset: 0;
+  /* Sem conteúdo visível — o rótulo acessível vem do aria-label. */
+}
+
+.atoLink {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  color: var(--brick);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.atoLink:hover { border-bottom-color: var(--brick); }
+.atoLink:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+/* No kanban o card não é link nenhum, então o link do ato é a única âncora —
+   ganha uma linha própria acima do rodapé em vez de dividir a meta. */
+.kanbanCardAto { display: inline-block; margin-bottom: 6px; }

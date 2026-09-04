@@ -106,13 +106,18 @@ Filtragem/ordenação real acontece no servidor em `api.server.ts` (`getProcesso
 
 **As opções do filtro por tribunal são a carteira, não o catálogo.** `/processos`, `/movimentacoes` e `/prazos` montam a lista com `getTribunaisDaCarteira()` (`GET /processes/tribunais`), que devolve só os tribunais em que a conta tem processo, agrupados pelo código-base (`TJDFTG1` + `TJDFTG2` → `TJDFT`, que é o valor mandado em `?tribunal=`). Antes usavam `GET /tribunals`, o catálogo do que a plataforma sabe varrer — errado nos dois sentidos: oferecia dez caixas para uma carteira de dois tribunais e escondia TJSP, TJGO, TRT10, TST e afins, que chegam pelas fontes públicas e não estão no enum do backend. Carteira vazia (ou backend fora do ar) esconde a seção inteira, em vez de mostrar uma legenda sem nada embaixo.
 
+**`/resumo` é a exceção: as opções são o DIA, não a carteira.** Um resumo cobre um dia; oferecer os oito tribunais da carteira num dia que trouxe dois é a mesma falha, um nível abaixo. `tribunaisDoDia` (`src/lib/resumo.ts`) conta os atos por tribunal no próprio payload — vira a lista de opções e a legenda de cada caixa ("TJDFT · 4 atos"). O filtro por seção só oferece as seções que aquele dia teve. Dia sem resumo não renderiza controle nenhum: sem nada para filtrar, o painel abriria com a legenda e nada embaixo.
+
 ### `<PageInfo pageInfoContent={...}>` — painel de resumo
 
 `'use client'` — gerencia scroll/carousel entre seções via `useState` + `useRef`.
 
 Recebe `pageInfoContent: PageInfoContent` (array de seções), onde cada seção tem:
 - `title`: string
-- `variant`: `'compact' | 'bars' | 'status'` — define o layout visual dos itens
+- `variant`: `'compact' | 'bars' | 'summary'` — define o layout visual dos itens
+  - `compact` — grade de 3 colunas de rótulo + número grande (`items`)
+  - `bars` — uma barra de progresso por item, com valor e `percent` (`items`); as linhas são automáticas, então cabem três ou quatro faixas
+  - `summary` — três números à esquerda (`stats`) e uma barra empilhada com legenda (`segments`), para parte-do-todo. A variante existia no tipo e no JSX desde o começo mas **sem CSS**: nunca tinha tido consumidor até o Resumo do dia usá-la para a distribuição por tribunal
 - `items`: `{ label, value, tone?, percent? }[]`
 
 É instanciado no `page.tsx` e passado como `pageInfo?: ReactNode` para `<PageContent>`, que o renderiza no topo do scroll area. Esse padrão mantém `PageContent` genérico — ele não conhece a estrutura de `PageInfo`.
@@ -127,6 +132,7 @@ Server Component. Cada rota tem seu próprio `PageContent` em `src/components/<r
 | `/movimentacoes` | `movimentacoes/PageContent` | Feed agrupado por data com `<MovItem>` inline |
 | `/prazos` | `prazos/PrazosView` | (mesmo papel, nome diferente) |
 | `/status` | `status/PageContent` (`StatusPageContent`) | Tabela de saúde por tribunal, `'use client'` (polling 30s) |
+| `/resumo`, `/resumo/[dia]` | `resumo/PageContent` | Panorama do dia + seções (`Precisa de você`, `Na agenda`, `Decidido`, `Só para saber`) + coluna de dias anteriores |
 | `/credenciais` | `credenciais/PageContent` (`CredenciaisPageContent`) | Painel de cobertura por sistema + cards de credencial; `'use client'`. Fluxo de criação/edição vive em `credenciais/CredentialSheet` (wizard de 3 passos: sistema → tribunais → acesso/MFA). Catálogo de sistemas/tribunais em `src/lib/credenciais.ts` (`agruparPorSistema`, reaproveitando `agruparPorTribunal` de `/status`) |
 
 `PageContent` recebe:
@@ -200,6 +206,64 @@ Paleta "creme + verde-floresta" — tokens em `src/app/globals.css`.
 **Regra de estilo editorial:** zero `border-radius` nos elementos do sistema — bordas sempre retas.
 
 ---
+
+## Resumo do dia (`/resumo`)
+
+A leitura do último dia útil do diário: um panorama em prosa e as publicações agrupadas em quatro seções por urgência. `/resumo` abre no dia mais recente **que tem resumo** (a lista do backend já vem ordenada; o primeiro item é a resposta) e `/resumo/<dia>` abre um dia específico — sem adivinhar "ontem" no front, porque o dia coberto depende do calendário forense e o palpite produziria página vazia toda segunda-feira.
+
+- **`GET /resumos/{dia}` devolve muito mais que o panorama.** Vem `publicacoes[]` — cada expediente do DJEN que entrou na conta, com processo, classe, órgão julgador, partes, prazo, `dataLimite`, natureza, `metodoPrazo` e a leitura da IA — e o `eixo` com que o dia foi recortado. É daí que saem os números do topo; `publicacoes.length` é sempre igual a `totalPublicacoes`, porque as duas saem do mesmo recorte.
+- **O painel do topo fala do DIA INTEIRO, nunca do recorte filtrado.** É o número que o advogado repete para si ("hoje foram 14, 3 com prazo") e não pode encolher porque alguém digitou algo na busca. Quem responde ao filtro é a contagem de cada seção, que passa a mostrar `03 / 11` ali onde a lista encurtou.
+- **Não há ordenação.** Nas outras listas o `sort` é preferência; aqui a ordem **é** o produto — quem agrupou e priorizou foi a leitura do dia inteiro (`shared/ia/analisar-dia.ts`), e um "mais recentes primeiro" desmontaria justamente o que se pagou para montar. `dia` também não é search param: é o path, porque um resumo é a página de um dia, não uma lista filtrada por data.
+- **"Vencem em 5 dias" usa a mesma regra que fecha `totalPrazos` no backend** (`dataLimite` presente **e** `ia.deQuem !== 'parteContraria'`), repetida em `correContraMim`. Regra diferente faria o recorte desmentir o total exibido ao lado dele.
+- **`resumo-pagina.ts` existe por uma razão de módulo**: `resumo-filters.ts` importa os rótulos das seções de `resumo.ts`, então `resumo.ts` só pode conhecer os filtros como *tipo*. Quem precisa dos dois como valor — parse e derivação juntos — é esse terceiro arquivo, que também mantém os dois `page.tsx` da rota como composição pura, sem duplicar a conta.
+
+## Movimentações (`/movimentacoes` e `/movimentacoes/[id]`)
+
+A linha do tempo do acervo. Desde 03/09/2026 ela é **100% DJEN**: o DataJud parou de gravar movimentação e ficou só na capa do processo, então toda linha aqui é a publicação de um ato no diário, com o inteiro teor guardado.
+
+**A coluna da esquerda é o PRAZO, não o horário.** Era o horário do ato e nunca tinha o que mostrar — o diário publica numa data, não num horário —, então toda linha desenhava `publicado —`. Hoje ela carrega a data-limite do `Deadline` que aquele ato abriu, e fica **vazia** quando o ato não abre prazo (mera ciência, pauta e ata eram 46% numa medição real). A célula continua no grid mesmo vazia: são três colunas fixas, e omitir o elemento faria o corpo cair na faixa de 92px.
+
+**`≈` antes da data quer dizer "calculamos".** Só `metodoPrazo: textoExplicito` é o ato declarando os dias; `prazoLegal`, `padraoCpc218` e `analiseIa` são cálculo nosso sobre a regra do art. 4º da Lei 11.419, que não conhece feriado estadual, prazo em dobro nem suspensão por portaria. O feed abrevia num caractere; o detalhe escreve a ressalva por extenso. Exibir os dois com a mesma cara faria estimativa passar por vencimento oficial — o erro caro, e na direção perigosa.
+
+**O selo `NOVA` compara duas datas, não uma.** `detectedAt` sozinho mentia: um backfill de 2 anos grava tudo agora e marcava **as vinte linhas da página** como novas, inclusive publicações de 2024. `atoRecemPublicado` (`api.server.ts`) exige detecção nas últimas 48h **e** publicação nos últimos 7 dias. Quando tudo é novo, nada é.
+
+### O detalhe responde três perguntas, nesta ordem
+
+```
+o que aconteceu  →  a leitura da IA como título (o rótulo do ato quando ela não rodou)
+até quando       →  o bloco do prazo: data por extenso, fundamento legal, ressalva de estimativa
+o texto          →  a íntegra do ato, em <details> nativo
+```
+
+Antes o maior tipo da página era o nome do cliente e o segundo era o CNJ — mas quem abre esta tela já sabe de que processo veio, clicou nele no feed. A pergunta que traz a pessoa aqui é o que o juízo decidiu e o que ela faz com isso.
+
+- **A íntegra abre FECHADA acima de 2.400 caracteres** (`CHARS_ATO_ABERTO`). O corte de 20.000 na gravação caiu em 03/09/2026, então o campo guarda o ato inteiro: 3,8 KB de média, 151 KB no maior desta carteira. `<details>` nativo, sem client component — a página é Server Component e o elemento faz exatamente isso sem JavaScript.
+- **`Date.now()` não entra no render.** O ESLint do Next 16 reprova (chamada impura), e a resposta é sobre o dado: `novo` é calculado em `getMovimentacao`, como o feed já fazia.
+- **Saíram da sidebar** `Sync: success` e a bolinha vermelha de `Não monitorado` — estado interno da varredura, e processo vindo da consulta pública é `monitored: false` por construção, então a bolinha assustava sem informar. A data de detecção aparece uma vez, no rodapé da coluna; aparecia três vezes na página.
+
+> **Prazo vencido dizia "vence hoje".** `diasAteVencimento` tinha um `Math.max(0, …)` grampeando o resultado em zero, então um prazo de 24/05 aparecia em vermelho como vencendo hoje, 04/09. Cascateava: `prazosAbertos` filtra `>= 0` e nunca removia vencido, a contagem de `criticos` (`<= 3`) engolia o acervo vencido, e o ramo `dias < 0 → 'vencido'` de `prazoLabel` era código morto. A conta agora é por dia de calendário em wall-clock de Brasília, com sinal.
+
+> **Contraste: `--ink-3` e `--ink-4` não servem para texto.** Medido: `--ink-3` dá 3,8–4,3:1 contra os fundos do sistema (o mínimo é 4,5) e `--ink-4` dá 2,0–2,3:1. `--signal` como cor de TEXTO dá 2,6–3,0:1 — ele é fundo (`--signal-soft`), não tinta. O que passa: `--ink-2` (7,8–9,0), `--brick` (5,9–6,8), `--brick-deep` (7,5–8,7) e `--alert` (6,9–7,9). As telas de movimentações já usam só esses; **o resto do app ainda usa `--ink-3` em texto secundário** e vale uma passada.
+
+## Documentos: a certidão de publicação
+
+**Resposta curta para "dá para trazer os documentos?": dá, e é uma requisição HTTP.**
+
+O DJEN devolve um `hash` por comunicação (presente em **100%** de 1.562 medidas), e `GET comunicaapi.pje.jus.br/api/v1/comunicacao/{hash}/certidao` responde o PDF oficial — sem autenticação e sem captcha. O documento traz cabeçalho do tribunal, "Diário de Justiça Eletrônico Nacional de <data>", número da certidão, capa do processo, destinatário, **todos os advogados com OAB** e o teor integral. É o que se junta aos autos para demonstrar tempestividade.
+
+As três vias, medidas em 04/09/2026:
+
+| via | cobertura | o que responde |
+|---|---|---|
+| `hash` → certidão | **100%** | o PDF, direto |
+| `link` do ato | 98% | HTTP 200 e uma página do PJe com **hCaptcha** |
+| `Movement.documentos` | **0%** no acervo público | só o scraper autenticado preenche |
+
+O `link` não recusa nem manda para o login — serve a `ConsultaDocumento` do tribunal com um `hcaptcha.com/1/api.js` embutido. Tratá-lo como "baixar documento" entregaria um captcha; ele ficou como **"Ver no PJe"**, com o aviso na tela.
+
+- **A chave nunca chega ao browser.** Ela vale numa rota pública do CNJ sem autenticação nenhuma, então devolvê-la na API entregaria o documento de um processo a quem lesse a resposta. A API expõe só `temCertidao: boolean`; o download passa por `GET /movements/{id}/certidao` (backend, confere o acervo) via `/api/movimentacoes/{id}/certidao` (proxy do Next, tem o cookie).
+- **`Content-Disposition: inline`** — abre em aba, não baixa um arquivo que o advogado teria de procurar na pasta.
+- **A aba de documentos do processo saiu de 0 para 11** neste processo de teste. Ela só conhecia `Movement.documentos` e por isso dizia "nenhum documento extraído das movimentações" para um acervo inteiro que tem documento.
 
 ## Rotas de topo
 

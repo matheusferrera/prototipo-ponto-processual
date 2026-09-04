@@ -9,6 +9,13 @@
   flex-wrap: wrap;
 }
 
+/* No celular o rótulo do ato quebra em quantas linhas precisar; na faixa larga
+   a linha é uma só, então ele encolhe com reticências em vez de empurrar o
+   botão "Abrir no tribunal" para fora. */
+.breadcrumbCurrent {
+  min-width: 0;
+}
+
 .pillBtn {
   min-height: 44px;
   padding: 0 12px;
@@ -16,7 +23,11 @@
 
 .hero { padding: 20px 16px 24px; }
 
-.title { font-size: 26px; }
+/* O título passou a ser a LEITURA DO ATO (uma frase), não o nome do cliente
+   (duas palavras) — 26/44px eram escala de display para um texto que agora tem
+   200 caracteres e ocupava três linhas gigantes. Escala de manchete de leitura:
+   o peso vem do contraste com o resto da página, não do corpo. */
+.title { font-size: 20px; }
 
 .infoRow {
   gap: 16px;
@@ -36,9 +47,14 @@
 
 @media (min-width: 768px) {
   .breadcrumb { padding: 14px 32px; flex-wrap: nowrap; }
+  .breadcrumbCurrent {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .pillBtn { min-height: auto; padding: 6px 10px; }
   .hero { padding: 40px 48px; }
-  .title { font-size: 44px; }
+  .title { font-size: 27px; }
   .infoRow { gap: 32px; flex-wrap: nowrap; }
   .main { flex-direction: row; }
   .timeline { padding: 32px 48px; }
@@ -49,4 +65,109 @@
     border-left: 1px solid var(--line);
     border-top: none;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   A ÍNTEGRA DO ATO.
+
+   `<details>` nativo e não um toggle em client component: a página é Server
+   Component e o comportamento — abrir/fechar um bloco de texto — é exatamente
+   o que o elemento faz sem JavaScript. Abre fechado só quando o ato é longo
+   (ver `CHARS_ATO_ABERTO` no page.tsx).
+   ───────────────────────────────────────────────────────────────────────── */
+.ato {
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.atoSummary {
+  padding: 12px 16px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background 160ms ease-out;
+}
+
+.atoSummary::-webkit-details-marker { display: none; }
+
+.atoSummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--ink-3);
+  transition: transform 160ms ease-out;
+}
+
+.ato[open] .atoSummary::before { transform: rotate(90deg); }
+.ato[open] .atoSummary { border-bottom: 1px solid var(--line-soft); }
+
+.atoSummary:hover { background: var(--paper-2); }
+.atoSummary:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+/* O texto do diário chega como um parágrafo corrido de milhares de palavras.
+   `pre-wrap` preserva as quebras que o tribunal usou; o teto de altura com
+   rolagem própria impede que um edital de 288 KB empurre a página inteira. */
+/* A CAIXA que rola: largura inteira, senão a barra de rolagem aparece no meio
+   do bloco, num vão à direita que não é conteúdo nem borda. */
+.atoTexto {
+  padding: 18px 20px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+/* A LINHA que se lê. Elemento próprio, e não o mesmo que rola — misturar os
+   dois foi o que pôs a barra de rolagem no lugar errado.
+
+   **Por que não são mais 74ch.** `ch` é a largura do "0", e em fonte
+   proporcional ela é bem menor que a do caractere médio: 74ch em Manrope 13px
+   dá ~480px e ~81 caracteres por linha — dentro da norma de prosa, mas dentro
+   de uma caixa de ~1050px, o que deixava 55% dela vazios à direita. Um ato de
+   283 caracteres quebrava em quatro linhas curtas com meia caixa em branco ao
+   lado, e é isso que se lê como texto espremido.
+
+   O ajuste sobe o corpo em vez de só esticar a linha: 15px faz cada `ch`
+   valer mais, então a mesma contagem de caracteres ocupa mais largura. Isto
+   NÃO é prosa corrida — é documento que se confere contra o original, e aqui
+   a medida um pouco mais larga ganha da norma do artigo de revista. */
+.atoLinhas {
+  max-width: 96ch;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Um bloco por rótulo do ato. O respiro entre eles é o conserto de verdade da
+   leitura: sem ele o texto é um muro de 20 e tantas linhas, e nem largura nem
+   corpo de fonte resolvem — o que falta é pausa. Ver `lib/ato-texto.ts`. */
+.atoBloco {
+  margin: 0 0 16px;
+}
+
+.atoBloco:last-child { margin-bottom: 0; }
+
+/* Rótulo sem corpo próprio — encosta no bloco seguinte, que é o conteúdo dele. */
+.atoCabecalho { margin: 0 0 4px; }
+
+/* O rótulo em linha própria, mono e verde: é a mesma gramática dos outros
+   marcadores da página (`§ ÍNTEGRA DO ATO`, `VOCÊ PRECISA`), então ele lê como
+   estrutura do documento e não como palavra em destaque no meio da frase. */
+.atoRotulo {
+  display: block;
+  margin-bottom: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--brick);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atoSummary,
+  .atoSummary::before { transition: none; }
 }

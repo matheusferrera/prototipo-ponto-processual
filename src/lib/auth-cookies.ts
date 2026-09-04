@@ -17,17 +17,30 @@ export interface SessaoBackend {
   refreshToken: string;
 }
 
+/** Mesmo `expiresIn` do access token no backend (`EXPIRA_ACESSO`). */
 const QUINZE_MINUTOS = 60 * 15;
+/** Mesmo `expiresIn` do refresh (`EXPIRA_REFRESH`) — o teto real da sessão. */
 const SETE_DIAS = 60 * 60 * 24 * 7;
 
-export function gravarSessao(res: NextResponse, sessao: SessaoBackend) {
-  const base = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    path: '/',
-  };
+const base = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+};
 
-  res.cookies.set('access_token', sessao.accessToken, { ...base, maxAge: QUINZE_MINUTOS });
+export function gravarSessao(res: NextResponse, sessao: SessaoBackend) {
+  gravarAcesso(res, sessao.accessToken);
   res.cookies.set('refresh_token', sessao.refreshToken, { ...base, maxAge: SETE_DIAS });
+}
+
+/**
+ * Grava só o access token — o caminho da RENOVAÇÃO.
+ *
+ * O refresh não é reescrito porque o backend não o rotaciona: a sessão dura os
+ * 7 dias do refresh original, e não uma janela deslizante. Ver a nota sobre
+ * corrida em `POST /auth/refresh`.
+ */
+export function gravarAcesso(res: NextResponse, accessToken: string) {
+  res.cookies.set('access_token', accessToken, { ...base, maxAge: QUINZE_MINUTOS });
 }

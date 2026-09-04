@@ -474,6 +474,10 @@
 }
 
 .docLink {
+  /* Acima da camada de `.itemLink`, senão o documento nunca abre: o clique
+     cairia na camada e navegaria para o ato. */
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -566,6 +570,25 @@
   display: none;
 }
 
+/* ── O item inteiro leva ao ato ─────────────────────────────────────────────
+   Camada transparente por cima do item; os links de documento sobem uma casa
+   no empilhamento para continuarem clicáveis (ver `.docLink`).
+
+   `bottom` acompanha o `padding-bottom` do item, em vez de `inset: 0`: aquele
+   respiro é a distância ATÉ o próximo ato, e clicar nele não pode abrir o ato
+   de cima. O último item não tem respiro, daí a exceção. */
+.itemLink {
+  position: absolute;
+  inset: 0 0 24px 0;
+}
+
+.timelineItemLast .itemLink { bottom: 0; }
+
+/* O item não tem moldura para acender, então a pista de que ele é clicável é
+   o título — que é justamente o que a pessoa está lendo. */
+.timelineItem:hover .timelineTitle { color: var(--brick); }
+.timelineItem:has(.itemLink:focus-visible) { outline: 2px solid var(--brick); outline-offset: 4px; }
+
 .timelineDate {
   flex-shrink: 0;
   padding: 0 0 8px;
@@ -579,6 +602,18 @@
 
 .timelineDateNew {
   color: var(--brick);
+}
+
+/* Mesma família do dia (mono, para a coluna alinhar), um passo abaixo no peso:
+   o ano é desambiguação, não é o que se lê primeiro. `--ink-2` e não `--ink-3`
+   porque este último dá 3,8–4,3:1 contra os fundos do sistema e não passa em
+   texto — ver a nota de contraste no CLAUDE.md. */
+.timelineAno {
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 .timelineTime {
@@ -653,6 +688,54 @@
   letter-spacing: 0;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+/* Rótulo do ato, sob a leitura da IA. Só existe quando o título acima é o
+   resumo — o rótulo continua informando (tipo do documento e órgão), mas é
+   referência, não conteúdo. */
+.timelineRotulo {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* A providência que o ato cobra. As duas variantes existem porque a diferença
+   entre "você precisa" e "a outra parte precisa" é a diferença entre perder um
+   prazo e ler uma notícia. */
+.timelineAcao,
+.timelineAcaoMinha {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--paper-2);
+  overflow-wrap: anywhere;
+}
+
+.timelineAcao {
+  color: var(--ink-3);
+  border-left: 2px solid var(--line);
+}
+
+.timelineAcaoMinha {
+  color: var(--ink);
+  border-left: 2px solid var(--brick);
+}
+
+.timelineAcaoLabel {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 3px;
+}
+
+.timelineAcaoMinha .timelineAcaoLabel {
+  color: var(--brick);
 }
 
 .timelineBody {
@@ -773,9 +856,13 @@
 
   .timelineItem {
     grid-template-columns: 90px 20px minmax(0, 1fr);
-    position: static;
+    /* `relative` e não `static`: aqui o `::before` e o `.timelineRail` deixam
+       de precisar dele, mas o `.itemLink` precisa — sem isto a camada
+       esticada se mediria contra um ancestral qualquer e cobriria a tela. */
+    position: relative;
     padding: 0 0 28px;
   }
+  .itemLink { bottom: 28px; }
   .timelineItemLast { padding-bottom: 0; }
   .timelineItem::before { content: none; }
 

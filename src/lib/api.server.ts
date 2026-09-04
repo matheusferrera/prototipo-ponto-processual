@@ -11,10 +11,15 @@ import type {
   NaturezaPrazo,
   ProximoPrazo,
   DocumentoMovimentacao,
+  OrigemMovimentacao,
+  LeituraIa,
+  PrazoDoAto,
 } from '@/types';
 import { normalizeTribunalOptions, type TribunalOption } from '@/lib/tribunals';
+import { semCodigo } from '@/lib/pje-text';
 import { TIPOS_MOVIMENTACAO, type MovimentacaoSort } from '@/lib/movimentacao-filters';
 import type { UsuarioAtual } from '@/lib/usuario';
+import { wallClock, horaWallClock as horaDoAto } from '@/lib/wall-clock';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -429,9 +434,102 @@ type BackendMovement = {
   subDocumentos?: BackendDocumento[] | null;
   detectedAt: string;
   processId: string;
+  /**
+   * De onde a linha veio. `djen` NÃO é um movimento do tribunal — é a
+   * publicação do ato no diário, e desde 03/09/2026 é ela que faz a linha do
+   * tempo pública. Ausente nas respostas de um backend anterior a essa data,
+   * daí o opcional; `datajud` ainda pode chegar em linha ANTIGA, gravada antes
+   * de ele deixar de produzir movimentação.
+   */
+  origem?: OrigemMovimentacao | null;
+  /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
+  ia?: {
+    resumo: string | null; acao: string | null;
+    fundamento?: string | null; confianca?: string | null;
+    deQuem: LeituraIa['deQuem']; analisadoEm: string | null;
+  } | null;
+  /** O prazo que este ato abriu. `null` quando não abriu — a maioria não abre. */
+  prazo?: {
+    id: string; dataLimite: string | null; dias: number | null;
+    natureza: PrazoDoAto['natureza']; metodoPrazo: PrazoDoAto['metodoPrazo'];
+    fechado: boolean;
+  } | null;
+  /** Só em `GET /movements/{id}`: a listagem omite o texto no banco. */
+  textoOriginal?: string | null;
+  /** Há certidão de publicação — a CHAVE nunca vem, só o fato. */
+  temCertidao?: boolean;
   // processo relacionado, incluído pelo backend nas respostas de /movements
   process?: BackendProcess | null;
 };
+
+/**
+ * A leitura da IA normalizada — `null` em tudo quando o backend não mandou o
+ * bloco (versão antiga) ou quando a análise não rodou. Os dois casos são o
+ * mesmo para a tela: não há resumo a mostrar.
+ */
+function toLeituraIa(m: BackendMovement): LeituraIa {
+  return {
+    resumo: m.ia?.resumo?.trim() || null,
+    acao: m.ia?.acao?.trim() || null,
+    fundamento: m.ia?.fundamento?.trim() || null,
+    confianca: m.ia?.confianca?.trim() || null,
+    deQuem: m.ia?.deQuem ?? null,
+    analisadoEm: m.ia?.analisadoEm ?? null,
+  };
+}
+
+/**
+ * O prazo do ato, como a tela o consome.
+ *
+ * Prazo FECHADO devolve `null`: a linha do tempo mostra vencimento para o
+ * advogado agir, e um prazo já encerrado exibido como "vence 24/09" cobra por
+ * algo que não existe mais. Ele continua no processo, que é onde a agenda vive.
+ */
+/** Quanto tempo uma linha continua sendo "nova" depois de detectada. */
+const JANELA_NOVIDADE_MS = 1000 * 60 * 60 * 48;
+
+/**
+ * Dias entre a PUBLICAÇÃO do ato e hoje para ele ainda contar como notícia.
+ *
+ * Existe porque `detectedAt` sozinho mente depois de uma varredura grande. O
+ * backfill do DJEN cobre 2 ou 3 anos e grava tudo agora, então "detectado nas
+ * últimas 48h" marcava **as vinte linhas da página** como NOVA — inclusive
+ * publicações de 2024. Quando tudo é novo, nada é: o selo deixa de ser sinal e
+ * vira decoração, e o advogado para de olhar para ele.
+ *
+ * Sete dias porque a pergunta que o selo responde é "saiu no diário agora?", e
+ * o diário não publica no fim de semana — uma janela mais curta perderia a
+ * sexta-feira quando o advogado abre o painel na segunda.
+ */
+const DIAS_ATO_RECENTE = 7;
+
+/**
+ * A linha é notícia, ou só chegou agora?
+ *
+ * As duas condições são necessárias: **detectada há pouco** (senão é linha
+ * velha que já foi vista) e **publicada há pouco** (senão é histórico que o
+ * backfill acabou de importar).
+ */
+function atoRecemPublicado(m: BackendMovement): boolean {
+  const agora = Date.now();
+  if (agora - new Date(m.detectedAt).getTime() >= JANELA_NOVIDADE_MS) return false;
+  const publicado = new Date(m.ocorridoEm).getTime();
+  if (!Number.isFinite(publicado)) return false;
+  return agora - publicado < DIAS_ATO_RECENTE * 24 * 60 * 60 * 1000;
+}
+
+function toPrazoDoAto(m: BackendMovement): PrazoDoAto | null {
+  const p = m.prazo;
+  if (!p || p.fechado) return null;
+  return {
+    id: p.id,
+    dataLimite: p.dataLimite,
+    dias: p.dias,
+    natureza: p.natureza,
+    metodoPrazo: p.metodoPrazo,
+    fechado: p.fechado,
+  };
+}
 
 const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -453,14 +551,22 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
   const detectedAt = new Date(m.detectedAt);
   const isNew = Date.now() - detectedAt.getTime() < 1000 * 60 * 60 * 48;
 
-  // a data exibida é sempre a de "ocorrido em" (ocorridoEm) do banco
+  // a data exibida é sempre a de "ocorrido em" (ocorridoEm) do banco, lida como
+  // wall-clock de Brasília — ver `wallClock`.
   const ocorrido = new Date(m.ocorridoEm);
-  const displayDate = `${ocorrido.getDate()} ${MONTHS[ocorrido.getMonth()]}`;
-  const displayTime = `${String(ocorrido.getHours()).padStart(2, '0')}:${String(ocorrido.getMinutes()).padStart(2, '0')}`;
+  const w = wallClock(ocorrido);
+  // O ANO entra porque a linha do tempo de um processo atravessa anos — o
+  // acervo tem ato de 2023 ao lado de ato de 2026 — e "24 set" sozinho obriga
+  // a inferir de qual deles se está falando pela posição na lista. É o único
+  // lugar em que a data aparece sem contexto de agrupamento: o feed de
+  // `/movimentacoes` tem o cabeçalho do dia por cima, esta timeline não tem.
+  const displayDate = `${w.dia} ${MONTHS[w.mes]}`;
+  const displayTime = horaDoAto(ocorrido);
 
   return {
     id: m.id,
     date: displayDate,
+    ano: String(w.ano),
     time: displayTime,
     title: m.descricao,
     state: isNew ? 'signal' : 'quiet',
@@ -470,6 +576,9 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
     label: isNew ? 'NOVA' : undefined,
     rawDate: m.ocorridoEm,
     documentos: toDocumentos(m),
+    temCertidao: Boolean(m.temCertidao),
+    origem: m.origem ?? 'scraper',
+    ia: toLeituraIa(m),
   };
 }
 
@@ -517,21 +626,24 @@ const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábad
 const MONTHS_SHORT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
 function formatDateGroup(d: Date): { dateLabel: string; dayLabel: string; dateKey: string } {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-  const target = new Date(d); target.setHours(0,0,0,0);
+  const w = wallClock(d);
+  const dd = String(w.dia).padStart(2,'0');
+  const mm = String(w.mes + 1).padStart(2,'0');
+  const dateKey = `${w.ano}-${mm}-${dd}`;
 
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mm = String(d.getMonth()+1).padStart(2,'0');
-  const dateKey = `${d.getFullYear()}-${mm}-${dd}`;
+  // "Hoje" e "ontem" também são wall-clock de Brasília: comparar com o relógio
+  // do servidor (que pode estar em UTC) faria a etiqueta virar à meia-noite
+  // errada — 21:00 daqui.
+  const agora = wallClock(new Date(Date.now() - 3 * 60 * 60 * 1000));
+  const chaveHoje = `${agora.ano}-${String(agora.mes + 1).padStart(2,'0')}-${String(agora.dia).padStart(2,'0')}`;
+  const ontem = new Date(Date.UTC(agora.ano, agora.mes, agora.dia - 1));
+  const chaveOntem = `${ontem.getUTCFullYear()}-${String(ontem.getUTCMonth() + 1).padStart(2,'0')}-${String(ontem.getUTCDate()).padStart(2,'0')}`;
 
-  if (target.getTime() === today.getTime())
-    return { dateLabel: 'HOJE', dayLabel: `${dd}.${mm}`, dateKey };
-  if (target.getTime() === yesterday.getTime())
-    return { dateLabel: 'ONTEM', dayLabel: `${dd}.${mm}`, dateKey };
+  if (dateKey === chaveHoje)  return { dateLabel: 'HOJE',  dayLabel: `${dd}.${mm}`, dateKey };
+  if (dateKey === chaveOntem) return { dateLabel: 'ONTEM', dayLabel: `${dd}.${mm}`, dateKey };
   return {
-    dateLabel: `${d.getDate()} ${MONTHS_SHORT[d.getMonth()].toUpperCase()}`,
-    dayLabel: WEEKDAYS[d.getDay()],
+    dateLabel: `${w.dia} ${MONTHS_SHORT[w.mes].toUpperCase()}`,
+    dayLabel: WEEKDAYS[w.diaDaSemana],
     dateKey,
   };
 }
@@ -609,9 +721,9 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
 
   let entries: MovEntry[] = movBody.data.map(m => {
     const proc = m.process;
-    const isNew = Date.now() - new Date(m.detectedAt).getTime() < 1000 * 60 * 60 * 48;
+    const isNew = atoRecemPublicado(m);
     const ocorrido = new Date(m.ocorridoEm);
-    const timeStr = `${String(ocorrido.getHours()).padStart(2,'0')}:${String(ocorrido.getMinutes()).padStart(2,'0')}`;
+    const timeStr = horaDoAto(ocorrido);
     const item: Movimentacao = {
       id: m.id,
       tribunal: proc ? proc.tribunal.replace(/G[12]$/, '') : '—',
@@ -625,6 +737,9 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       detail: m.descricao,
       time: timeStr,
       state: isNew ? 'signal' : 'quiet',
+      origem: m.origem ?? 'scraper',
+      ia: toLeituraIa(m),
+      prazo: toPrazoDoAto(m),
     };
     return { item, ocorrido, isNew };
   });
@@ -658,9 +773,39 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
 export type MovimentacaoDetail = {
   id: string;
   data: string;
+  /** Rótulo do ato ("Despacho — 8ª Turma Cível"). O conteúdo está em `ia.resumo`. */
   descricao: string;
   link: string | null;
   detectedAt: string;
+  origem: OrigemMovimentacao;
+  /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
+  ia: LeituraIa;
+  /** O prazo que este ato abriu, em aberto. `null` quando não abriu ou já fechou. */
+  prazo: PrazoDoAto | null;
+  /**
+   * O ato ÍNTEGRO, como o diário publicou. `null` fora da origem `djen`, a
+   * única que traz o inteiro teor.
+   */
+  textoOriginal: string | null;
+  /** ISO do ato — a data em que ele saiu no diário, não a de detecção. */
+  ocorridoEm: string;
+  /**
+   * Há certidão de publicação deste ato — o PDF oficial do CNJ.
+   *
+   * A chave que o abre nunca chega ao front: ela vale numa rota pública do CNJ
+   * sem autenticação, então o download passa por `/api/movimentacoes/{id}/certidao`,
+   * que confere a sessão antes de repassar.
+   */
+  temCertidao: boolean;
+  /**
+   * Chegou agora E saiu no diário há pouco — ver `atoRecemPublicado`.
+   *
+   * Calculado AQUI, na busca, e não no componente: `Date.now()` no corpo de um
+   * Server Component é chamada impura durante o render (o ESLint do Next 16
+   * reprova), e a resposta é sobre o dado, não sobre a árvore. O feed já fazia
+   * assim — o detalhe estava sozinho no outro caminho.
+   */
+  novo: boolean;
   processData?: (BackendProcess & {
     summary: {
       link?: string | null;
@@ -676,11 +821,14 @@ export type MovimentacaoDetail = {
 function formatOcorridoEm(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${d.getFullYear()} ${hh}:${mi}`;
+  const w = wallClock(d);
+  const dd = String(w.dia).padStart(2, '0');
+  const mm = String(w.mes + 1).padStart(2, '0');
+  const data = `${dd}/${mm}/${w.ano}`;
+  // Ato só com data — a publicação no diário é o caso — não ganha "00:00", que
+  // seria um horário inventado.
+  if (w.semHorario) return data;
+  return `${data} ${String(w.hora).padStart(2, '0')}:${String(w.minuto).padStart(2, '0')}`;
 }
 
 export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | null> {
@@ -708,6 +856,13 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
     descricao: m.descricao,
     link: movLink(m),
     detectedAt: m.detectedAt,
+    ocorridoEm: m.ocorridoEm,
+    novo: atoRecemPublicado(m),
+    temCertidao: Boolean(m.temCertidao),
+    origem: m.origem ?? 'scraper',
+    ia: toLeituraIa(m),
+    prazo: toPrazoDoAto(m),
+    textoOriginal: m.textoOriginal?.trim() || null,
     processData,
   };
 }
@@ -722,6 +877,7 @@ type BackendDeadline = {
   fechado: boolean;
   createdAt: string;
   processId: string;
+  movementId: string | null;
   process?: {
     numero: string;
     tribunal: string;
@@ -734,9 +890,32 @@ type BackendDeadline = {
 };
 
 /** Dias corridos entre agora e a dataLimite (arredondado para cima, mínimo 0). */
+/**
+ * Dias corridos até o vencimento. **Negativo quando já venceu** — e é aí que
+ * mora a correção.
+ *
+ * Havia um `Math.max(0, …)` grampeando o resultado em zero, então **todo prazo
+ * vencido era exibido como "vence hoje"**, em vermelho. Um prazo de 24/05
+ * aparecia como vencendo em 04/09. É o pior erro possível num campo de prazo:
+ * não é só impreciso, é o oposto do que aconteceu, e ensina o advogado a não
+ * confiar no selo.
+ *
+ * O grampo também apagava três decisões que dependem do sinal:
+ *  - `prazosAbertos` filtra `diasRestantes >= 0`, então nenhum vencido saía;
+ *  - a contagem de `criticos` (`<= 3`) engolia o acervo vencido inteiro;
+ *  - `prazoLabel` tem um ramo `dias < 0 → 'vencido'` que nunca era alcançado.
+ *
+ * A conta é por DIA DE CALENDÁRIO, não por diferença de horas: `dataLimite`
+ * chega como meia-noite UTC do dia certo, e subtrair `Date.now()` cru faria um
+ * prazo de amanhã às 00:00 valer "0 dias" durante toda a tarde de hoje. O
+ * offset de Brasília entra pelo mesmo motivo que em `vencimentoDoAto`.
+ */
 function diasAteVencimento(dataLimite: string): number {
-  const diff = new Date(dataLimite).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  const limite = new Date(dataLimite);
+  const diaLimite = Date.UTC(limite.getUTCFullYear(), limite.getUTCMonth(), limite.getUTCDate());
+  const agora = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const hoje = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
+  return Math.round((diaLimite - hoje) / 86_400_000);
 }
 
 const toISODate = (d: Date) =>
@@ -772,11 +951,12 @@ function toPrazo(d: BackendDeadline): Prazo {
     orgaoJulgador: d.process?.orgaoJulgador?.trim() || '—',
     parte,
     assunto: d.process?.assunto?.trim() || '',
-    tipo: d.tipoDocumento,
+    tipo: semCodigo(d.tipoDocumento),
     natureza: d.natureza ?? null,
     vencimento,
     vencimentoISO,
     diasRestantes: dias,
+    movementId: d.movementId ?? null,
     state,
   };
 }
@@ -1041,3 +1221,4 @@ export async function getScraperSecrets(): Promise<ScraperSecretView[]> {
 export async function getUsuarioAtual(): Promise<UsuarioAtual> {
   return await backendGet('/users/me') as UsuarioAtual;
 }
+

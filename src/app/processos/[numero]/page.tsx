@@ -1,13 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Download, ExternalLink, FileText } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ExternalLink, FileText } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
-import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
-import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
 import { Seal } from '@/components/ui/Seal/Seal';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
+import { ExportProcessoPdfButton } from '@/components/processos/ExportProcessoPdfButton/ExportProcessoPdfButton';
 import { getProcesso, getProcessoMovements, getProcessoPrazos } from '@/lib/api.server';
 import { getAbsoluteUrl } from '@/lib/site-url';
 import { buildQuery } from '@/lib/utils';
@@ -49,22 +48,7 @@ function timeAgo(value: string | null): string {
   return `há ${Math.floor(days / 30)}mes`;
 }
 
-/** Idade do processo em dias, contada da autuação. */
-function diasDesde(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const brMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  const parsed = brMatch ? new Date(+brMatch[3], +brMatch[2] - 1, +brMatch[1]) : new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return Math.floor((Date.now() - parsed.getTime()) / (1000 * 60 * 60 * 24));
-}
 
-function idadeLabel(dias: number | null): string {
-  if (dias == null) return '—';
-  if (dias < 60) return `${dias} dias`;
-  const meses = Math.floor(dias / 30);
-  if (meses < 24) return `${meses} meses`;
-  return `${Math.floor(dias / 365)} anos`;
-}
 
 function prazoLabel(dias: number): string {
   if (dias < 0) return 'vencido';
@@ -118,10 +102,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
   const isNew = e.state === 'signal';
+  // `e.title` é o RÓTULO do ato desde que a movimentação virou a unidade de
+  // análise no backend; a leitura da IA é o que tem conteúdo. Mesmas regras da
+  // lista de movimentações — as duas telas mostram o mesmo dado.
+  const corpo = e.ia?.resumo || e.title;
+  const rotulo = e.ia?.resumo ? e.title : null;
+  const acao = e.ia?.acao ? { texto: e.ia.acao, minha: e.ia.deQuem === 'destinatario' } : null;
+  const selo = e.origem === 'djen' ? 'diário' : null;
   return (
     <article className={`${styles.timelineItem}${isLast ? ` ${styles.timelineItemLast}` : ''}`}>
+      {/* O item inteiro abre o ato. Camada esticada, e não um <Link> em volta
+          de tudo, porque os links de documento moram aqui dentro e <a> dentro
+          de <a> é HTML inválido — o React quebra na hidratação. Mesmo padrão
+          do card de prazo (`PrazosView`), com o bônus de o texto do ato
+          continuar selecionável. */}
+      <Link
+        href={`/movimentacoes/${e.id}`}
+        className={styles.itemLink}
+        aria-label={`Abrir o ato § ${e.n} — ${corpo}`}
+      />
+
       <div className={styles.timelineDate}>
         <div className={isNew ? styles.timelineDateNew : undefined}>{e.date}</div>
+        {/* O ano numa linha própria: a timeline de um processo atravessa anos
+            — esta carteira tem ato de 2023 ao lado de ato de 2026 — e "4 set"
+            sozinho obriga a deduzir de qual deles se trata pela posição na
+            lista. Fica abaixo, e não colado no dia, para não roubar o peso da
+            data que a pessoa procura primeiro. */}
+        <div className={styles.timelineAno}>{e.ano}</div>
         {e.time && <div className={styles.timelineTime}>{e.time}</div>}
       </div>
 
@@ -134,8 +142,23 @@ function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
         <div className={styles.timelineMeta}>
           <span className={styles.timelineCode}>§ {e.n}</span>
           {e.label && <Seal variant="nova" />}
+          {/* A publicação no diário não é um movimento do tribunal: é o aviso de
+              que ele aconteceu, e sai dias depois. Sem o selo, ela e a linha do
+              DataJud sobre o mesmo ato leem como duplicata na timeline. */}
+          {selo && <Seal variant="outline" label={selo} />}
         </div>
-        <h3 className={styles.timelineTitle}>{e.title}</h3>
+        {/* O que aconteceu: a leitura da IA quando existe, o rótulo quando não */}
+        <h3 className={styles.timelineTitle}>{corpo}</h3>
+        {/* Só quando o título acima é o resumo — senão seria a frase repetida */}
+        {rotulo && <p className={styles.timelineRotulo}>{rotulo}</p>}
+        {acao && (
+          <p className={acao.minha ? styles.timelineAcaoMinha : styles.timelineAcao}>
+            <span className={styles.timelineAcaoLabel}>
+              {acao.minha ? 'você precisa' : 'providência de outra parte'}
+            </span>
+            {acao.texto}
+          </p>
+        )}
         {e.documentos.length > 0 && (
           <ul className={styles.docList}>
             {e.documentos.map((doc, i) => (
@@ -238,14 +261,34 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
   const syncLabel = processo.state === 'alert' ? 'Erro de sincronização' : 'Monitorado';
   const syncState = processo.state === 'alert' ? 'alert' : 'quiet';
 
-  const novidades = timeline.filter(e => e.state === 'signal').length;
-  const idade = idadeLabel(diasDesde(processo.autuadoEm) ?? diasDesde(timeline.at(-1)?.rawDate));
-  const prazosAbertos = prazos.filter(p => p.diasRestantes === null || p.diasRestantes >= 0);
-  const proximo = prazosAbertos.find(p => p.diasRestantes !== null);
-
-  const documentos = timeline.flatMap(evento =>
-    evento.documentos.map(doc => ({ ...doc, movimentacao: evento.title, data: evento.date, n: evento.n })),
-  );
+  /**
+   * As peças da aba de documentos, de DUAS fontes.
+   *
+   * `evento.documentos` vem de `Movement.documentos`, que só o scraper
+   * autenticado preenche — numa carteira 100% DJEN a aba dizia "nenhum
+   * documento extraído das movimentações" para um acervo inteiro que tem
+   * documento, só que por outra via.
+   *
+   * A outra via é a CERTIDÃO DE PUBLICAÇÃO: o PDF oficial do CNJ, com
+   * cabeçalho do tribunal, capa do processo, destinatário, todos os advogados
+   * com OAB e o teor integral. Sai por `/api/movimentacoes/{id}/certidao`, que
+   * confere a sessão — a chave que abre o documento no CNJ nunca chega ao
+   * browser.
+   */
+  const documentos = timeline.flatMap(evento => [
+    ...evento.documentos.map(doc => ({
+      url: doc.url, nome: doc.nome, oficial: false,
+      movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
+    })),
+    ...(evento.temCertidao
+      ? [{
+          url: `/api/movimentacoes/${encodeURIComponent(evento.id)}/certidao`,
+          nome: 'Certidão de publicação',
+          oficial: true,
+          movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
+        }]
+      : []),
+  ]);
 
   const basePath = `/processos/${encodeURIComponent(processo.cnj)}`;
   const abaHref = (destino: Aba) =>
@@ -253,48 +296,6 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
   const maisMovsHref =
     `${basePath}${buildQuery({ aba: sp.aba }, { movs: String(Math.min(movsLimit + MOVS_PAGE, MOVS_MAX)) })}`;
 
-  const pageInfoContent: PageInfoContent = [
-    {
-      title: 'Movimentações',
-      variant: 'compact',
-      items: [
-        { label: 'Total', value: String(totalMovs).padStart(2, '0') },
-        { label: 'Novidades', value: String(novidades).padStart(2, '0'), tone: novidades > 0 ? 'signal' : undefined },
-        { label: 'Idade do processo', value: idade },
-      ],
-    },
-    {
-      title: 'Prazos',
-      variant: 'compact',
-      items: [
-        {
-          label: 'Abertos',
-          value: String(prazosAbertos.length).padStart(2, '0'),
-          tone: prazosAbertos.length > 0 ? 'signal' : undefined,
-        },
-        {
-          label: 'Próximo',
-          value: proximo && proximo.diasRestantes !== null
-            ? `${prazoLabel(proximo.diasRestantes)} · ${proximo.vencimento}`
-            : '—',
-          tone: proximo?.diasRestantes !== null && proximo?.diasRestantes !== undefined && proximo.diasRestantes <= 2 ? 'alert' : undefined,
-        },
-        { label: 'Tipo', value: proximo?.tipo ?? '—' },
-      ],
-    },
-    {
-      title: 'Processo',
-      variant: 'compact',
-      items: [
-        {
-          label: 'Valor da causa',
-          value: processo.valorCausa == null ? '—' : currencyFormatter.format(processo.valorCausa),
-        },
-        { label: 'Autuado em', value: displayDate(processo.autuadoEm) },
-        { label: 'Verificado', value: timeAgo(processo.lastScrapedAt) },
-      ],
-    },
-  ];
 
   return (
     <AppLayout
@@ -323,10 +324,11 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
           <span className={styles.breadcrumbDivider}>/</span>
           <span className={styles.breadcrumbCurrent}>{processo.cnj}</span>
           <div className={styles.breadcrumbSpacer} />
-          <button type="button" className={styles.actionButton}>
-            <Download aria-hidden="true" size={16} strokeWidth={2} />
-            Exportar PDF
-          </button>
+          <ExportProcessoPdfButton
+            processo={processo}
+            prazos={prazos}
+            className={styles.actionButton}
+          />
           {processo.link ? (
             <a
               href={processo.link}
@@ -395,8 +397,6 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
             </div>
           </dl>
         </section>
-
-        <PageInfo pageInfoContent={pageInfoContent} />
 
         <div className={styles.body}>
           <div className={styles.main}>
@@ -474,10 +474,13 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
                 <div className={styles.sectionHeader}>
                   <h2 id="documentos-title">§ DOCUMENTOS</h2>
                   <div className={styles.sectionRule} />
-                  <span>peças anexadas às movimentações</span>
+                  <span>certidões de publicação e peças anexadas</span>
                 </div>
                 {documentos.length === 0 ? (
-                  <div className={styles.emptyState}>§ Nenhum documento extraído das movimentações.</div>
+                  <div className={styles.emptyState}>
+                    § Nenhum documento neste processo ainda. A certidão de publicação aparece aqui
+                    assim que o ato for varrido do diário.
+                  </div>
                 ) : (
                   <ul className={styles.documentoList}>
                     {documentos.map((doc, i) => (

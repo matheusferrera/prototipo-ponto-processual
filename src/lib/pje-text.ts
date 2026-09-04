@@ -7,7 +7,11 @@
 
 /** Remove o código numérico que o PJe anexa a assuntos, tipos e descrições: "Intimação (466281043)" → "Intimação". */
 export function semCodigo(valor: string): string {
-  return valor.replace(/\s*\(\d+\)\s*$/, '').trim();
+  // O `DJEN-` opcional cobre a origem pública: ali o sufixo é `(DJEN-611209370)`,
+  // o id da comunicação no diário, e sem ele o rótulo do prazo aparecia como
+  // "Ementa (DJEN-611209370)" na aba de prazos do processo. É a mesma limpeza
+  // que `descricaoDoAto` faz no backend — o número é chave, não informação.
+  return valor.replace(/\s*\((?:DJEN-)?\d+\)\s*$/i, '').trim();
 }
 
 /**

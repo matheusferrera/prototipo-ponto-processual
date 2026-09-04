@@ -72,54 +72,112 @@
   align-items: start;
   gap: 10px;
   border: 1px solid var(--line);
-  border-left-width: 3px;
   background: var(--paper);
   padding: 12px 14px;
   margin-bottom: 8px;
   color: inherit;
   text-decoration: none;
   touch-action: manipulation;
-  transition: background 160ms ease-out, transform 100ms ease;
+  transition: background 160ms ease-out, border-color 160ms ease-out, transform 100ms ease;
 }
 
 .item:hover { background: var(--paper-2); }
 .item:active { background: var(--paper-3); transform: scale(0.99); }
 .item:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
 
-.itemSignal { border-left-color: var(--brick); }
-.itemAlert  { border-left-color: var(--alert); }
-.itemQuiet  { border-left-color: var(--line);  }
+/* O estado é a borda INTEIRA, não uma faixa à esquerda: faixa colorida de 3px
+   é enfeite, e o mesmo peso visual gasto no contorno todo diz a mesma coisa
+   sem parecer um post-it. */
+.itemSignal { border-color: var(--brick); }
+.itemAlert  { border-color: var(--alert); }
+.itemQuiet  { border-color: var(--line);  }
 
-/* Coluna esquerda — o horário, sempre rotulado */
-.timeCol {
+/* ─────────────────────────────────────────────────────────────────────────
+   Coluna esquerda — O PRAZO.
+
+   Era o horário do ato, e desde que a linha do tempo passou a ser 100% DJEN
+   ela nunca tinha o que mostrar: o diário publica numa DATA, não num horário,
+   então toda linha exibia "publicado —" e a coluna inteira existia para
+   desenhar um travessão. Agora carrega a única coisa que o advogado precisa
+   decidir olhando: até quando ele tem.
+
+   Vazia quando o ato não abre prazo, que é a maioria (mera ciência, pauta e
+   ata eram 46% numa medição real). Vazia de propósito, sem placeholder: a
+   grade se mantém e o olho aprende que coluna preenchida = ação pendente.
+   ───────────────────────────────────────────────────────────────────────── */
+.prazoCol {
   display: flex;
   flex-direction: row;
   align-items: baseline;
   gap: 8px;
   padding: 0 0 8px;
-  border-right: 0;
   border-bottom: 1px solid var(--line-soft);
 }
 
-.timeLabel {
+/* No mobile o item é uma coluna só, então a faixa vazia não precisa reservar
+   espaço — ela some. No desktop ela vira célula do grid (ver a media query). */
+.prazoVazio {
+  display: none;
+  border-bottom: 0;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .prazoVazio { display: block; }
+}
+
+/* `--ink-2`, e não o `--ink-4` que os rótulos do resto da tela usam: medido,
+   `--ink-4` sobre `--paper` dá 2,3:1 de contraste — reprova em qualquer critério
+   e some para quem lê de lado, num rótulo que diz se a data é vencimento ou
+   vencido. `--ink-2` dá 9,0:1. */
+.prazoLabel {
   font-family: var(--mono);
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--ink-4);
+  color: var(--ink-2);
+  white-space: nowrap;
 }
 
-.time {
+.prazoData {
   font-family: var(--mono);
   font-weight: 700;
   font-size: 20px;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
-.timeSignal { color: var(--brick); }
-.timeNormal { color: var(--ink);   }
+/* Vence em até 3 dias, ou já venceu — duas linguagens distintas, e as duas
+   legíveis. `--signal` (âmbar) NÃO serve como cor de texto: medido, dá 2,7-3,0:1
+   contra os fundos do sistema. Ele entra como FUNDO, que é o papel dele, e o
+   texto fica em `--ink` (15,9:1). Vencido usa `--alert` em texto (7,9:1). */
+.prazoUrgente {
+  color: var(--ink);
+  background: var(--signal-soft);
+  box-shadow: 0 0 0 4px var(--signal-soft);
+}
+.prazoVencido { color: var(--alert); }
+
+.prazoQuando {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* "≈" antes da data quando ela é CÁLCULO nosso e não o vencimento que o
+   tribunal publicou. Um caractere carrega a ressalva sem gastar uma linha —
+   o detalhe explica por extenso. */
+.prazoEstimado {
+  font-weight: 400;
+  font-size: 0.7em;
+  color: var(--ink-4);
+  vertical-align: 0.15em;
+}
 
 .bodyCol { min-width: 0; }
 
@@ -157,6 +215,60 @@
   color: var(--ink-2);
   margin-top: 2px;
   overflow-wrap: anywhere;
+}
+
+/* Rótulo do ato ("Despacho — 8ª Turma Cível"), abaixo da leitura da IA.
+   Só aparece quando o corpo acima é o resumo — senão seria a mesma frase duas
+   vezes. Mesmo peso do assunto: é referência, não conteúdo. */
+.rotuloAto {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* A providência que o ato cobra. Duas variantes porque a diferença entre "você
+   precisa" e "a outra parte precisa" é a diferença entre perder um prazo e ler
+   uma notícia — e foi exatamente ela que o TRF1 confundiu ("cite-se a União
+   para contestar em 30 dias" lido como prazo do cliente). */
+.acao,
+.acaoMinha {
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 6px;
+  padding: 6px 9px;
+  overflow-wrap: anywhere;
+}
+
+/* Providência de OUTRA parte: fundo neutro, texto recuado. É notícia, não
+   tarefa — e foi confundi-las que fez "cite-se a União para contestar em 30
+   dias" virar prazo do cliente no TRF1. */
+.acao {
+  color: var(--ink-3);
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+}
+
+/* A do destinatário: contorno inteiro na cor da marca. Substituiu um
+   `border-left: 2px` — mesma ênfase, sem a faixa lateral. */
+.acaoMinha {
+  color: var(--ink);
+  background: var(--brick-soft);
+  border: 1px solid var(--brick);
+}
+
+.acaoLabel {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 2px;
+}
+
+.acaoMinha .acaoLabel {
+  color: var(--brick);
 }
 
 /* Assunto do processo, quando difere do título */
@@ -227,7 +339,12 @@
     padding: 14px 16px;
   }
 
-  .timeCol {
+  /* No desktop a coluna do prazo é uma faixa própria à esquerda, separada por
+     um filete. Ela existe em TODA linha, mesmo vazia: o grid é de três colunas
+     fixas, e omitir o elemento faria o corpo do item cair na faixa de 92px. É
+     também o que mantém as datas alinhadas entre linhas — a leitura vertical
+     da coluna é metade do valor dela. */
+  .prazoCol {
     flex-direction: column;
     align-items: normal;
     gap: 2px;
@@ -236,9 +353,26 @@
     border-bottom: 0;
   }
 
+  /* Sem prazo: a faixa continua ocupando a coluna, sem filete nem conteúdo.
+     Filete numa célula vazia desenharia uma régua que não separa nada. */
+  .prazoVazio { border-right-color: transparent; }
+
   .go { display: inline; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .item { transition: none; }
+}
+
+/* Ressalva de confiança baixa da IA, dentro do bloco de providência. Bloco
+   próprio e não parênteses no texto: quem varre o feed lê a frase da ação, e a
+   ressalva precisa sobreviver a essa leitura rápida. */
+.conferir {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--alert);
 }

@@ -72,6 +72,7 @@ export function Sidebar({ active, onClose }: SidebarProps) {
 
       <SectionLabel>Conta</SectionLabel>
       <NavItem label="Credenciais" href="/credenciais" active={active === 'Credenciais'} />
+      <NavItem label="WhatsApp" href="/whatsapp" active={active === 'WhatsApp'} />
 
       <div className={styles.spacer} />
 
