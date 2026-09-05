@@ -1,0 +1,37 @@
+.filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.pill {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-3);
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.pill:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+/* Selecionada: a tinta forte do projeto, não uma cor nova. */
+.pill[data-ativo] {
+  border-color: var(--brick);
+  color: var(--brick);
+  background: color-mix(in srgb, var(--brick) 8%, transparent);
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}

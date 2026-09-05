@@ -17,6 +17,7 @@ import {
   type MovimentacaoFilterState,
   type MovimentacaoSort,
 } from '@/lib/movimentacao-filters';
+import { CATEGORIAS_MOVIMENTACAO } from '@/lib/categoria-movimentacao';
 import type { TribunalOption } from '@/lib/tribunals';
 import styles from '@/components/filters/FilterPanel.module.css';
 
@@ -173,6 +174,38 @@ export function MovimentacaoFilterControls({
                     </FieldGroup>
                   </FieldSet>
                 )}
+
+                {/* Categoria vem ANTES de Tipo de propósito: ela é o corte que
+                    limpa a lista (o trâmite de cartório é 43% do acervo) e é
+                    filtrada no banco, enquanto `Tipo` é inferido do texto sobre
+                    a página já carregada. */}
+                <FieldSet className={styles.nestedGroup}>
+                  <FieldLegend variant="label">Categoria</FieldLegend>
+                  <FieldGroup data-slot="checkbox-group" className={styles.checkboxGrid}>
+                    {CATEGORIAS_MOVIMENTACAO.map(categoria => (
+                      <Field key={categoria.value} orientation="horizontal" className={styles.checkField}>
+                        <Checkbox
+                          id={`${variant}-mov-categoria-${categoria.value}`}
+                          checked={draft.categoria.includes(categoria.value)}
+                          onCheckedChange={checked => changeDraft(current => ({
+                            ...current,
+                            categoria: checked
+                              ? [...new Set([...current.categoria, categoria.value])]
+                              : current.categoria.filter(item => item !== categoria.value),
+                          }), true)}
+                        />
+                        <FieldLabel htmlFor={`${variant}-mov-categoria-${categoria.value}`}>
+                          {categoria.label}
+                        </FieldLabel>
+                      </Field>
+                    ))}
+                  </FieldGroup>
+                  {/* Sem nenhuma marcada, a API esconde o trâmite. Dizer isso na
+                      tela evita a pergunta "cadê a juntada de certidão?". */}
+                  <p className={styles.fieldHint}>
+                    Sem seleção, o trâmite de cartório fica fora da lista.
+                  </p>
+                </FieldSet>
 
                 <FieldSet className={styles.nestedGroup}>
                   <FieldLegend variant="label">Tipo</FieldLegend>

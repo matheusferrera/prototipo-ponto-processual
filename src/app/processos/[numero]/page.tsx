@@ -10,6 +10,8 @@ import { ExportProcessoPdfButton } from '@/components/processos/ExportProcessoPd
 import { getProcesso, getProcessoMovements, getProcessoPrazos } from '@/lib/api.server';
 import { getAbsoluteUrl } from '@/lib/site-url';
 import { buildQuery } from '@/lib/utils';
+import { CategoriaFilter } from '@/components/movimentacoes/CategoriaFilter/CategoriaFilter';
+import { categoriaCurta, parseCategorias } from '@/lib/categoria-movimentacao';
 import type { Prazo, Processo, ProcessoParte, TimelineEvent } from '@/types';
 import styles from './page.module.css';
 
@@ -21,7 +23,7 @@ const MOVS_MAX = 100;
 
 interface Props {
   params: Promise<{ numero: string }>;
-  searchParams: Promise<{ aba?: string; movs?: string }>;
+  searchParams: Promise<{ aba?: string; movs?: string; cat?: string }>;
 }
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -109,6 +111,28 @@ function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
   const rotulo = e.ia?.resumo ? e.title : null;
   const acao = e.ia?.acao ? { texto: e.ia.acao, minha: e.ia.deQuem === 'destinatario' } : null;
   const selo = e.origem === 'djen' ? 'diário' : null;
+  // A que serve o ato, ao lado do § — é o que permite bater o olho e saber se
+  // aquela linha é decisão, petição ou movimento de cartório.
+  const categoria = categoriaCurta(e.categoria);
+  /**
+   * As peças deste ato: o que o tribunal anexou e, na origem `djen`, a certidão
+   * de publicação.
+   *
+   * A certidão entrar AQUI é o conserto de um sumiço: a timeline só conhecia
+   * `documentos`, então um processo 100% DJEN — que é o formato da maior parte
+   * do acervo público — mostrava zero documento em todas as linhas, embora cada
+   * ato tenha o PDF oficial do CNJ. Ele existia só na aba Documentos, e quem
+   * abre a timeline não tem por que adivinhar isso.
+   */
+  const pecas = [
+    ...e.documentos,
+    ...(e.temCertidao
+      ? [{
+          nome: 'Certidão de publicação',
+          url: `/api/movimentacoes/${encodeURIComponent(e.id)}/certidao`,
+        }]
+      : []),
+  ];
   return (
     <article className={`${styles.timelineItem}${isLast ? ` ${styles.timelineItemLast}` : ''}`}>
       {/* O item inteiro abre o ato. Camada esticada, e não um <Link> em volta
@@ -141,6 +165,7 @@ function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
       <div className={styles.timelineContent}>
         <div className={styles.timelineMeta}>
           <span className={styles.timelineCode}>§ {e.n}</span>
+          {categoria && <span className={styles.timelineCategoria}>{categoria}</span>}
           {e.label && <Seal variant="nova" />}
           {/* A publicação no diário não é um movimento do tribunal: é o aviso de
               que ele aconteceu, e sai dias depois. Sem o selo, ela e a linha do
@@ -159,16 +184,16 @@ function TimelineItem({ e, isLast }: { e: TimelineEvent; isLast: boolean }) {
             {acao.texto}
           </p>
         )}
-        {e.documentos.length > 0 && (
+        {pecas.length > 0 && (
           <ul className={styles.docList}>
-            {e.documentos.map((doc, i) => (
+            {pecas.map((doc, i) => (
               <li key={`${doc.url}-${i}`}>
                 <a
                   href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.docLink}
-                  title={`Abrir ${doc.nome} no PJe`}
+                  title={`Abrir ${doc.nome}`}
                 >
                   <FileText aria-hidden="true" size={13} strokeWidth={2} />
                   {doc.nome}
@@ -252,9 +277,15 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
     ? Math.min(requestedMovs, MOVS_MAX)
     : MOVS_PAGE;
 
-  // a aba de documentos precisa varrer todas as movimentações, não só a página atual
+  const categorias = parseCategorias(sp.cat);
+
+  // a aba de documentos precisa varrer todas as movimentações, não só a página
+  // atual — e ignora o filtro de categoria, senão o documento de um ato
+  // filtrado sumiria da aba que existe para listar documentos.
   const [{ events: timeline, total: totalMovs }, prazos] = await Promise.all([
-    getProcessoMovements(processo.id, aba === 'documentos' ? MOVS_MAX : movsLimit),
+    aba === 'documentos'
+      ? getProcessoMovements(processo.id, MOVS_MAX, ['todas'])
+      : getProcessoMovements(processo.id, movsLimit, categorias),
     getProcessoPrazos(processo.id),
   ]);
 
@@ -262,39 +293,57 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
   const syncState = processo.state === 'alert' ? 'alert' : 'quiet';
 
   /**
-   * As peças da aba de documentos, de DUAS fontes.
+   * As peças da aba de documentos, de TRÊS fontes — e cada uma existe porque a
+   * anterior não cobria um acervo inteiro.
    *
-   * `evento.documentos` vem de `Movement.documentos`, que só o scraper
-   * autenticado preenche — numa carteira 100% DJEN a aba dizia "nenhum
-   * documento extraído das movimentações" para um acervo inteiro que tem
-   * documento, só que por outra via.
+   * 1. `evento.documentos` — o que o tribunal anexou ao ato, mais o PDF que a
+   *    fonte serve por rota (`baixavel`/`temDocumentoDoAto`, resolvidos em
+   *    `toDocumentos`). Sozinho, deixava a aba vazia numa carteira 100% DJEN.
+   * 2. A CERTIDÃO DE PUBLICAÇÃO de cada ato: o PDF oficial do CNJ, com cabeçalho
+   *    do tribunal, capa, destinatário, advogados com OAB e o teor integral.
+   * 3. A CERTIDÃO DE ANDAMENTO do processo, no STJ: lá a via pública não expõe
+   *    peça por movimentação, então esse é o único documento que cobre a
+   *    timeline inteira. Abre a lista porque não pertence a ato nenhum.
    *
-   * A outra via é a CERTIDÃO DE PUBLICAÇÃO: o PDF oficial do CNJ, com
-   * cabeçalho do tribunal, capa do processo, destinatário, todos os advogados
-   * com OAB e o teor integral. Sai por `/api/movimentacoes/{id}/certidao`, que
-   * confere a sessão — a chave que abre o documento no CNJ nunca chega ao
-   * browser.
+   * Em todas, a chave que abre o documento na origem fica no backend; o que a
+   * tela recebe é um caminho `/api/...` que confere a sessão.
    */
-  const documentos = timeline.flatMap(evento => [
-    ...evento.documentos.map(doc => ({
-      url: doc.url, nome: doc.nome, oficial: false,
-      movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
-    })),
-    ...(evento.temCertidao
+  const documentos = [
+    ...(processo.temCertidaoAndamento
       ? [{
-          url: `/api/movimentacoes/${encodeURIComponent(evento.id)}/certidao`,
-          nome: 'Certidão de publicação',
+          url: `/api/processos/${encodeURIComponent(processo.id)}/certidao-andamento`,
+          nome: 'Certidão de andamento (STJ)',
           oficial: true,
-          movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
+          movimentacao: 'Todas as fases do processo',
+          data: '—',
+          n: '—',
         }]
       : []),
-  ]);
+    ...timeline.flatMap(evento => [
+      ...evento.documentos.map(doc => ({
+        url: doc.url, nome: doc.nome, oficial: false,
+        movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
+      })),
+      ...(evento.temCertidao
+        ? [{
+            url: `/api/movimentacoes/${encodeURIComponent(evento.id)}/certidao`,
+            nome: 'Certidão de publicação',
+            oficial: true,
+            movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
+          }]
+        : []),
+    ]),
+  ];
 
   const basePath = `/processos/${encodeURIComponent(processo.cnj)}`;
   const abaHref = (destino: Aba) =>
     `${basePath}${buildQuery({}, { aba: destino === 'movimentacoes' ? undefined : destino })}`;
   const maisMovsHref =
-    `${basePath}${buildQuery({ aba: sp.aba }, { movs: String(Math.min(movsLimit + MOVS_PAGE, MOVS_MAX)) })}`;
+    `${basePath}${buildQuery({ aba: sp.aba, cat: sp.cat }, { movs: String(Math.min(movsLimit + MOVS_PAGE, MOVS_MAX)) })}`;
+  // Trocar de filtro volta para a primeira página: o `movs` da seleção anterior
+  // não diz nada sobre quantas linhas a nova seleção tem.
+  const categoriaHref = (proximas: string[]) =>
+    `${basePath}${buildQuery({ aba: sp.aba }, { cat: proximas.join(',') || undefined })}`;
 
 
   return (
@@ -432,8 +481,14 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
                   <span>do mais recente ao mais antigo</span>
                 </div>
 
+                <CategoriaFilter ativas={categorias} href={categoriaHref} />
+
                 {timeline.length === 0 ? (
-                  <div className={styles.emptyState}>§ Nenhuma movimentação registrada.</div>
+                  <div className={styles.emptyState}>
+                    {categorias.length > 0
+                      ? '§ Nenhuma movimentação nesta categoria.'
+                      : '§ Nenhuma movimentação registrada.'}
+                  </div>
                 ) : (
                   <>
                     {timeline.map((e, i) => (

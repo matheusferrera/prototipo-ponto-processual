@@ -376,3 +376,17 @@
   text-transform: uppercase;
   color: var(--alert);
 }
+
+/* A categoria do ato, ao lado do tipo. Discreta: é orientação de leitura, não
+   conteúdo — quem varre o feed usa para saber se aquela linha é decisão,
+   petição ou cartório, sem que dispute atenção com o nome do cliente. */
+.categoriaLabel {
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+}

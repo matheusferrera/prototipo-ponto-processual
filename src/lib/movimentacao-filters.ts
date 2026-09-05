@@ -1,5 +1,7 @@
 import type { MovimentacaoFilters } from '@/lib/api.server';
+import { CATEGORIA_VALUES } from '@/lib/categoria-movimentacao';
 import { FALLBACK_TRIBUNALS } from '@/lib/tribunals';
+import type { CategoriaMovimentacao } from '@/types';
 
 /**
  * Filtros da página de Movimentações — mesmo contrato do `process-filters`/`prazo-filters`:
@@ -11,7 +13,7 @@ import { FALLBACK_TRIBUNALS } from '@/lib/tribunals';
  * também não é suportado pelo backend, então os dois exigem buscar um conjunto
  * amplo e aplicar aqui, como o "contém" de Prazos.
  */
-export const MOVIMENTACAO_FILTER_KEYS = ['q', 'tribunal', 'tipo', 'sort'] as const;
+export const MOVIMENTACAO_FILTER_KEYS = ['q', 'tribunal', 'tipo', 'categoria', 'sort'] as const;
 
 export type MovimentacaoFilterKey = (typeof MOVIMENTACAO_FILTER_KEYS)[number];
 export type MovimentacaoSort = '' | 'antigas' | 'tribunal';
@@ -30,6 +32,12 @@ export type MovimentacaoFilterState = {
   q: string;
   tribunal: string[];
   tipo: string[];
+  /**
+   * Categorias do ato, filtradas NO BANCO (diferente de `tipo`, que é inferido
+   * do texto aqui). Vazio deixa valer o padrão da API, que esconde o trâmite de
+   * cartório — 43% da movimentação pública, medido em 05/09/2026.
+   */
+  categoria: CategoriaMovimentacao[];
   sort: MovimentacaoSort;
 };
 
@@ -39,12 +47,14 @@ export const DEFAULT_MOVIMENTACAO_FILTERS: MovimentacaoFilterState = {
   q: '',
   tribunal: [],
   tipo: [],
+  categoria: [],
   sort: '',
 };
 
 const FALLBACK_TRIBUNAL_CODES = FALLBACK_TRIBUNALS.map(tribunal => tribunal.code);
 const ALLOWED_SORT = new Set<MovimentacaoSort>(['', 'antigas', 'tribunal']);
 const ALLOWED_TIPO = new Set<string>(TIPOS_MOVIMENTACAO);
+const ALLOWED_CATEGORIA = new Set<string>(CATEGORIA_VALUES);
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
@@ -68,6 +78,7 @@ export function parseMovimentacaoFilters(
     q: cleanText(searchParams.q),
     tribunal: cleanCsv(searchParams.tribunal, new Set(allowedTribunals)),
     tipo: cleanCsv(searchParams.tipo, ALLOWED_TIPO),
+    categoria: cleanCsv(searchParams.categoria, ALLOWED_CATEGORIA) as CategoriaMovimentacao[],
     sort: ALLOWED_SORT.has(sortValue) ? sortValue : '',
   };
 }
@@ -81,6 +92,7 @@ export function serializeMovimentacaoFilters(filters: MovimentacaoFilterState, p
   set('q', filters.q);
   set('tribunal', filters.tribunal.join(','));
   set('tipo', filters.tipo.join(','));
+  set('categoria', filters.categoria.join(','));
   if (filters.sort) params.set('sort', filters.sort);
   if (page && page > 1) params.set('page', String(Math.trunc(page)));
   return params;
@@ -95,10 +107,11 @@ export function movimentacaoFiltersToApi(filters: MovimentacaoFilterState): Movi
     q: filters.q || undefined,
     tribunal: filters.tribunal.length ? filters.tribunal : undefined,
     tipo: filters.tipo.length ? filters.tipo : undefined,
+    categoria: filters.categoria.length ? filters.categoria : undefined,
     sort: filters.sort || undefined,
   };
 }
 
 export function countActiveMovimentacaoFilters(filters: MovimentacaoFilterState): number {
-  return filters.tribunal.length + filters.tipo.length;
+  return filters.tribunal.length + filters.tipo.length + filters.categoria.length;
 }

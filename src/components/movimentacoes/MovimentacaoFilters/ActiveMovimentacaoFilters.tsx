@@ -7,6 +7,7 @@ import {
   serializeMovimentacaoFilters,
   type MovimentacaoFilterState,
 } from '@/lib/movimentacao-filters';
+import { categoriaLabel } from '@/lib/categoria-movimentacao';
 import styles from '@/components/filters/FilterPanel.module.css';
 
 interface Chip {
@@ -67,6 +68,11 @@ function buildChips(filters: MovimentacaoFilterState): Chip[] {
     id: `tipo-${value}`,
     label: value,
     remove: c => ({ ...c, tipo: c.tipo.filter(item => item !== value) }),
+  }));
+  filters.categoria.forEach(value => chips.push({
+    id: `categoria-${value}`,
+    label: categoriaLabel(value),
+    remove: c => ({ ...c, categoria: c.categoria.filter(item => item !== value) }),
   }));
   return chips;
 }

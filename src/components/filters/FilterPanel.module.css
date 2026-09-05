@@ -553,3 +553,15 @@
 @media (prefers-reduced-motion: reduce) {
   .sidePanelSheet { transition-duration: 0s !important; }
 }
+
+/* Nota sob um grupo de caixas — explica o que o estado vazio faz. Nasceu no
+   filtro de categoria: sem seleção a API esconde o trâmite de cartório, e sem
+   dizer isso a tela deixa a pergunta "cadê a juntada de certidão?" no ar.
+   `--ink-2` e não `--ink-3`: o segundo dá 3,8–4,3:1 de contraste, abaixo do
+   mínimo de 4,5 (ver a nota de contraste no CLAUDE.md). */
+.fieldHint {
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 6px;
+}

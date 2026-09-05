@@ -18,6 +18,19 @@ export type StatusType = 'signal' | 'quiet' | 'alert';
  */
 export type OrigemMovimentacao = 'scraper' | 'tribunalPublico' | 'datajud' | 'djen';
 
+/**
+ * A que serve a movimentação — o eixo que separa o que se lê do que o cartório
+ * registra. Vem de `Movement.categoria` no backend.
+ *
+ * Existe por uma medição: metade da movimentação pública é `tramite`
+ * ("Juntada de certidão", "Recebidos os autos", "Conclusos"), e numa página de
+ * vinte linhas treze eram isso. **A API esconde `tramite` por padrão**; a tela
+ * oferece o filtro para trazê-lo de volta.
+ *
+ * `null` em linha gravada antes da classificação existir.
+ */
+export type CategoriaMovimentacao = 'decisorio' | 'atoDeParte' | 'publicacao' | 'prazo' | 'tramite';
+
 /** A leitura do ato pela IA. Só a origem `djen` traz o inteiro teor, logo só ela é analisada. */
 export interface LeituraIa {
   /** O que o juízo decidiu, em linguagem humana. */
@@ -84,6 +97,8 @@ export interface Movimentacao {
   time?: string;
   state: StatusType;
   origem: OrigemMovimentacao;
+  /** A que serve o ato. `null` em linha anterior à classificação. */
+  categoria: CategoriaMovimentacao | null;
   /** Todos os campos `null` quando a IA não rodou — caminho degradado, não erro. */
   ia: LeituraIa;
   /** O prazo que este ato abriu. `null` na maioria — a maioria dos atos não abre. */
@@ -151,6 +166,14 @@ export interface Processo {
   /** prazos não fechados e não vencidos */
   prazosAbertos: number;
   proximoPrazo: ProximoPrazo | null;
+  /**
+   * Há certidão de andamento deste processo — o PDF oficial do STJ.
+   *
+   * É documento do PROCESSO, não de uma movimentação: a via pública do STJ não
+   * expõe peça por ato, e essa certidão é o que cobre a timeline inteira. Só
+   * processo do STJ tem. Sai por `/api/processos/{id}/certidao-andamento`.
+   */
+  temCertidaoAndamento?: boolean;
 }
 
 /** Documento anexado a uma movimentação. */
@@ -182,6 +205,8 @@ export interface TimelineEvent {
   rawDate?: string;
   documentos: DocumentoMovimentacao[];
   origem?: OrigemMovimentacao;
+  /** A que serve o ato — ver `CategoriaMovimentacao`. */
+  categoria?: CategoriaMovimentacao | null;
   /** Leitura do ato pela IA — só existe na origem `djen`. */
   ia?: LeituraIa;
   /**

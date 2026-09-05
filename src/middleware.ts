@@ -19,6 +19,36 @@ import { gravarAcesso } from '@/lib/auth-cookies';
  */
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
+/**
+ * O cookie de acesso serve para esta requisição?
+ *
+ * **Só a presença do cookie não responde isso**, e tratar presença como sessão
+ * foi o que prendeu todo mundo num laço em 04/09/2026: com um token do formato
+ * antigo (sem a claim `type`), a API recusava, o painel quebrava — e o guard
+ * abaixo, vendo cookie, expulsava a pessoa de `/login` de volta para o painel.
+ * Sem tela de erro que ajudasse e sem caminho para reautenticar: só limpando
+ * cookie na mão.
+ *
+ * A leitura é **sem verificar assinatura**, de propósito. Quem valida token é a
+ * API, que tem o segredo; aqui a pergunta é só de roteamento — "mando para o
+ * painel ou para o login?" —, e para ela `exp` e `type` bastam. Token forjado
+ * não ganha nada: ele passa por aqui e leva 401 no primeiro fetch.
+ */
+function acessoUtilizavel(token: string | undefined): boolean {
+  if (!token) return false;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return false;
+    // base64url → base64: o JWT usa o alfabeto seguro para URL.
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    if (claims?.type !== 'access') return false;
+    return typeof claims.exp === 'number' && claims.exp * 1000 > Date.now();
+  } catch {
+    // Cookie corrompido ou de outro formato é o mesmo que não ter cookie.
+    return false;
+  }
+}
+
 async function renovarAcesso(refreshToken: string): Promise<string | null> {
   try {
     const res = await fetch(`${BACKEND}/auth/refresh`, {
@@ -65,7 +95,9 @@ export async function middleware(req: NextRequest) {
   const isAnon = casa(ANON_ROUTES);
   const isOpen = casa(OPEN_ROUTES);
 
-  let token = req.cookies.get('access_token')?.value;
+  const bruto = req.cookies.get('access_token')?.value;
+  const acessoMorto = Boolean(bruto) && !acessoUtilizavel(bruto);
+  let token = acessoMorto ? undefined : bruto;
   const refresh = req.cookies.get('refresh_token')?.value;
 
   /* A renovação vem ANTES dos dois guards, e não só do primeiro: quem tem
@@ -88,6 +120,10 @@ export async function middleware(req: NextRequest) {
        apagado: mantê-lo faria cada requisição seguinte pagar uma ida ao
        `/auth/refresh` para levar o mesmo 401. */
     if (refreshMorto) res.cookies.delete('refresh_token');
+    /* Cookie morto é apagado mesmo quando a renovação não repõe nada: deixá-lo
+       ali faria a próxima requisição repetir todo este caminho, e é ele que
+       fazia `/login` devolver a pessoa para o painel. */
+    if (acessoMorto && !acessoNovo) res.cookies.delete('access_token');
     return res;
   };
 

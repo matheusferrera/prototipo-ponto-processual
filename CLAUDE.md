@@ -245,7 +245,7 @@ Antes o maior tipo da página era o nome do cliente e o segundo era o CNJ — ma
 
 > **Contraste: `--ink-3` e `--ink-4` não servem para texto.** Medido: `--ink-3` dá 3,8–4,3:1 contra os fundos do sistema (o mínimo é 4,5) e `--ink-4` dá 2,0–2,3:1. `--signal` como cor de TEXTO dá 2,6–3,0:1 — ele é fundo (`--signal-soft`), não tinta. O que passa: `--ink-2` (7,8–9,0), `--brick` (5,9–6,8), `--brick-deep` (7,5–8,7) e `--alert` (6,9–7,9). As telas de movimentações já usam só esses; **o resto do app ainda usa `--ink-3` em texto secundário** e vale uma passada.
 
-## Documentos: a certidão de publicação
+## Documentos: a peça do tribunal e a certidão de publicação
 
 **Resposta curta para "dá para trazer os documentos?": dá, e é uma requisição HTTP.**
 
@@ -257,13 +257,38 @@ As três vias, medidas em 04/09/2026:
 |---|---|---|
 | `hash` → certidão | **100%** | o PDF, direto |
 | `link` do ato | 98% | HTTP 200 e uma página do PJe com **hCaptcha** |
-| `Movement.documentos` | **0%** no acervo público | só o scraper autenticado preenche |
+| `Movement.documentos` | **0%** no acervo público *(em 04/09; hoje é a via principal do TJDFT — ver abaixo)* | na medição, só o scraper autenticado preenchia |
 
 O `link` não recusa nem manda para o login — serve a `ConsultaDocumento` do tribunal com um `hcaptcha.com/1/api.js` embutido. Tratá-lo como "baixar documento" entregaria um captcha; ele ficou como **"Ver no PJe"**, com o aviso na tela.
 
 - **A chave nunca chega ao browser.** Ela vale numa rota pública do CNJ sem autenticação nenhuma, então devolvê-la na API entregaria o documento de um processo a quem lesse a resposta. A API expõe só `temCertidao: boolean`; o download passa por `GET /movements/{id}/certidao` (backend, confere o acervo) via `/api/movimentacoes/{id}/certidao` (proxy do Next, tem o cookie).
 - **`Content-Disposition: inline`** — abre em aba, não baixa um arquivo que o advogado teria de procurar na pasta.
 - **A aba de documentos do processo saiu de 0 para 11** neste processo de teste. Ela só conhecia `Movement.documentos` e por isso dizia "nenhum documento extraído das movimentações" para um acervo inteiro que tem documento.
+
+### A peça em si (TJDFT): `baixavel`, não `urlDocumento`
+
+A certidão acima é do DJEN. Na origem `tribunalPublico` o documento é outro — o PDF do próprio despacho, da decisão, da petição — e ele **existia e não aparecia**: `toDocumentos` filtrava por `urlDocumento`, e o backend só grava esse link quando a varredura busca o inteiro teor do ato. Medido em 05/09/2026: **57 de 532** movimentações com documento tinham URL. As outras 475 tinham a chave do tribunal e a tela as descartava como se documento não houvesse — num processo real, a aba mostrava 5 de 22 peças.
+
+O backend passou a marcar cada documento com `baixavel: true` quando sabe entregá-lo (`GET /movements/{id}/documento?i=`), e a regra do front virou:
+
+```
+baixavel   → /api/movimentacoes/{id}/documento?i={índice}   (proxy daqui, leva o cookie)
+senão      → urlDocumento                                    (o link do tribunal, do scraper)
+```
+
+- **O índice é o de `documentos[]` no backend**, então os `subDocumentos` são mapeados por fora, pelo `urlDocumento` deles: `?i=` não endereça a concatenação das duas listas.
+- **A tela de detalhe da movimentação lista as peças acima da certidão** — o PDF do ato é o que se abre para ler; a certidão prova que ele foi publicado. "Ver no PJe" só aparece quando aquele href **não** está na lista, senão seria o mesmo link duas vezes com dois rótulos.
+- Como antes, a chave do tribunal não precisa chegar ao browser para o documento chegar: quem a troca por PDF é o backend.
+### O documento do ato no STJ, e a certidão do processo
+
+Duas entradas novas na aba Documentos, das medições de 05/09/2026:
+
+- **`temDocumentoDoAto`** — o PDF do próprio ato (despacho, acórdão), servido por `/api/movimentacoes/{id}/documento`. Vem do link que o diário publica, e **ele só é documento em alguns tribunais**: das 17 comunicações do `5008313-42.2024.4.03.6000`, as 9 do STJ devolvem PDF público e as 8 do TRF3 devolvem a página com captcha do PJe. Nessas o campo é `false` e o link sai em `linkTribunal`, que vira o "Ver no PJe" com o aviso que já existia.
+- **`temCertidaoAndamento`** — a certidão de andamento do processo no STJ, por `/api/processos/{id}/certidao-andamento`. É documento do PROCESSO: lá a via pública não expõe peça por movimentação, e essa certidão é o que cobre a timeline inteira. Por isso ela abre a lista da aba, fora do `flatMap` dos eventos.
+
+Medido no mesmo processo, depois: 9 documentos de ato + 17 certidões de publicação + 1 certidão de andamento, contra zero antes.
+
+- **A timeline do processo mostra a certidão junto com as peças.** Ela só conhecia `documentos`, então um processo 100% DJEN — o formato da maior parte do acervo público — exibia zero documento em todas as linhas, embora cada ato tenha o PDF oficial do CNJ; ele existia só na aba Documentos, e quem abre a timeline não tem por que adivinhar isso. Medido no `5008313-42.2024.4.03.6000`: 0 links na timeline contra 17 na aba.
 
 ## Rotas de topo
 

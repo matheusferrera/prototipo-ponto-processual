@@ -334,9 +334,28 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
               Ver processo →
             </Link>
 
-            {(mov.temCertidao || mov.link) && (
+            {(mov.temCertidao || mov.link || mov.documentos.length > 0) && (
               <>
                 <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-3)', marginTop: 28, marginBottom: 12 }}>§ Documento</div>
+
+                {/* A PEÇA EM SI, quando o tribunal a serve: o PDF do despacho,
+                    da decisão, da sentença. Vem antes da certidão porque é o
+                    documento que o advogado abre para ler; a certidão prova a
+                    publicação dele. `mov.link` é excluído aqui porque, quando
+                    existe, ele já está nesta lista — seria o mesmo href duas
+                    vezes com dois rótulos. */}
+                {mov.documentos.map((doc, i) => (
+                  <a
+                    key={`${doc.url}-${i}`}
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.pillBtn}
+                    style={{ display: 'inline-flex', alignItems: 'center', marginBottom: 8, fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 12, border: '1px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', borderRadius: 0, textDecoration: 'none' }}
+                  >
+                    {doc.nome} ↗
+                  </a>
+                ))}
 
                 {/* A CERTIDÃO DE PUBLICAÇÃO — o documento oficial do ato, e a
                     única via que o caminho público entrega. Vem do CNJ, sem
@@ -359,7 +378,7 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
                     serve uma página com hCaptcha, não o documento. Prometer
                     "baixar documento" e entregar um captcha é pior que não
                     oferecer. */}
-                {mov.link && (
+                {mov.link && !mov.documentos.some(doc => doc.url === mov.link) && (
                   <>
                     <a
                       href={mov.link}

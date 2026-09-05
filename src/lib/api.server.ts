@@ -10,6 +10,7 @@ import type {
   Prazo,
   NaturezaPrazo,
   ProximoPrazo,
+  CategoriaMovimentacao,
   DocumentoMovimentacao,
   OrigemMovimentacao,
   LeituraIa,
@@ -90,6 +91,8 @@ type BackendProcess = {
   valorCausa: string | number | null;
   movementsCount?: number;
   openDeadlinesCount?: number;
+  /** Há certidão de andamento (documento do PROCESSO, só no STJ). */
+  temCertidaoAndamento?: boolean;
   nextDeadline?: BackendNextDeadline | null;
   // legado: algumas respostas antigas traziam um objeto summary agregado
   summary?: {
@@ -281,6 +284,7 @@ function toProcesso(p: BackendProcess): Processo {
     movimentacoesCount: p.movementsCount ?? 0,
     prazosAbertos: p.openDeadlinesCount ?? 0,
     proximoPrazo: toProximoPrazo(p.nextDeadline),
+    temCertidaoAndamento: Boolean(p.temCertidaoAndamento),
   };
 }
 
@@ -422,6 +426,16 @@ type BackendDocumento = {
   nDocumento?: string | null;
   tipoDocumento?: string | null;
   urlDocumento?: string | null;
+  /**
+   * O backend entrega este arquivo em `/movements/{id}/documento?i={índice}`.
+   *
+   * É o campo que destrava a maior parte do acervo público: `urlDocumento` vem
+   * vazio em 475 das 532 movimentações com documento (medido em 05/09/2026),
+   * porque o link durável do tribunal só é gravado quando a varredura busca o
+   * inteiro teor do ato. `baixavel` diz que a chave existe e que o backend sabe
+   * trocá-la por PDF. Ausente em backend anterior a 05/09/2026.
+   */
+  baixavel?: boolean;
 };
 
 type BackendMovement = {
@@ -442,6 +456,8 @@ type BackendMovement = {
    * de ele deixar de produzir movimentação.
    */
   origem?: OrigemMovimentacao | null;
+  /** A que serve a linha. Ausente em backend anterior a 05/09/2026. */
+  categoria?: CategoriaMovimentacao | null;
   /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
   ia?: {
     resumo: string | null; acao: string | null;
@@ -458,6 +474,19 @@ type BackendMovement = {
   textoOriginal?: string | null;
   /** Há certidão de publicação — a CHAVE nunca vem, só o fato. */
   temCertidao?: boolean;
+  /**
+   * Este ato tem o documento do TRIBUNAL — o PDF do despacho/acórdão —, servido
+   * por `/movements/{id}/documento`. Distinto de `temCertidao`, que é a prova da
+   * publicação no diário. Hoje só a origem `djen` em atos do STJ traz `true`:
+   * no PJe o mesmo campo do DJEN aponta para uma página com captcha.
+   */
+  temDocumentoDoAto?: boolean;
+  /**
+   * O link do ato no site do tribunal — **e só quando ele NÃO é o documento**.
+   * Quando é, o backend não o devolve (ele abre o PDF sem autenticação), e o
+   * que chega é `temDocumentoDoAto`.
+   */
+  linkTribunal?: string | null;
   // processo relacionado, incluído pelo backend nas respostas de /movements
   process?: BackendProcess | null;
 };
@@ -535,7 +564,11 @@ const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov
 
 /** Primeiro documento com URL — usado como link "abrir documento" da movimentação. */
 function movLink(m: BackendMovement): string | null {
-  return m.documentos?.find(d => d.urlDocumento)?.urlDocumento ?? null;
+  // `linkTribunal` como saída: é o link do ato no site do tribunal quando ele
+  // NÃO é o documento — na prática, a `ConsultaDocumento` do PJe, que pede
+  // captcha. Vale como "ver no tribunal" e é rotulado assim na tela; antes de
+  // 05/09/2026 ele não chegava aqui e o ato do diário não tinha saída nenhuma.
+  return m.documentos?.find(d => d.urlDocumento)?.urlDocumento ?? m.linkTribunal ?? null;
 }
 
 /** Parte principal (polo ativo) a partir do processo do banco. */
@@ -578,18 +611,56 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
     documentos: toDocumentos(m),
     temCertidao: Boolean(m.temCertidao),
     origem: m.origem ?? 'scraper',
+    categoria: m.categoria ?? null,
     ia: toLeituraIa(m),
   };
 }
 
-/** Documentos (e subdocumentos) com URL, prontos para virar links. */
+/**
+ * Documentos (e subdocumentos) prontos para virar links.
+ *
+ * **A regra de qual URL usar mudou em 05/09/2026, e é o conserto de um sumiço.**
+ * Antes esta função filtrava por `urlDocumento` — e como o acervo público quase
+ * nunca o tem (57 de 532 movimentações com documento), a tela mostrava "nenhum
+ * documento" para processos cheios deles. Agora `baixavel` manda: o backend
+ * serve o PDF por rota própria, e o proxy `/api/movimentacoes/{id}/documento`
+ * leva o cookie que o link direto não levaria.
+ *
+ * `urlDocumento` continua sendo a saída para o que a rota não serve — os
+ * documentos do scraper autenticado, que apontam para o PJe do tribunal.
+ *
+ * O índice é o da lista `documentos` do backend, e é por isso que os
+ * subdocumentos são mapeados DEPOIS e por outro caminho: `?i=` endereça
+ * `documentos[]`, não a concatenação das duas listas.
+ */
 function toDocumentos(m: BackendMovement): DocumentoMovimentacao[] {
-  return [...(m.documentos ?? []), ...(m.subDocumentos ?? [])]
-    .filter((d): d is BackendDocumento & { urlDocumento: string } => Boolean(d.urlDocumento))
-    .map(d => ({
-      nome: d.tipoDocumento?.trim() || d.nDocumento?.trim() || 'Documento',
-      url: d.urlDocumento,
+  const principais = (m.documentos ?? []).map((d, i) => ({
+    doc: d,
+    url: d.baixavel
+      ? `/api/movimentacoes/${encodeURIComponent(m.id)}/documento?i=${i}`
+      : d.urlDocumento ?? '',
+  }));
+  const subs = (m.subDocumentos ?? []).map(d => ({ doc: d, url: d.urlDocumento ?? '' }));
+
+  const doTribunal = [...principais, ...subs]
+    .filter(item => Boolean(item.url))
+    .map(item => ({
+      nome: item.doc.tipoDocumento?.trim() || item.doc.nDocumento?.trim() || 'Documento',
+      url: item.url,
     }));
+
+  // A peça que NÃO vem em `documentos`: nas origens que não anexam nada à
+  // movimentação — o STJ é o caso —, o documento é o link que o diário publicou,
+  // e o backend só o entrega pela rota. Sem esta entrada, um ato com PDF
+  // disponível aparecia como ato sem documento nenhum.
+  if (m.temDocumentoDoAto) {
+    doTribunal.push({
+      nome: 'Documento do ato',
+      url: `/api/movimentacoes/${encodeURIComponent(m.id)}/documento`,
+    });
+  }
+
+  return doTribunal;
 }
 
 /**
@@ -666,6 +737,11 @@ export type MovimentacaoFilters = {
    * a página carregada, não no backend.
    */
   tipo?: readonly string[];
+  /**
+   * Categoria(s) do ato — filtrado NO BANCO, ao contrário de `tipo`. Vazio
+   * deixa valer o padrão da API, que esconde `tramite`.
+   */
+  categoria?: readonly string[];
   /** "" = mais recentes | "antigas" | "tribunal" — "tribunal" exige reordenar no frontend. */
   sort?: MovimentacaoSort | string;
 };
@@ -697,7 +773,7 @@ function sortMovEntries(entries: MovEntry[], sort?: string): void {
  * não filtra.
  */
 export async function getMovimentacoes(page = 1, limit = 20, filters: MovimentacaoFilters = {}): Promise<MovimentacoesResult> {
-  const { q, tribunal, sort } = filters;
+  const { q, tribunal, sort, categoria } = filters;
   const tipo = filters.tipo ?? [];
   const needsClientSide = tipo.length > 0 || sort === 'tribunal';
 
@@ -711,6 +787,7 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
   });
   appendQueryValue(params, 'q', q);
   appendQueryValue(params, 'tribunal', tribunal);
+  if (categoria?.length) params.set('categoria', categoria.join(','));
 
   const movBody = await backendGet(`/movements?${params.toString()}`) as {
     data: BackendMovement[];
@@ -738,6 +815,7 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       time: timeStr,
       state: isNew ? 'signal' : 'quiet',
       origem: m.origem ?? 'scraper',
+      categoria: m.categoria ?? null,
       ia: toLeituraIa(m),
       prazo: toPrazoDoAto(m),
     };
@@ -797,6 +875,14 @@ export type MovimentacaoDetail = {
    * que confere a sessão antes de repassar.
    */
   temCertidao: boolean;
+  /**
+   * As peças anexadas ao ato — despacho, decisão, certidão, petição.
+   *
+   * `url` já vem resolvida por `toDocumentos`: o proxy desta aplicação quando o
+   * backend serve o PDF, o link do tribunal quando não. Vazia quando a
+   * movimentação não tem documento — que é o caso das linhas de puro trâmite.
+   */
+  documentos: DocumentoMovimentacao[];
   /**
    * Chegou agora E saiu no diário há pouco — ver `atoRecemPublicado`.
    *
@@ -859,6 +945,7 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
     ocorridoEm: m.ocorridoEm,
     novo: atoRecemPublicado(m),
     temCertidao: Boolean(m.temCertidao),
+    documentos: toDocumentos(m),
     origem: m.origem ?? 'scraper',
     ia: toLeituraIa(m),
     prazo: toPrazoDoAto(m),
@@ -1106,11 +1193,19 @@ export type ProcessoMovements = {
 /**
  * Movimentações do processo, da mais recente para a mais antiga.
  * `limit` é controlado pela página (botão "carregar mais" via search param).
+ *
+ * `categorias` vazio deixa o padrão do backend valer — que **esconde o trâmite
+ * de cartório**. Passar categorias troca o filtro; `['todas']` desliga.
  */
-export async function getProcessoMovements(processId: string, limit = 20): Promise<ProcessoMovements> {
+export async function getProcessoMovements(
+  processId: string,
+  limit = 20,
+  categorias: readonly string[] = [],
+): Promise<ProcessoMovements> {
   const take = Math.min(Math.max(1, Math.trunc(limit)), 100);
+  const filtro = categorias.length ? `&categoria=${encodeURIComponent(categorias.join(','))}` : '';
   const body = await backendGetOrNull<{ data: BackendMovement[]; total: number }>(
-    `/movements?processId=${processId}&sort=desc&page=1&limit=${take}`
+    `/movements?processId=${processId}&sort=desc&page=1&limit=${take}${filtro}`
   );
   if (!body) return { events: [], total: 0 };
   const sorted = [...body.data].sort(

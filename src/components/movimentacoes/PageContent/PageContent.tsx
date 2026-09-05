@@ -10,6 +10,7 @@ import {
   vencimentoDoAto, pedeConferencia,
 } from '@/lib/movimentacao';
 import type { Movimentacao } from '@/types';
+import { categoriaCurta } from '@/lib/categoria-movimentacao';
 import styles from './PageContent.module.css';
 
 interface PageContentProps {
@@ -129,6 +130,10 @@ function MovItem({ m }: { m: Movimentacao }) {
   const comIa = temLeituraIa(m);
   const acao = acaoMovimentacao(m);
   const selo = seloOrigem(m);
+  // A que serve o ato. Fica ao lado do tipo porque responde a mesma pergunta
+  // num nível acima: `tipo` é inferido do texto ("Juntada"), `categoria` vem
+  // classificada do banco e é o que a lista filtra.
+  const categoria = categoriaCurta(m.categoria);
   const vencimento = vencimentoDoAto(m);
   const conferir = pedeConferencia(m);
   // O rótulo do ato ("Despacho — 8ª Turma Cível") só vira linha própria quando
@@ -173,6 +178,7 @@ function MovItem({ m }: { m: Movimentacao }) {
           <span className={`${styles.tipoLabel} ${m.state === 'signal' ? styles.tipoSignal : styles.tipoNormal}`}>
             {m.tipo}
           </span>
+          {categoria && <span className={styles.categoriaLabel}>{categoria}</span>}
           {m.state === 'signal' && <Seal variant="nova" />}
           {m.state === 'alert'  && <Seal variant="erro" />}
           {/* Publicação no diário não é movimento do tribunal — sem este selo,

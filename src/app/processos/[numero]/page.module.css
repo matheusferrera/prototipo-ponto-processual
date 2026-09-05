@@ -915,3 +915,18 @@
     transition: none;
   }
 }
+
+/* A categoria do ato, ao lado do §. Discreta de propósito: é orientação de
+   leitura, não o conteúdo — quem procura a decisão bate o olho no rótulo e
+   segue, sem que ele dispute atenção com o texto do ato. */
+.timelineCategoria {
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
