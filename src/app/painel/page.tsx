@@ -17,7 +17,8 @@ import { formatarOab, type UsuarioAtual } from '@/lib/usuario';
 import { rotuloNatureza, tituloPrazo } from '@/lib/prazo';
 import { categoriaCurta } from '@/lib/categoria-movimentacao';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { MovimentacaoRow } from '@/components/movimentacoes/MovimentacaoRow/MovimentacaoRow';
+import { nomeDoCaso, nomeLegivel } from '@/lib/processo-apresentacao';
+import { MovimentacoesRecentes, type LinhaRecente } from '@/components/dashboard/MovimentacoesRecentes/MovimentacoesRecentes';
 import type { CategoriaMovimentacao, Prazo, Processo } from '@/types';
 import styles from './page.module.css';
 
@@ -41,8 +42,6 @@ const HEATMAP_DIAS = 28;
 const INICIAIS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 /** Degraus do heatmap (claro → escuro) — verde sequencial validado sobre o creme. */
 const HEAT_RAMP = ['#eaf1ec', '#bcdcc7', '#7fb495', '#3f8c62', '#166534'];
-/** Circunferência da rosca de natureza (2·π·r, r = 52). */
-const DONUT_CIRC = 2 * Math.PI * 52;
 
 const toISODate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -113,6 +112,66 @@ export default async function DashboardPage() {
 
   const allMovs = movimentacoes.flatMap(g => g.items);
 
+  // ── As últimas movimentações ──────────────────────────────────────────────
+  //
+  // As linhas do feed do painel, resolvidas AQUI, no servidor: o componente é
+  // cliente (o "exibir mais" precisa de estado) e recebe só o que desenha.
+  //
+  // `getMovimentacoes(1, 50)` acima já traz `ia`, `documentoEstado` e as vias
+  // de documento em cada item, e `processos` já traz os polos — este bloco não
+  // custa requisição nenhuma.
+  const processoPorCnj = new Map(processos.map(p => [p.cnj, p]));
+
+  const linhasRecentes: LinhaRecente[] = movimentacoes.flatMap(g => {
+    // **O ato SEM HORA vem primeiro dentro do dia.** Ele é a publicação do
+    // diário, que sai numa data e não num horário — o backend a grava à
+    // meia-noite, e por isso a ordenação por `ocorridoEm` a jogava para o FIM
+    // do dia, abaixo de toda juntada de cartório. É o ato mais importante do
+    // dia aparecendo por último, por um horário que não existe.
+    //
+    // O `sort` é estável em toda engine moderna, então a ordem entre os que
+    // TÊM hora é preservada como o feed a definiu.
+    const ordenados = [...g.items].sort((a, b) => Number(Boolean(a.time)) - Number(Boolean(b.time)));
+
+    return ordenados.map((m): LinhaRecente => {
+      const processo = processoPorCnj.get(m.cnj);
+      const caso = processo ? nomeDoCaso(processo) : null;
+      const doc = m.documentoEstado ?? 'nenhum';
+      // TRÊS vias de documento, e o ato do diário só tem a terceira — sem ela,
+      // justamente o ato que sempre tem documento ficava sem nenhum:
+      //   peça anexada → `documentoEstado`; PDF do ato → `temDocumentoDoAto`;
+      //   certidão → `temCertidao` (100% dos atos do diário).
+      const abre = doc === 'disponivel' || Boolean(m.temDocumentoDoAto);
+      // `trancado` é bloqueio DECLARADO pelo tribunal; `provavelIndisponivel` é
+      // medição nossa — a chave já foi pedida ao portal e voltou 404. Os dois
+      // viram cadeado porque nenhum abre; o motivo distingue no hover.
+      const sigiloso = doc === 'trancado' || doc === 'provavelIndisponivel';
+
+      return {
+        id: m.id,
+        titulo: caso
+          ? (caso.passivo ? `${caso.ativo} × ${caso.passivo}` : caso.ativo)
+          : (m.parte !== '—' ? nomeLegivel(m.parte) : m.cnj),
+        cnj: m.cnj,
+        tribunal: m.tribunal,
+        dataLabel: g.date || g.day,
+        ...(m.time ? { time: m.time } : {}),
+        detail: m.detail,
+        resumo: m.ia.resumo,
+        acao: m.ia.acao,
+        daParteContraria: m.ia.deQuem === 'parteContraria',
+        confiancaBaixa: m.ia.confianca === 'baixa',
+        doc: abre ? 'abre' : sigiloso ? 'sigiloso' : 'nenhum',
+        ...(sigiloso ? {
+          docMotivo: doc === 'trancado'
+            ? 'O tribunal libera a visualização quando o intimado toma ciência.'
+            : 'O portal cita este documento, mas não o entrega a esta conta.',
+        } : {}),
+        temCertidao: Boolean(m.temCertidao),
+      };
+    });
+  });
+
   // ── Prazos ────────────────────────────────────────────────────────────────
   //
   // **O painel mostra o que ESTÁ POR VIR.** Até 08/09/2026 ele ordenava por
@@ -131,21 +190,10 @@ export default async function DashboardPage() {
     return a.diasRestantes - b.diasRestantes;
   });
   const aVencer = prazosOrdenados.filter(p => p.diasRestantes !== null && p.diasRestantes >= 0);
-  // Crítico é o que vence em até 3 dias — não o que venceu há dois anos.
-  const prazosCriticos = aVencer.filter(p => p.diasRestantes! <= 3);
   const heroPrazos = aVencer.slice(0, 3);
-  const temCritico = prazosCriticos.length > 0;
   // O passivo continua visível, mas como NOTA — não como manchete. Ele só
   // aparece se `fecharPrazosDjenExpirados` ainda não os alcançou.
   const vencidosEmAberto = prazosOrdenados.filter(p => p.diasRestantes !== null && p.diasRestantes < 0).length;
-
-  // ── Prazos por natureza (rosca) ─────────────────────────────────────────────
-  const prazosNat = prazosAbertos;
-  const manifestacoes = prazosNat.filter(p => p.natureza === 'manifestacao').length;
-  const ciencias = prazosNat.filter(p => p.natureza === 'ciencia').length;
-  const totalNat = manifestacoes + ciencias;
-  const arcoManif = totalNat ? (manifestacoes / totalNat) * DONUT_CIRC : 0;
-  const arcoCien = totalNat ? (ciencias / totalNat) * DONUT_CIRC : 0;
 
   // ── Heatmap de 30 dias ──────────────────────────────────────────────────────
   const atividadeMap = new Map(atividade.dias.map(d => [d.dia, d.total]));
@@ -157,9 +205,6 @@ export default async function DashboardPage() {
     const iso = toISODate(d);
     return { iso, count: atividadeMap.get(iso) ?? 0 };
   });
-  // Movimentações do dia corrente — o número de "últimas 24h" do resumo. O DJEN
-  // publica por data, não por hora, então a granularidade honesta é o dia.
-  const movs24h = atividadeMap.get(toISODate(hoje)) ?? 0;
   // A régua sai das 7 primeiras casas da janela, não de uma constante: como a
   // janela é múltipla de 7 e termina hoje, a coluna `i` é sempre o mesmo dia da
   // semana — e derivar da própria grade é o que garante que a letra embaixo
@@ -192,65 +237,70 @@ export default async function DashboardPage() {
           <div className={styles.grid}>
             <div className={styles.mainCol}>
               {/* Resumo geral */}
-              <section className={styles.hero}>
-                <div className={styles.heroHead}>
-                  <span className={styles.heroTitle}>Resumo geral</span>
-                  <Link href="/prazos" className={styles.heroLink}>Ver todos os prazos →</Link>
+              {/* Mesma casca dos outros cards (`.panel` + `.panelHead`) desde
+                  08/09/2026. Ele era um `<section>` com cabeçalho próprio —
+                  quadrado de 6px em vez de 5, link de 13px em vez de 11, outro
+                  padding —, e a diferença não significava nada: três cartões na
+                  mesma coluna com três gramáticas. */}
+              <section className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <span className={styles.panelTitle}>Resumo geral</span>
+                  <Link href="/prazos" className={styles.panelLink}>Ver todos os prazos →</Link>
                 </div>
 
-                <div className={styles.heroStats}>
-                  <div className={styles.heroStat}>
-                    <span className={styles.heroStatNum} style={{ color: temCritico ? 'var(--alert)' : 'var(--ink)' }}>
-                      {prazosCriticos.length}
-                    </span>
-                    <span className={styles.heroStatLabel}>
-                      prazo{plural(prazosCriticos.length, '', 's')} crítico{plural(prazosCriticos.length, '', 's')}
-                    </span>
-                  </div>
-                  <div className={styles.heroStat}>
-                    <span className={styles.heroStatNum} style={{ color: movs24h > 0 ? 'var(--brick)' : 'var(--ink)' }}>
-                      {movs24h}
-                    </span>
-                    <span className={styles.heroStatLabel}>movimentações · 24h</span>
-                  </div>
-                </div>
+                {heroPrazos.length === 0 ? (
+                  <div className={styles.panelEmpty}>Nenhum prazo com data definida em aberto.</div>
+                ) : heroPrazos.map(pz => {
+                  const dias = pz.diasRestantes!;
+                  // O mesmo par de cortes que a lista de prazos usa: 3 dias é
+                  // crítico, 7 é urgente. É a única cor da linha.
+                  const urgencia = dias <= 3 ? 'critica' : dias <= 7 ? 'alta' : 'normal';
+                  const natureza = rotuloNatureza(pz);
+                  const confirmar = prazoAConfirmar(pz);
+                  const href = pz.movementId ? `/movimentacoes/${pz.movementId}` : '/prazos';
+                  // O MESMO título das movimentações e da página do processo:
+                  // o confronto entre os polos, em Título de Caso. Antes vinha
+                  // `pz.parte` cru, que o tribunal manda em caixa alta — três
+                  // linhas gritando no topo do painel.
+                  const processo = processoPorCnj.get(pz.cnj);
+                  const caso = processo ? nomeDoCaso(processo) : null;
+                  const titulo = caso
+                    ? (caso.passivo ? `${caso.ativo} × ${caso.passivo}` : caso.ativo)
+                    : (pz.parte ? nomeLegivel(pz.parte) : tituloPrazo(pz));
+                  return (
+                    <Link key={pz.id} href={href} className={styles.prazoItem}>
+                      <span className={styles.prazoCabeca}>
+                        <span className={styles.prazoCaso}>{titulo}</span>
+                        <TribTag label={pz.tribunal} />
+                      </span>
 
-                <div className={styles.heroList}>
-                    {heroPrazos.length === 0 ? (
-                      <div className={styles.panelEmpty} style={{ padding: '8px 0', textAlign: 'left' }}>
-                        Nenhum prazo com data definida em aberto.
-                      </div>
-                    ) : heroPrazos.map(pz => {
-                      const dias = pz.diasRestantes!;
-                      const isCrit = dias <= 3;
-                      const isUrg = dias <= 7;
-                      const natureza = rotuloNatureza(pz);
-                      const confirmar = prazoAConfirmar(pz);
-                      const href = pz.movementId ? `/movimentacoes/${pz.movementId}` : '/prazos';
-                      return (
-                        <Link key={pz.id} href={href} className={styles.heroRow}>
-                          <span className={styles.heroDias} style={{ color: isCrit ? 'var(--alert)' : isUrg ? 'var(--brick)' : 'var(--ink-2)' }}>
-                            {dias}d
+                      {/* Mesma etiqueta das movimentações: o QUANDO primeiro e
+                          mais forte, o número depois. Aqui o quando carrega a
+                          urgência, que é a única cor da linha. */}
+                      <span className={styles.prazoEtiqueta}>
+                        <span className={styles.prazoQuando} data-urgencia={urgencia}>
+                          {dias}d · {quandoVence(dias)}
+                        </span>
+                        <span className={styles.prazoCnj}>{pz.cnj}</span>
+                      </span>
+
+                      <span className={styles.prazoChips}>
+                        {natureza && (
+                          <span className={styles.prazoChip} data-manifestacao={pz.natureza === 'manifestacao' ? '' : undefined}>
+                            {natureza}
                           </span>
-                          <span className={styles.heroBody}>
-                            <span className={styles.heroRowTitle}>{pz.parte || tituloPrazo(pz)}</span>
-                            <span className={styles.heroMeta}>
-                              {natureza && (
-                                <span className={styles.chipNat} data-manifestacao={pz.natureza === 'manifestacao' ? '' : undefined}>
-                                  {natureza}
-                                </span>
-                              )}
-                              {confirmar && (
-                                <span className={styles.chipConfirmar}>{confirmar.estimado ? '≈ estimado' : 'a confirmar'}</span>
-                              )}
-                              <span className={styles.heroMetaText}>{quandoVence(dias)}</span>
-                            </span>
+                        )}
+                        {/* `≈` quer dizer que a data é CÁLCULO nosso, não o
+                            vencimento que o tribunal publicou. */}
+                        {confirmar && (
+                          <span className={styles.prazoChip} data-estimado="">
+                            {confirmar.estimado ? '≈ estimado' : 'a confirmar'}
                           </span>
-                          <TribTag label={pz.tribunal} />
-                        </Link>
-                      );
-                    })}
-                </div>
+                        )}
+                      </span>
+                    </Link>
+                  );
+                })}
 
                 {/* O passivo, como NOTA. Ele só existe quando
                     `fecharPrazosDjenExpirados` ainda não alcançou a linha — e
@@ -272,23 +322,10 @@ export default async function DashboardPage() {
                   </Link>
                 </div>
 
-                {allMovs.length === 0 ? (
+                {linhasRecentes.length === 0 ? (
                   <div className={styles.panelEmpty}>Nenhuma movimentação capturada ainda.</div>
                 ) : (
-                  <>
-                    {/* No celular mostramos só as 3 primeiras; as demais ficam
-                        num wrapper `display:contents` que some abaixo de 768px. */}
-                    {allMovs.slice(0, 3).map(mov => (
-                      <MovimentacaoRow key={mov.id} m={mov} densidade="compacta" comHora selo />
-                    ))}
-                    {allMovs.length > 3 && (
-                      <div className={styles.feedExtra}>
-                        {allMovs.slice(3, 6).map(mov => (
-                          <MovimentacaoRow key={mov.id} m={mov} densidade="compacta" comHora selo />
-                        ))}
-                      </div>
-                    )}
-                  </>
+                  <MovimentacoesRecentes linhas={linhasRecentes} />
                 )}
               </div>
             </div>
@@ -329,36 +366,6 @@ export default async function DashboardPage() {
                 </div>
               </div>
 
-              {/* Prazos por natureza (rosca) */}
-              <div className={styles.panel}>
-                <div className={styles.panelHead}>
-                  <span className={styles.panelTitle}>Prazos por natureza</span>
-                  <span className={styles.panelCount}>{totalNat}</span>
-                </div>
-                {totalNat === 0 ? (
-                  <div className={styles.panelEmpty}>Nenhum prazo classificado em aberto.</div>
-                ) : (
-                  <div className={styles.donutBody}>
-                    <svg viewBox="0 0 140 140" width="112" height="112" style={{ flexShrink: 0 }} aria-hidden="true">
-                      <circle cx="70" cy="70" r="52" fill="none" stroke="var(--paper-2)" strokeWidth="18" />
-                      <circle cx="70" cy="70" r="52" fill="none" stroke="var(--brick)" strokeWidth="18"
-                        strokeDasharray={`${arcoManif} ${DONUT_CIRC}`} transform="rotate(-90 70 70)" />
-                      <circle cx="70" cy="70" r="52" fill="none" stroke="var(--signal)" strokeWidth="18"
-                        strokeDasharray={`${arcoCien} ${DONUT_CIRC}`} strokeDashoffset={-arcoManif} transform="rotate(-90 70 70)" />
-                    </svg>
-                    <div className={styles.donutLegend}>
-                      <div className={styles.donutRow}>
-                        <span className={styles.donutSwatch} style={{ background: 'var(--brick)' }} />
-                        Manifestação <span className={styles.donutVal}>{manifestacoes}</span>
-                      </div>
-                      <div className={styles.donutRow}>
-                        <span className={styles.donutSwatch} style={{ background: 'var(--signal)' }} />
-                        Ciência <span className={styles.donutVal}>{ciencias}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Processos — composição da carteira */}
               <div className={styles.panel}>

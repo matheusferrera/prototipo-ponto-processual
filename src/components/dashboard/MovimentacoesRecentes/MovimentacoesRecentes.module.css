@@ -1,0 +1,165 @@
+/* A linha do feed do painel: caso, etiqueta, ato e a leitura da IA.
+
+   O texto ocupa a LARGURA INTEIRA da linha. Houve um `max-width: 68ch` aqui,
+   pela medida de leitura clássica — e na tela ele não se sustentou: o resumo
+   parava no meio e deixava um vão morto até a borda direita, onde a tag do
+   tribunal já ancorava o olho. Medida de leitura vale para um parágrafo que se
+   lê de cima a baixo; aqui são três frases dentro de um cartão que tem borda
+   dos dois lados, e a borda já faz o trabalho que o `ch` faria. */
+.item { border-top: 1px solid var(--line); }
+
+.corpo {
+  display: block;
+  padding: var(--space-md) var(--space-lg) var(--space-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.corpo:hover .caso { color: var(--brick); }
+
+.cabeca {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+/* O caso é o TÍTULO da linha — é por ele que o advogado reconhece o processo.
+   O número vira etiqueta abaixo. */
+.caso {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.etiqueta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-top: var(--space-2xs);
+  min-width: 0;
+}
+
+/* O QUANDO é o eixo de leitura de um feed cronológico, e por isso é o mais
+   forte dos dois: `--ink` contra o `--ink-2` do número, um degrau de corpo
+   acima e em negrito. Antes os dois dividiam cor, corpo e peso, e a data
+   desaparecia no meio da linha.
+
+   `tabular-nums` + `min-width` no desktop alinham os horários na vertical —
+   é o que deixa a coluna ser varrida de cima a baixo em vez de lida item a
+   item. No celular a largura fixa roubaria espaço do CNJ, então ela não vale. */
+.quando {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cnj {
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--text-cnj);
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .quando { min-width: 14ch; }
+}
+
+.ato {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--text-small);
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.resumo {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+/* A ação é o que o ato COBRA — o único texto do bloco que vira trabalho. */
+.acao {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.acao strong { color: var(--brick); font-weight: 700; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0 var(--space-lg) var(--space-md);
+}
+
+/* `--ink-2` sobre `--paper-2` (7,8:1). `--ink-3` reprova o AA, e estes rótulos
+   dizem de quem é o prazo e se a peça abre. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 2px 6px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.chip[data-confianca='baixa'] { background: var(--signal-soft); color: var(--signal-ink); }
+.chip[data-sigilo] { background: var(--signal-soft); color: var(--signal-ink); }
+
+.doc {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--brick);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.doc:hover { background: var(--brick-soft); }
+
+/* O "exibir mais": largura inteira, dentro do painel, sem virar botão de ação
+   primária — ele revela o que já está na página, não busca nada. */
+.mais {
+  display: block;
+  width: 100%;
+  padding: var(--space-md);
+  border: none;
+  border-top: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--brick);
+  font-family: var(--ui);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mais:hover { background: var(--brick-soft); }
+.mais:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }

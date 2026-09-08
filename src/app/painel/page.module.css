@@ -68,118 +68,97 @@
 }
 .coverageCta:hover { background: color-mix(in srgb, var(--signal-ink) 88%, #000); }
 
-/* ===== HERO: Precisa de você ===== */
-.hero {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  padding: var(--space-xl);
-}
-.heroHead { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-lg); }
-.heroTitle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--text-lbl);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--ink-2);
-}
-.heroTitle::before { content: ''; width: 6px; height: 6px; flex-shrink: 0; background: var(--brick); }
-.heroLink { margin-left: auto; font-size: var(--text-small); font-weight: 700; color: var(--brick); text-decoration: none; }
-.heroLink:hover { text-decoration: underline; }
+/* ===== Resumo geral (prazos) =====
+   A casca é a genérica (`.panel`), então aqui fica só o que é do card: a faixa
+   de números e a linha de prazo. A linha segue a MESMA gramática das
+   movimentações — caso como título, etiqueta com o quando e o número, chips
+   embaixo —, porque duas listas empilhadas na mesma coluna com duas gramáticas
+   é o que fazia o painel parecer dois produtos. */
 
-/* Dois números-resumo (prazos críticos · movimentações 24h) acima da lista. */
-.heroStats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xl);
-  padding-bottom: var(--space-lg);
-  margin-bottom: var(--space-md);
-  border-bottom: 1px solid var(--line-soft);
-}
-.heroStat { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
-.heroStatNum {
-  font-family: var(--mono);
-  font-weight: 800;
-  font-size: 44px;
-  line-height: 0.85;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-.heroStatLabel {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.heroGrid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); align-items: center; }
-.heroNumWrap { display: flex; align-items: baseline; gap: var(--space-md); }
-.heroNum {
-  font-family: var(--mono);
-  font-weight: 800;
-  font-size: 56px;
-  line-height: 0.82;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-.heroNumMeta { display: flex; flex-direction: column; }
-.heroNumLabel { font-size: var(--text-h3); font-weight: 800; color: var(--ink); }
-.heroNumSub { font-size: var(--text-caption); color: var(--ink-2); margin-top: var(--space-2xs); line-height: 1.5; max-width: 42ch; }
-
-.heroList { display: flex; flex-direction: column; min-width: 0; }
-.heroRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md) 0;
-  border-top: 1px solid var(--line-soft);
+/* ---- A linha de prazo ---- */
+.prazoItem {
+  display: block;
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--line);
+  color: inherit;
   text-decoration: none;
 }
-.heroRow:first-child { border-top: none; }
-.heroDias {
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: 22px;
-  line-height: 1;
-  min-width: 44px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.heroBody { flex: 1; min-width: 0; }
-.heroRowTitle { display: block; font-size: var(--text-body); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.heroMeta { display: flex; align-items: center; gap: 6px; margin-top: var(--space-2xs); font-size: var(--text-caption); color: var(--ink-2); min-width: 0; }
-.heroMetaText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* chips de prazo */
-.chipNat {
+.prazoItem:hover .prazoCaso { color: var(--brick); }
+
+.prazoCabeca { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
+
+.prazoCaso {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-body);
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prazoEtiqueta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-top: var(--space-2xs);
+  min-width: 0;
+}
+
+/* O QUANDO carrega a urgência, e é a ÚNICA cor da linha. Antes a cor vinha num
+   `style` inline no número de dias; virou atributo para a regra morar no CSS
+   junto das outras. */
+.prazoQuando {
   flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 1px 5px;
-  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: var(--text-small);
+  font-weight: 700;
   color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
-.chipNat[data-manifestacao] {
-  color: var(--brick);
-  border-color: color-mix(in srgb, var(--brick) 40%, var(--line));
-  background: var(--brick-soft);
+
+.prazoQuando[data-urgencia='critica'] { color: var(--alert); }
+.prazoQuando[data-urgencia='alta'] { color: var(--brick); }
+
+.prazoCnj {
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--text-cnj);
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.chipConfirmar {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 1px 5px;
-  color: var(--signal-ink);
-  border: 1px solid color-mix(in srgb, var(--signal) 40%, var(--line));
-  background: var(--signal-soft);
+
+.prazoChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
 }
+
+/* Mesmo chip das movimentações: 11px, sem borda, sobre `--paper-2` (7,8:1 com
+   `--ink-2`). Eram 9px em caixa alta com borda, e a diferença de 2px mais a
+   borda faziam duas famílias de chip na mesma tela. */
+.prazoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 2px 6px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.prazoChip[data-manifestacao] { background: var(--brick-soft); color: var(--brick); }
+.prazoChip[data-estimado] { background: var(--signal-soft); color: var(--signal-ink); }
 
 /* ===== Painel genérico ===== */
 .panel { border: 1px solid var(--line); background: var(--paper); }
@@ -234,11 +213,6 @@
 }
 .heroNota:hover { color: var(--alert); text-decoration: underline; }
 
-/* No celular o feed mostra só as 3 primeiras; estas somem. No desktop o wrapper
-   é transparente ao layout (`display:contents`), então as linhas seguem o
-   empilhamento normal do painel. */
-.feedExtra { display: none; }
-
 /* ===== Heatmap 30 dias ===== */
 .heatBody { padding: var(--space-lg); }
 /* 7 colunas = 1 semana por linha, 4 linhas. A janela é múltipla de 7 e termina
@@ -274,12 +248,6 @@
 }
 
 /* ===== Rosca (prazos por natureza) ===== */
-.donutBody { padding: var(--space-lg); display: flex; align-items: center; gap: var(--space-xl); }
-.donutLegend { display: flex; flex-direction: column; gap: var(--space-md); min-width: 0; }
-.donutTotal { font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--ink); line-height: 1; }
-.donutRow { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--text-caption); color: var(--ink-2); }
-.donutSwatch { width: 10px; height: 10px; flex-shrink: 0; }
-.donutVal { font-family: var(--mono); font-weight: 700; margin-left: auto; color: var(--ink-2); }
 
 /* ===== Carteira (composição + atividade) ===== */
 .carteiraBody { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-lg); }
@@ -321,8 +289,6 @@
   .coverage { padding: var(--space-lg) var(--space-xl); gap: var(--space-lg); flex-wrap: nowrap; }
 
   .hero { padding: var(--space-2xl); }
-  .heroStats { gap: var(--space-3xl); }
-  .heroStatNum { font-size: 52px; }
   .heroDias { font-size: 30px; min-width: 60px; }
   .heroRow { gap: var(--space-xl); padding: var(--space-lg) 0; }
   .heroRowTitle { font-size: var(--text-h2); }
@@ -330,7 +296,6 @@
   .grid { grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-xl); }
   .mainCol { gap: var(--space-xl); }
 
-  .feedExtra { display: contents; }
-
   .heatCell { height: 32px; }
 }
+

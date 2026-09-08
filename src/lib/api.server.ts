@@ -1006,6 +1006,12 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       // Dois fatos INDEPENDENTES, dois campos — ver `Movimentacao.temInteiroTeor`.
       temInteiroTeor: temTexto(m),
       documentoEstado: m.documentoEstado ?? 'nenhum',
+      // As duas vias de DOCUMENTO que não vivem em `documentoEstado`: a
+      // certidão do CNJ (100% dos atos do diário) e o PDF que o `link` do ato
+      // serve em alguns tribunais. Sem elas, o ato do DJEN — justamente o que
+      // sempre tem documento — aparecia como ato sem documento nenhum.
+      temCertidao: Boolean(m.temCertidao),
+      temDocumentoDoAto: Boolean(m.temDocumentoDoAto),
     };
     return { item, ocorrido, isNew };
   });

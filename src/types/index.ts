@@ -151,6 +151,23 @@ export interface Movimentacao {
    * inexistente vai abrir depois.
    */
   documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
+  /**
+   * **Há CERTIDÃO DE PUBLICAÇÃO** — o PDF oficial do CNJ, com cabeçalho do
+   * tribunal, destinatário, advogados com OAB e o teor integral. É o que se
+   * junta aos autos para demonstrar tempestividade.
+   *
+   * Verdadeiro em 100% dos atos de origem `djen` (o `hash` vem em toda
+   * comunicação) e falso nas demais. Distinto de `documentoEstado`, que é a
+   * PEÇA anexada ao ato: um despacho do diário não tem peça e tem certidão.
+   */
+  temCertidao?: boolean;
+  /**
+   * **O `link` do ato serve o documento**, e não uma página com captcha.
+   * Depende do tribunal: no STJ o link é o PDF; no PJe é a `ConsultaDocumento`
+   * com hCaptcha, e aí isto é falso. Quem entrega o arquivo é a rota
+   * autenticada — a chave nunca chega ao browser.
+   */
+  temDocumentoDoAto?: boolean;
 }
 
 export interface MovimentacaoGroup {
