@@ -128,7 +128,7 @@ Server Component. Cada rota tem seu próprio `PageContent` em `src/components/<r
 
 | Rota | PageContent | Responsabilidade |
 |---|---|---|
-| `/processos` | `processos/PageContent` | Tabela de processos com `<ProcessoRow>` + paginação |
+| `/processos` | `processos/PageContent` | Lista de casos (`ProcessList`, padrão) ou tabela configurável (`ProcessTable`), alternadas por `ProcessView` conforme a preferência salva; barra de estado (`ProcessSummaryBar`) + paginação |
 | `/movimentacoes` | `movimentacoes/PageContent` | Feed agrupado por data com `<MovItem>` inline |
 | `/prazos` | `prazos/PrazosView` | (mesmo papel, nome diferente) |
 | `/status` | `status/PageContent` (`StatusPageContent`) | Tabela de saúde por tribunal, `'use client'` (polling 30s) |
@@ -155,7 +155,7 @@ Carteira vazia não é um estado só, e tratá-la como um era o que fazia o pain
 
 Não seguem o padrão `PageHeader + PageContent`. O layout é montado diretamente no `page.tsx` com `inline styles` (sem CSS Module separado). Exemplo: `/processos/[id]` tem breadcrumb, hero, timeline e sidebar de detalhe, tudo no arquivo.
 
-`TimelineItem` é um sub-componente local definido dentro do `page.tsx` — não foi extraído para `src/components/` ainda.
+A timeline do processo saiu do `page.tsx` em 06/09/2026: é `components/movimentacoes/TimelineProcesso/` (`'use client'`). Ver [A timeline do processo](#a-timeline-do-processo-dia-a-dia-com-carregar-mais).
 
 ### Renderização e `'use client'`
 
@@ -166,7 +166,7 @@ Não seguem o padrão `PageHeader + PageContent`. O layout é montado diretament
 | `PageHeader` | Server | Filtros/busca/abas via URL params (Links), sem state de cliente |
 | `PageInfo` | Client | `useState` + `useRef` do carousel |
 | `PageContent` | Server | Renderização de lista pura |
-| `ProcessoRow` | Server | Sem estado |
+| `ProcessList` | Server-compatível (renderiza dentro de `ProcessView`, client) | Linha = link; sem estado |
 | `ToggleSw` | Client | `Switch` interativo do shadcn |
 | `Sidebar` | Client | rodapé lê o usuário logado via `useUsuarioAtual` |
 
@@ -205,7 +205,31 @@ Paleta "creme + verde-floresta" — tokens em `src/app/globals.css`.
 
 **Regra de estilo editorial:** zero `border-radius` nos elementos do sistema — bordas sempre retas.
 
+### Espaçamento e empilhamento também são tokens (desde 06/09/2026)
+
+`--space-2xs` (2px) · `--space-xs` (4) · `--space-sm` (8) · `--space-md` (12) · `--space-lg` (16) · `--space-xl` (24) · `--space-2xl` (32) · `--space-3xl` (48). Base 4pt, não 8: entre 8 e 16 falta 12 o tempo todo numa lista densa.
+
+Existem porque **não existiam**: medido nos CSS Modules da tela de movimentações, eram 23 valores px distintos com **todos os inteiros de 1 a 10 presentes** — 2px, 3px e 4px fazendo o mesmo trabalho em seletores vizinhos. Sem um conjunto declarado, a próxima linha inventa 7px e ninguém percebe. Nome semântico, não numérico: renomear valor não pode virar renomear variável.
+
+`--z-sticky` (10) · `--z-dropdown` (20) · `--z-scrim` (30) · `--z-panel` (40) · `--z-modal` (50) · `--z-toast` (60), na ordem em que as camadas se cobrem. Eram nove inteiros crus, e a consequência era real: `.sortPanel` tinha `30` na base e **`20` no ≥768px, com o próprio backdrop em `29`** — no desktop o painel de ordenação abria por baixo do véu que ele mesmo acende. Número solto não tem como estar errado; camada nomeada tem.
+
+**`--ink-3` e `--ink-4` continuam fora de texto** (4,32:1 e 2,33:1, medidos nesta tela contra `--paper`). A afirmação anterior de que "as telas de movimentações já usam só `--ink-2`/`--brick`/`--alert`" estava desatualizada: `--ink-3` aparecia em 10 seletores do feed, inclusive nos três campos da linha (assunto, órgão, "autos nº") e no cabeçalho do dia. Corrigido no feed; **o resto do app ainda merece a passada.**
+
 ---
+
+## Processos (`/processos`): lista por padrão, tabela por opção
+
+A carteira abre como **lista de casos**, não como planilha. Cada linha responde, nesta ordem: *de quem é* (Polo ativo × Polo passivo, o mesmo título da página de detalhe), *o que mudou* (última movimentação + "há 2 d", com o selo `Nova` quando o backend marca `state: signal`) e *até quando* (chip de prazo só quando existe). Tribunal, CNJ e órgão julgador ficam à direita, menores. A linha inteira é um único `<Link>`.
+
+- **Os números da carteira são filtros.** `ProcessSummaryBar` desenha "Todos 37 · Com novidade 1 · Com erro 0" como chips que trocam `?state=`. O backend devolve `counts.all/signal/alert` **ignorando o filtro de estado** (senão os outros chips zerariam ao clicar em um). "Com erro" só aparece quando há erro ou quando está ativo.
+- **A tabela não morreu.** `viewMode: 'list' | 'table'` mora nas mesmas preferências do localStorage (`process-table-preferences.ts`); o segmentado Lista/Tabela e a engrenagem ficam na barra de resumo, e o painel lateral só mostra colunas/densidade/fonte no modo tabela. O botão "Colunas" saiu do header.
+- **Ordena quem é COLUNA do processo — 14 das 19; as outras 4 não são "mais um cabeçalho".** A ordenação é do servidor (`?sort=&order=` → `orderBy` do Prisma), então ordenar no cliente ordenaria só os 20 da página. `SORT_KEY_BY_COLUMN` (`ProcessTable.tsx`) mapeia coluna → chave da API e alimenta os dois lugares que precisavam saber disso: o cabeçalho clicável e o `aria-sort` do `<th>`. Ficam de fora **Estado** e **Próximo prazo** (derivados: o estado sai de `syncStatus`+`lastMovAt`, o prazo é o mínimo dos `Deadline` abertos — Prisma só ordena por `_count` de relação), **Polo ativo/passivo** (colunas Json) e **Grau** (sufixo de `tribunal`, que ordenar por tribunal já agrupa). Os quatro exigem SQL cru na listagem — que significa reescrever em SQL a busca livre, os 15 filtros e os 3 contadores do `$transaction` — ou coluna denormalizada; só o próximo prazo paga esse preço.
+- **A direção padrão de cada chave é espelho do backend** (`PROCESS_SORT_DEFAULT_ORDER` em `lib/process-filters.ts` ↔ `PROCESS_SORT` em `processes.router.ts`): texto sobe, data/valor/contagem descem. Divergir desenha uma seta que mente sobre a lista — ela decide para onde a seta aponta antes do primeiro clique e o que o clique seguinte pede.
+- **O seletor mobile traz TODAS as chaves, mesmo as de coluna que o card não mostra.** No mobile não há cabeçalho para clicar: chave fora do `SORT_OPTIONS` é chave que chega pela URL e o seletor não consegue mostrar como ativa.
+- **Partes em caixa alta viram Título de Caso** (`nomeLegivel`, em `lib/processo-apresentacao.ts`): conectivos ficam minúsculos, tokens de até duas letras e siglas conhecidas ficam em caixa alta. Só se aplica quando o nome veio 100% maiúsculo.
+- **Tokens `--signal-ink` e `--quiet-ink`** existem porque `--signal` (2,9:1) e `--quiet` (3,7:1) reprovam como texto sobre os próprios fundos `-soft`; os chips de prazo da lista e da tabela usam os novos.
+- **Proibido:** borda lateral colorida como marcador de estado (side-stripe). Novidade se mostra por selo com ícone + texto, peso do título e fundo da linha.
+- **A barra é compartilhada** (`components/filters/SummaryBar.tsx`): em Processos, chips de contagem que filtram à esquerda e Lista/Tabela à direita; em Prazos (`PrazoSummaryBar`), só Pauta/Kanban/Calendário, à esquerda. O header de Prazos ficou com quatro botões alinhados num grupo só: busca, filtro, ordenação e o PDF só-ícone (`ExportPrazosPdfButton compact`, injetado via `trailing` do `PrazoFilterControls`). Mesma estrutura no celular e no desktop.
 
 ## Resumo do dia (`/resumo`)
 
@@ -221,11 +245,80 @@ A leitura do último dia útil do diário: um panorama em prosa e as publicaçõ
 
 A linha do tempo do acervo. Desde 03/09/2026 ela é **100% DJEN**: o DataJud parou de gravar movimentação e ficou só na capa do processo, então toda linha aqui é a publicação de um ato no diário, com o inteiro teor guardado.
 
-**A coluna da esquerda é o PRAZO, não o horário.** Era o horário do ato e nunca tinha o que mostrar — o diário publica numa data, não num horário —, então toda linha desenhava `publicado —`. Hoje ela carrega a data-limite do `Deadline` que aquele ato abriu, e fica **vazia** quando o ato não abre prazo (mera ciência, pauta e ata eram 46% numa medição real). A célula continua no grid mesmo vazia: são três colunas fixas, e omitir o elemento faria o corpo cair na faixa de 92px.
+### A linha é UMA, e mora em `MovimentacaoRow`
+
+A mesma movimentação tinha **três implementações** no produto: o feed (cartão com borda, 140px), o painel (JSX com estilo inline dentro de `painel/page.tsx`, 48px) e a pauta de prazos. A do painel era a mais legível e a mais barata — e era a única sem componente. Desde 06/09/2026 feed e painel usam `components/movimentacoes/MovimentacaoRow/`, com `densidade: 'compacta' | 'confortavel'`.
+
+A gramática é a de `ProcessList`: corpo à esquerda, calha de identificação e prazo à direita, filete embaixo, **sem caixa**. Duas telas com a mesma gramática valem mais que duas telas com o ótimo local de cada uma.
+
+**O ato é o título; o cliente é a segunda linha.** Era o contrário — cliente em 15px/700, o que aconteceu em 13px cinza. Num feed cronológico o cliente é o endereço e o ato é a notícia; e como metade das linhas de um acervo repete "Juntada de petição", o que diferencia uma linha da outra estava justamente no tipo menor.
+
+**O prazo é um chip à direita, e só ocupa espaço quando existe.** Era uma coluna fixa de 92px em toda linha. Medido em 06/09/2026: **3 de 20** linhas da primeira página abriam prazo, e no acervo inteiro são 222 prazos abertos para 22.713 movimentações. A justificativa da coluna vazia era ler as datas na vertical — mas a lista é ordenada por **publicação** e os vencimentos caem de 5 a 30 dias depois, então a coluna nunca esteve em ordem, e coluna de datas fora de ordem não se lê na vertical.
+
+**O que a linha mostra abaixo do vencimento é `quando`, não `dias`.** `dias` é o TAMANHO do prazo ("15 dias"); lido embaixo de "VENCE / 24 set", dizia "faltam 15 dias". O helper já calculava `quando` ("vence em 3 dias", "venceu há 2 dias") e a tela nunca o usava. Errava **tarde**, no único campo em que errar tarde custa o prazo.
+
+**O estado tem dois canais, não quatro.** `state: 'signal'` acendia a borda inteira em `--brick`, tingia o tipo, e ainda imprimia o selo. Com 12 de 20 linhas marcadas numa carteira recém-importada, vinte molduras verdes deixam de significar "novo" e passam a significar "lista" — é a mesma medição que já tinha corrigido a timeline do processo. Ficam o selo e o fundo da linha, que são os dois canais que este arquivo sanciona.
+
+**Resultado medido (1920×929, mesma carteira):** 140px → **68px** por linha, 6,6 → **13** linhas por tela, 20 → **50** por página (324 → 130 páginas). No celular (396px), 133px → **93px**.
+
+Fora da linha: o **cabeçalho do dia gruda no topo** e subiu para 12px/700 em `--ink-2` (era 11px em `--ink-3`, que mede 4,32:1 e reprova o AA). Ele é a única estrutura do feed e estava desenhado com a tipografia mais fraca da página.
 
 **`≈` antes da data quer dizer "calculamos".** Só `metodoPrazo: textoExplicito` é o ato declarando os dias; `prazoLegal`, `padraoCpc218` e `analiseIa` são cálculo nosso sobre a regra do art. 4º da Lei 11.419, que não conhece feriado estadual, prazo em dobro nem suspensão por portaria. O feed abrevia num caractere; o detalhe escreve a ressalva por extenso. Exibir os dois com a mesma cara faria estimativa passar por vencimento oficial — o erro caro, e na direção perigosa.
 
 **O selo `NOVA` compara duas datas, não uma.** `detectedAt` sozinho mentia: um backfill de 2 anos grava tudo agora e marcava **as vinte linhas da página** como novas, inclusive publicações de 2024. `atoRecemPublicado` (`api.server.ts`) exige detecção nas últimas 48h **e** publicação nos últimos 7 dias. Quando tudo é novo, nada é.
+
+### O ato abre NA LISTA — e a página do ato continua de pé
+
+`?aberta=<id>` expande a linha no lugar, com a leitura completa: prazo por extenso + fundamento + ressalva, providência, inteiro teor (fechado acima de 2.400 chars) e os documentos. Uma linha por vez.
+
+**A linha continua sendo um `<a>`; só muda o destino.** Aponta para `?aberta=<id>` (e, quando já aberta, para o href sem o parâmetro — o mesmo clique fecha), com `scroll={false}`. Consequência: **zero JavaScript novo**, o botão voltar fecha o painel, recarregar não perde o lugar e o endereço é compartilhável. É a mesma disciplina dos filtros — a URL é a fonte da verdade —, aplicada a um estado que quase todo mundo resolveria com `useState`.
+
+**A rota `/movimentacoes/[id]` NÃO morreu, e não é do feed: é do ATO.** Apontam para ela a timeline do processo (`TimelineProcesso.tsx`) e o "ver o ato" da pauta de prazos (`PrazosView.tsx`) — matá-la deixaria duas telas sem destino e tiraria do ato o único endereço que se manda para um colega. O painel traz "abrir a página do ato" como saída.
+
+**Os blocos são os MESMOS objetos** (`components/movimentacoes/AtoDetalhe/`), consumidos pela página e pelo painel — inclusive a **ficha**, que virou a sidebar da página. Sem isso seria a quarta implementação do mesmo ato no produto — e a primeira a divergir seria a regra do prazo, que é onde divergir custa caro.
+
+#### O painel foi desenhado a partir do celular, e para o ato SEM texto
+
+Duas coisas o painel não é: uma cópia da página em miniatura, e uma tela de desktop encolhida.
+
+- **A ordem é a da urgência no telefone** — prazo → providência → texto (fechado) → arquivos → ficha —, e é a mesma ordem do DOM, do Tab e do leitor de tela. A partir de 768px as áreas do grid põem o texto à esquerda e arquivos + ficha na calha de 320px, **sem reordenar o DOM**.
+- **O `<details>` do teor abre fechado acima de 800 caracteres no painel** (a página usa 2.400). O corte é do celular: a 396px, 800 chars já são ~20 linhas, e um ato de 8 KB empurraria arquivos e ficha para 1.500px abaixo do polegar.
+- **Rolagem própria só no desktop.** No celular o texto flui na página — caixa rolável dentro de lista rolável rouba o gesto do polegar. No desktop ela existe (`max-height: 52vh`) porque o texto divide a altura com a calha.
+- **O layout padrão é o do ato SEM inteiro teor, que é o caso comum**: têm texto 100% das linhas `djen`, 2,0% das de `tribunalPublico` e 0,1% das de `pdpj`. Com a grade de duas colunas, a frase "o inteiro teor só existe no diário" ficava sozinha num vão de 1.269px. `:has(.semTexto)` troca as áreas: a frase ocupa a largura e a **ficha se espalha em duas colunas de pares**.
+- **Nada no painel repete a linha acima.** O bloco verde de 24px com a data saiu: ele repetia, em cartaz, o chip que está 40px acima. A data volta por extenso, em 17px, com o que o chip não cabia.
+
+#### O mapeador estava jogando fora metade do registro
+
+`toPrazoDoAto` (`api.server.ts`) guardava **6 dos 13 campos** que o backend manda no prazo. Morriam ali: `canal` (diário ou portal — contam de dias diferentes), `deQuem` e `parte`, `emDobro` (CPC 180/183/186), `origem` (o que separa o prazo que o tribunal publicou do que nós calculamos), `fundamento` e `publicadoEm`. O painel é a primeira tela que precisava deles, e a linha de qualificação do prazo — `prazo de 15 dias · manifestação · pelo diário · sem dobra · do destinatário` — é literalmente esse resgate.
+
+Junto vieram `fontes[]` (**quais** fontes confirmaram o ato: `pdpj + diário` quando dois sistemas independentes concordam — só aparece com mais de uma, porque "confirmado por 1 fonte" não é informação) e `nMovimento`, ambos mandados pelo backend e exibidos em tela nenhuma.
+
+> Três defeitos que só a tela real mostrou: `OrigemMovimentacao` não tinha `pdpj` (o enum do banco tem, e é a origem de 22 mil linhas), então a ficha imprimia o valor cru; `grauLabel` devolve `'DJEN'`, que não é grau, e a ficha escrevia "DJEN grau"; e a distribuição vinha com hora colada ("28/05/2007 03:00"), dando precisão de relógio a um fato de calendário — a hora ali é o carimbo de importação.
+
+**O detalhe é buscado só quando alguém abre.** `textoOriginal` não vem na listagem de propósito (medido: 100% das linhas `djen` têm inteiro teor, com média de 8 KB e 151 KB no maior; nas outras origens são 2,0% e 0,1%), então abrir custa uma requisição — e o `getMovimentacao` só roda se o id estiver **nesta** página.
+
+**`?aberta=` de um ato fora do recorte não abre nada e não redireciona.** A URL do feed descreve a LISTA; o parâmetro só tem efeito sobre o que está nela. Quem quer o ato tem o endereço dele. O id é saneado (`[A-Za-z0-9_-]{1,64}`) antes de virar requisição, e o href da linha carrega a página atual — senão abrir um ato na página 2 voltaria para a 1, onde ele não está.
+
+> **O custo declarado:** abrir uma linha re-renderiza a página no servidor, inclusive as 50 linhas. Medido localmente em ~50ms. Se em produção pesar, a saída é envolver só o painel num `<Suspense>` — não foi feito preventivamente.
+
+### O corte é a CATEGORIA, e a faixa de métricas saiu
+
+O topo do feed gastava 108px com "Novas (48h) 12 · Nesta página 20 · Total 6478", e dois desses três números não eram informação — "nesta página" é o tamanho da página e "total" já está na paginação. O lugar valia mais como o corte que a página não oferecia: **decisões · petições · publicações · prazos · trâmite**, que o backend já filtra no banco e para o qual **já existia componente pronto (`CategoriaFilter`), montado em tela nenhuma**.
+
+- **`newToday` é da PÁGINA, não da conta** (`getMovimentacoes` conta dentro do conjunto trazido). Escrito "Novas (48h)", o número parecia um fato da conta inteira e ia a zero na página 2; o rótulo agora diz "novas nesta página".
+- **No celular a faixa de categorias ROLA, não quebra**: com `wrap`, as seis opções viram quatro linhas e ~110px antes da primeira movimentação. Mesmo tratamento do seletor de anos do calendário do processo.
+
+### O filtro de ORIGEM é o que desdobra a linha repetida
+
+O mesmo ato existe **duas vezes** no feed quando o portal e o diário o viram: o pareamento do PDPJ+DJEN (`pdpj-djen-merge.ts`) carimba `fontes` nas duas linhas e **não apaga nenhuma**, porque cada uma carrega o que a outra não tem — o diário traz o inteiro teor e o ato endereçado, o portal traz todo movimento, inclusive o que nunca foi publicado. O selo de procedência da linha (`origemDaLinha`) já dizia qual era qual; o que faltava era poder ler **uma fonte de cada vez**.
+
+`?origem=pdpj|djen` filtra no banco (`?origem=` de `/movements`) e é o único filtro da tela que reduz repetição em vez de estreitar assunto. É um `select`, não caixas de seleção: a API aceita um valor por vez, e marcar as duas seria o mesmo que não filtrar — que é o padrão.
+
+`scraper`, `tribunalPublico` e `datajud` existem no enum e ficam fora da lista (`ORIGENS_MOVIMENTACAO`, em `lib/movimentacao-filters.ts`): nenhum tem par para desempatar, e oferecê-los daria três opções que devolvem lista vazia na carteira de hoje.
+
+### Ordenar por tribunal não pode desmentir o cabeçalho do dia
+
+`sort=tribunal` ordenava por tribunal e **depois** agrupava por data: um grupo "§ 5 SET" reunia vários tribunais e a ORDEM dos grupos virava "o primeiro tribunal que por acaso teve aquela data" — cabeçalhos de dia fora de ordem cronológica, sem nenhum agrupamento por tribunal visível. Agora tribunal é **desempate dentro do dia** (`sortMovEntries`, com `diaDe` usando a mesma chave de dia de `formatDateGroup` — e por isso lendo `getUTC*` sem descontar fuso, porque a data já chega em wall-clock de Brasília gravado nos campos UTC).
 
 ### O detalhe responde três perguntas, nesta ordem
 
@@ -236,6 +329,8 @@ o texto          →  a íntegra do ato, em <details> nativo
 ```
 
 Antes o maior tipo da página era o nome do cliente e o segundo era o CNJ — mas quem abre esta tela já sabe de que processo veio, clicou nele no feed. A pergunta que traz a pessoa aqui é o que o juízo decidiu e o que ela faz com isso.
+
+**Os três blocos não moram mais aqui**: são `PrazoDoAto`, `ProvidenciaDoAto`, `TeorDoAto` e `DocumentosDoAto` em `components/movimentacoes/AtoDetalhe/`, porque a linha expandida do feed mostra exatamente os mesmos. A página os intercala com o hero e a coluna do processo; o painel os mostra sozinhos. O que sobrou de inline aqui é layout de página (breadcrumb, hero, sidebar), e o `page.module.css` caiu de 173 para 72 linhas.
 
 - **A íntegra abre FECHADA acima de 2.400 caracteres** (`CHARS_ATO_ABERTO`). O corte de 20.000 na gravação caiu em 03/09/2026, então o campo guarda o ato inteiro: 3,8 KB de média, 151 KB no maior desta carteira. `<details>` nativo, sem client component — a página é Server Component e o elemento faz exatamente isso sem JavaScript.
 - **`Date.now()` não entra no render.** O ESLint do Next 16 reprova (chamada impura), e a resposta é sobre o dado: `novo` é calculado em `getMovimentacao`, como o feed já fazia.
@@ -278,17 +373,103 @@ senão      → urlDocumento                                    (o link do tribu
 
 - **O índice é o de `documentos[]` no backend**, então os `subDocumentos` são mapeados por fora, pelo `urlDocumento` deles: `?i=` não endereça a concatenação das duas listas.
 - **A tela de detalhe da movimentação lista as peças acima da certidão** — o PDF do ato é o que se abre para ler; a certidão prova que ele foi publicado. "Ver no PJe" só aparece quando aquele href **não** está na lista, senão seria o mesmo link duas vezes com dois rótulos.
-- Como antes, a chave do tribunal não precisa chegar ao browser para o documento chegar: quem a troca por PDF é o backend.
-### O documento do ato no STJ, e a certidão do processo
+- Como antes, a chave do tribunal não precisa chegar ao browser para o documento chegar: quem a troca pelo arquivo é o backend.
+- **Nem todo documento é PDF, e o proxy deixou de fingir que é.** Desde 06/09/2026 TRF1 e TRF3 (PJe de consulta pública) também têm peça baixável, e ali o tribunal serve **HTML** — a consulta pública do PJe não tem PDF do ato. `/api/movimentacoes/{id}/documento` repassa o `Content-Type` do backend em vez de fixar `application/pdf`; com o tipo fixo o navegador abria uma aba de lixo binário. O backend manda a página já recortada e fechada (sem script, sem CSS do tribunal, sem imagem remota), então ela abre direto na aba.
+- **O 502 do PJe é transitório e diz isso** (`code: TRIBUNAL_NAO_SERVIU`): servir documento é propriedade da sessão do tribunal, e o backend já troca de sessão três vezes antes de desistir. Vale oferecer "tentar de novo" em vez de dizer que o documento não existe.
+### Quem decide se o botão de documento aparece é o BACKEND (08/09/2026)
 
-Duas entradas novas na aba Documentos, das medições de 05/09/2026:
+`MovementView.documentoEstado` — `nenhum | disponivel | provavelIndisponivel |
+trancado` — existe desde 06/09 justamente para o front parar de refazer essa
+conta, e **o front não o lia**: `temDocumentoTrancado` reimplementava um pedaço
+dela em `api.server.ts`, sem acesso ao que só o backend tem.
 
-- **`temDocumentoDoAto`** — o PDF do próprio ato (despacho, acórdão), servido por `/api/movimentacoes/{id}/documento`. Vem do link que o diário publica, e **ele só é documento em alguns tribunais**: das 17 comunicações do `5008313-42.2024.4.03.6000`, as 9 do STJ devolvem PDF público e as 8 do TRF3 devolvem a página com captcha do PJe. Nessas o campo é `false` e o link sai em `linkTribunal`, que vira o "Ver no PJe" com o aviso que já existia.
-- **`temCertidaoAndamento`** — a certidão de andamento do processo no STJ, por `/api/processos/{id}/certidao-andamento`. É documento do PROCESSO: lá a via pública não expõe peça por movimentação, e essa certidão é o que cobre a timeline inteira. Por isso ela abre a lista da aba, fora do `flatMap` dos eventos.
+O que só ele tem é o **livro-razão de `Documento`**: quais chaves já foram
+pedidas ao portal e voltaram sem arquivo. Medido em 08/09/2026: **195 de 309
+pedidos (63%) devolvem 404** — o PDPJ referencia mais peça do que serve, e o
+rótulo genérico `'Documento'` (o portal dizendo "não sei classificar isto")
+falhou em 3 de 3 na sondagem ao vivo.
 
-Medido no mesmo processo, depois: 9 documentos de ato + 17 certidões de publicação + 1 certidão de andamento, contra zero antes.
+- **`documentoEstado` manda; a conta local virou segunda via.** Ela roda só
+  quando o campo vem ausente (backend anterior a 06/09) — não como regra, porque
+  discordaria justamente nos casos que importam.
+- **`provavelIndisponivel` chegou à tela.** O botão continua clicável (a peça de
+  parte abre quando a conta é parte no processo, e não há como saber sem tentar),
+  mas ganha "(pode não abrir)" e um `title` explicando. Avisar antes é melhor que
+  o advogado descobrir com uma aba vazia — e melhor que esconder um documento que
+  às vezes abre.
 
-- **A timeline do processo mostra a certidão junto com as peças.** Ela só conhecia `documentos`, então um processo 100% DJEN — o formato da maior parte do acervo público — exibia zero documento em todas as linhas, embora cada ato tenha o PDF oficial do CNJ; ele existia só na aba Documentos, e quem abre a timeline não tem por que adivinhar isso. Medido no `5008313-42.2024.4.03.6000`: 0 links na timeline contra 17 na aba.
+### Duas vias de documento saíram da aba (08/09/2026)
+
+Não foi decisão de tela: **as rotas do backend deixaram de existir** quando as
+fontes foram para `_backup/` em 07/09.
+
+| rota | o que servia |
+|---|---|
+| `GET /processes/{id}/documentos/{tribunal}/{doc}` | a peça pelo scraper autenticado — o "catálogo público" do processo |
+| `GET /processes/{id}/certidao-andamento` | a certidão de andamento do STJ, o único documento que cobria a timeline inteira lá |
+
+As duas respondiam **404 em HTML**, e o `res.json()` do proxy estourava nele: a
+tela dizia "Serviço indisponível" em vez de "não existe". Saíram os dois links,
+os dois route handlers e os campos órfãos (`temCertidaoAndamento`,
+`documentosPublicos`, `documentosPublicosCompletos`), que o backend também já
+não serve.
+
+> **Como isto foi encontrado, e vale repetir:** extrair todo caminho que o front
+> chama (`src/app/api/**/route.ts` + `api.server.ts`), extrair as rotas que o
+> Express monta, e **bater uma a uma contra o backend de pé** — 404 com
+> `text/html` é rota que não existe, 401 JSON é rota viva. O `tsc` não vê nada
+> disso, e duas rotas mortas conviveram com typecheck e build limpos.
+>
+> Só o método completo serve: a extração estática das rotas do backend deu falso
+> positivo em `/scraper/monitorar-oab` e `/scraper/preview-djen` (o regex não
+> pegou o jeito como são registradas), e as duas estão vivas. **Sondar antes de
+> afirmar.**
+
+## A timeline do processo: dia a dia, com "carregar mais"
+
+`components/movimentacoes/TimelineProcesso/` — `'use client'`, e o mínimo que precisa ser: a **primeira página vem renderizada do servidor** (prop `inicial`), então quem chega pela URL lê o conteúdo antes de qualquer JavaScript. O estado só existe para acumular o que vier depois.
+
+**A data é cabeçalho, não coluna.** Era uma linha por ato com a data repetida à esquerda em cada uma — num dia de seis movimentações, "29 de agosto de 2026" escrito seis vezes. Agora o dia é um cabeçalho com ícone e trilho vertical, e os atos daquele dia são cartões sob ele.
+
+**Acima de 3 atos no mesmo dia, o resto fica atrás de um "mostrar mais"** (`<details>` nativo, sem JS). O caso que motivou: um dia de cartório rende seis "Decorrido prazo de FULANO" seguidos, um por parte, que são o mesmo fato repetido — e sozinhos empurravam o dia seguinte para fora da tela.
+
+**"Carregar mais" ANEXA; não é paginação.** Medido na base: mediana de **40** movimentações por processo, p90 de **288**, máximo de **4.900**. Com Anterior/Próxima, percorrer o p90 custava 15 recarregamentos, cada um devolvendo a pessoa ao topo. A página subiu de 20 para **50** (a mediana passa a caber inteira) e o clique passou a fazer a lista crescer com o scroll onde está.
+
+> **Não carrega sozinho ao rolar.** A 534 bytes por movimentação (medido), o processo de 4.900 daria ~2,5 MB de dados e ~54 mil nós de DOM. Scroll infinito chegaria lá sem ninguém pedir; o clique é o teto.
+
+> **O "Carregar mais" leva os MESMOS filtros da página 1, e `todas` é o caso que quebra.** A página sem filtro pede `['todas']` — 4.900, trâmite incluído —, enquanto lista vazia faz o backend aplicar o default, que **esconde** trâmite (3.986). O route handler não pode sanitizar esse valor com `parseCategorias`: ela valida contra o enum de categorias e `todas` não é uma, então virava lista vazia e a página 2 vinha de um conjunto menor que a 1 — o cartório sumia no primeiro clique e a contagem nunca fechava.
+
+> **Dedupe por id ao anexar.** A ronda roda 3× ao dia; se o acervo ganha movimentação entre uma página e a seguinte, o mesmo ato escorrega para a página de baixo e voltaria repetido — chave de React duplicada é erro de render, não detalhe.
+
+> **Um canal só para "novo": o selo NOVA.** As primeiras versões acendiam também a borda do cartão e o ícone do dia. Na tela isso se provou errado: `state: 'signal'` cobre 48h de DETECÇÃO, não de ocorrência, então num processo recém-importado — que é todo processo no primeiro dia — os 316 atos entram juntos e a coluna inteira fica verde. Quando tudo está em destaque, nada está.
+
+> **Os estilos de documento moram em `components/movimentacoes/documentos.module.css`**, e não no CSS Module da página: o cartão (client) e a aba Documentos (server) renderizam a mesma lista, e desde a extração não podem mais compartilhar o module do `page.tsx`.
+
+## O calendário do processo (`?aba=calendario`)
+
+Um heatmap de um ano por vez: cada casa é um dia, e **quanto mais escuro, mais aconteceu**. `components/movimentacoes/CalendarioProcesso/`, Server Component — a escolha do ano viaja em `?ano=`, como todo filtro deste projeto.
+
+**Os degraus são buckets fixos, não escala linear, e isso saiu de medição.** Dos 2.441 dias com movimentação no acervo, **61% têm exatamente 1** e 92% têm até 3, enquanto o topo chega a **732 num dia só** (ação coletiva de 1989, centenas de intimações no mesmo despacho). Numa escala linear, 2 movimentações pintariam 0,3% do verde: o calendário sairia branco com meia dúzia de quadrados escuros, e a variação que interessa — 1 contra 3 — some. Os cortes (`1 · 2–3 · 4–9 · 10–29 · 30+`) são redondos porque quantis puros dariam "2,4" e "8,7", ilegíveis numa legenda, e cada faixa tem massa real: 61% / 30% / 7,7% / 0,4% / 0,5%.
+
+**A rampa foi validada, não escolhida a olho** (`scripts/validate_palette.js` da skill `dataviz`, modo ordinal): lightness monótona, ΔL ≥ 0.06 entre vizinhos, hue única (8° de variação) e o passo mais claro em 2.04:1 contra a superfície.
+
+> **`--brick-soft` FALHOU como primeiro degrau** — dá **1.14:1** sobre o creme `--paper`, e o degrau 1 é 61% dos dias com movimentação, ou seja, a maior parte do mapa seria invisível. Por isso o degrau 1 (`#91bba1`) é bem mais escuro do que a intuição pede: **sobre fundo creme, verde claro some**. É o tipo de erro que só o cálculo pega — no olho, o `--brick-soft` parece um verde perfeitamente visível.
+
+**Um ano por vez, e o ano padrão é o último COM movimentação, não o corrente.** O maior processo da base vai de 1990 a 2026: 37 anos, ~13.500 casas, ilegível numa tela. E abrir no ano corrente mostraria vazio num processo que parou em 2019 — parar é o estado normal de metade de um acervo.
+
+**Cada dia com movimentação é um link que filtra a timeline naquele dia**, preservando os filtros da tela; dia vazio não é link, porque levaria a uma lista vazia. É o que faz o calendário ser navegação e não enfeite: achar o quadrado escuro de outubro e clicar nele é mais rápido que rolar 4.900 movimentações.
+
+> **A agregação é do backend** (`GET /movements/por-dia`), nunca derivada da lista carregada: a timeline mostra 50 por vez, e derivar dela pintaria só o pedaço já rolado — o mapa de 37 anos apareceria como duas semanas. Ela respeita o MESMO filtro de categoria da lista (inclusive o default que esconde trâmite): um dia aceso que a lista não tem levaria a um clique que não devolve nada. Medido: 172 dias / 3.986 movs no default, 339 dias / 4.900 com `categoria=todas` — os dois batendo com o total da listagem.
+
+> **O rótulo de mês entra uma vez por mês, comparando com a semana anterior.** A primeira versão marcava toda semana com um dia ≤ 7 e a régua saiu com "jan jan", "abr abr", "mai mai" na tela: a virada do mês cai no meio da semana com frequência, então duas colunas seguidas têm dias ≤ 7 do mesmo mês.
+
+> **O seletor de anos é uma FAIXA que rola, não uma grade que quebra.** Com `flex-wrap: wrap`, os 37 anos do processo mais antigo da base viravam uma parede: medido no mobile, **495 px de altura** só de botões de ano — quem abria a aba via a lista de anos e mais nada, com o calendário empurrado para fora da tela. Em faixa (`nowrap` + `overflow-x: auto` + `min-width: 0` nela e no cabeçalho), o seletor ocupa **35 px** em qualquer largura. No desktop ele volta ao canto direito, ao lado do título.
+
+> **A rampa da legenda é indivisível.** Medido a 150 px, a escala partia ao meio — "menos ▪▪▪" numa linha e "▪▪ mais" na outra —, e uma rampa lida em dois pedaços deixa de mostrar a progressão, que é a única coisa que ela faz. Os cinco degraus e os dois rótulos vivem num `inline-flex` com `nowrap`; as faixas por extenso (`1 · 2–3 · …`) é que caem para a linha de baixo.
+
+> **A grade rola dentro de si, e a página não vaza.** `overflow-x: auto` no container das semanas: 53 colunas não cabem em tela de celular, e encolher a casa abaixo de 12 px tiraria o alvo de toque e o degrau de cor. Conferido a 150 px de viewport: `scrollWidth` 814 dentro de `clientWidth` 103, com a página sem rolagem horizontal.
+
+> **Tudo em UTC** (`Date.UTC`, `getUTCDay`): as datas chegam como `YYYY-MM-DD` já em wall-clock de Brasília, e construir a grade com o fuso do servidor deslocaria o calendário inteiro em um dia sempre que a aplicação rodasse fora de -03.
 
 ## Rotas de topo
 
@@ -384,4 +565,4 @@ Decisões que não se leem no código:
 - [ ] Tela `/configuracoes/whatsapp`
 - [ ] Onboarding (primeira vez sem processos)
 - [ ] Responsivo mobile
-- [ ] Extrair `TimelineItem` de `/processos/[id]/page.tsx` para componente próprio
+- [x] Extrair `TimelineItem` de `/processos/[id]/page.tsx` para componente próprio (`TimelineProcesso`)

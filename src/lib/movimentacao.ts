@@ -59,24 +59,52 @@ export function acaoMovimentacao(m: Pick<Movimentacao, 'ia'>): { texto: string; 
   return { texto: acao, minha: m.ia?.deQuem === 'destinatario' };
 }
 
+/** O rótulo curto de cada procedência — cabe na calha da linha. */
+const ORIGEM_CURTA: Record<string, string> = {
+  djen: 'diário',
+  pdpj: 'portal',
+  scraper: 'painel',
+  tribunalPublico: 'tribunal',
+  datajud: 'DataJud',
+};
+
+/** O nome por extenso, para o `title` — a calha não tem espaço para ele. */
+const ORIGEM_LONGA: Record<string, string> = {
+  djen: 'Diário de Justiça Eletrônico Nacional (CNJ)',
+  pdpj: 'Portal de Serviços do PDPJ (CNJ)',
+  scraper: 'painel autenticado do tribunal',
+  tribunalPublico: 'consulta pública do tribunal',
+  datajud: 'base pública do DataJud (CNJ)',
+};
+
 /**
- * Como rotular a procedência da linha na tela.
+ * De onde esta linha veio — em TODA linha, não só na do diário.
  *
- * `djen` merece rótulo próprio porque **não é um movimento do tribunal**: é a
- * publicação do ato no diário, com a data em que ele saiu — não a data em que
- * o cartório o registrou.
+ * Até 07/09/2026 só o `djen` ganhava selo, com o argumento de que as outras são
+ * todas "o tribunal disse". O argumento caiu quando o portal (PDPJ) passou a
+ * ser a maior fonte de movimentação: a mesma lista passou a misturar a linha do
+ * cartório, o ato do diário e o que o painel autenticado trouxe, e nada na tela
+ * dizia qual era qual — o que importa, porque só a publicação em diário faz a
+ * intimação correr, e só o painel traz vencimento calculado pelo tribunal.
  *
- * O selo existia para separá-lo da linha do DataJud sobre o mesmo ato. Essa
- * convivência acabou em 03/09/2026 (o DataJud deixou de gravar movimentação e
- * ficou só na capa), mas o rótulo ficou por um motivo que sobrevive a ela: o
- * advogado precisa saber que aquilo é publicação em diário, porque é ela que
- * faz a intimação correr. Linha `scraper` do painel autenticado é outra coisa.
- *
- * As outras não ganham selo: são todas "o tribunal disse", e distinguir painel
- * de e-SAJ não muda nada para quem lê.
+ * **Com mais de uma fonte, as duas aparecem.** O mesmo despacho existe como
+ * linha do diário e linha do portal; `fontes` é o que registra que elas são o
+ * mesmo ato, e omitir a segunda faria a linha parecer menos confirmada do que é.
  */
-export function seloOrigem(m: Pick<Movimentacao, 'origem'>): string | null {
-  return m.origem === 'djen' ? 'diário' : null;
+export function origemDaLinha(
+  m: Pick<Movimentacao, 'origem' | 'fontes'>,
+): { curto: string; titulo: string } | null {
+  const fontes = (m.fontes ?? []).filter((f) => ORIGEM_CURTA[f]);
+  // A própria origem sempre encabeça: é a fonte desta LINHA, e as outras a
+  // corroboram. Sem `fontes` (linha antiga), ela é tudo o que há.
+  const ordenadas = [m.origem, ...fontes.filter((f) => f !== m.origem)].filter((f) => ORIGEM_CURTA[f]);
+  if (ordenadas.length === 0) return null;
+  return {
+    curto: ordenadas.map((f) => ORIGEM_CURTA[f]).join(' + '),
+    titulo: ordenadas.length > 1
+      ? `Ato confirmado por ${ordenadas.length} fontes: ${ordenadas.map((f) => ORIGEM_LONGA[f]).join('; ')}`
+      : `Origem: ${ORIGEM_LONGA[ordenadas[0]!]}`,
+  };
 }
 
 /**
@@ -109,8 +137,15 @@ export function vencimentoDoAto(m: Pick<Movimentacao, 'prazo'>): {
   dias: string | null;
   /** `true` quando a data é cálculo nosso, não o vencimento que o tribunal publicou. */
   estimado: boolean;
-  /** `hoje`, `amanhã`, `em 3 dias`, `venceu há 2 dias`. */
+  /** `hoje`, `amanhã`, `em 3 dias`, `venceu há 2 dias` — ou `Encerrado`. */
   quando: string;
+  /**
+   * O prazo já foi FECHADO — cumprido, ou expirado e recolhido pelo relógio
+   * (`fecharPrazosDjenExpirados`). A linha continua mostrando o chip, em tom
+   * neutro: saber que este ato abriu um prazo é informação mesmo depois de
+   * ele encerrar, e esconder faz o ato parecer que nunca cobrou nada.
+   */
+  encerrado: boolean;
   /** Vence em até 3 dias (ou já venceu) — o que a tela precisa destacar. */
   urgente: boolean;
 } | null {
@@ -128,7 +163,8 @@ export function vencimentoDoAto(m: Pick<Movimentacao, 'prazo'>): {
   const hoje = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
   const emDias = Math.round((diaLimite - hoje) / 86_400_000);
 
-  const quando =
+  const encerrado = Boolean(prazo.fechado);
+  const quando = encerrado ? 'Encerrado' :
     emDias === 0 ? 'vence hoje' :
     emDias === 1 ? 'vence amanhã' :
     emDias > 1   ? `vence em ${emDias} dias` :
@@ -139,10 +175,11 @@ export function vencimentoDoAto(m: Pick<Movimentacao, 'prazo'>): {
     curto: `${limite.getUTCDate()} ${MESES_CURTOS[limite.getUTCMonth()]}`,
     extenso: `${limite.getUTCDate()} de ${MESES[limite.getUTCMonth()]} de ${limite.getUTCFullYear()}`,
     emDias,
+    encerrado,
     dias: prazo.dias ? `${prazo.dias} ${prazo.dias === 1 ? 'dia' : 'dias'}` : null,
     estimado: prazo.metodoPrazo !== 'textoExplicito',
     quando,
-    urgente: emDias <= 3,
+    urgente: !encerrado && emDias <= 3,
   };
 }
 

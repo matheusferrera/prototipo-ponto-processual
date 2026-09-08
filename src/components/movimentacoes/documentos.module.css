@@ -1,0 +1,49 @@
+/* As peças de um ato: a lista de documentos.
+ *
+ * Module próprio porque DOIS lugares a renderizam — o cartão da timeline
+ * (`TimelineProcesso`, client) e a aba Documentos (`page.tsx`, server) —, e
+ * desde que a timeline virou client component eles não podem mais compartilhar
+ * o CSS Module da página. Duplicar as regras nos dois seria garantir que
+ * divergissem no primeiro ajuste de tamanho de ícone. */
+
+.docList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docLink {
+  /* Acima da camada de `.atoLink`, senão o documento nunca abre: o clique
+     cairia na camada e navegaria para o ato. */
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--brick);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.docLink:hover { text-decoration: underline; }
+.docLink:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.docUnavailable {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.docUnavailable > svg { flex-shrink: 0; margin-top: 2px; }
+.docUnavailableReason { display: block; font-size: 12px; font-weight: 400; }

@@ -1,6 +1,18 @@
 /* Mobile-first: base = celular (header sticky com hambúrguer, shell rolável no
    documento). >=768px liga o shell fixo em 100vh com sidebar permanente. */
+/* `position: relative` não é decoração: sem ele o `overflow: hidden` do
+   ≥768px NÃO clipa descendente `position: absolute`. Caixa absoluta sem
+   ancestral posicionado tem o bloco continente na ICB, então ela escapa do
+   shell e entra na rolagem do DOCUMENTO. Quem faz isso em massa é o
+   `.sr-only` do globals.css (`position: absolute`), presente 3× por linha
+   de `MovimentacaoRow`: medido em 08/09/2026, 150 spans levavam o
+   `documentElement.scrollHeight` de 929 para 5493 — uma SEGUNDA barra, que
+   ao ser arrastada empurrava o shell inteiro de 100vh para fora da tela.
+   Aparecia em /processos/[numero] e em /movimentacoes, as duas telas que
+   listam muita linha. Com `relative`, o mesmo processo volta a 929 e sobra
+   um rolador só. */
 .root {
+  position: relative;
   display: flex;
   min-height: 100dvh;
   height: auto;

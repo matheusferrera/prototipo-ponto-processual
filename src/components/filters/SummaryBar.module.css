@@ -1,0 +1,110 @@
+.bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+}
+
+.chips {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+.chip:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.chip[data-active] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.count {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+/* O número da novidade é a coisa mais importante da barra: verde quando há algo. */
+.chip[data-tone='signal']:not([data-active]) .count { color: var(--brick); font-weight: 700; }
+.chip[data-tone='alert']:not([data-active]) .count { color: var(--alert); font-weight: 700; }
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.tools[data-align='start'] { margin-left: 0; }
+
+@media (min-width: 768px) {
+  .bar { padding: 10px 32px; }
+  .chip { min-height: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip { transition: none; }
+}
+
+/* Segmentado de links — mesma cara do Lista/Tabela de Processos. */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-right: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.segment:last-child { border-right: 0; }
+.segment:hover { background: var(--paper-2); color: var(--ink); }
+.segment:focus-visible { outline: 2px solid var(--brick); outline-offset: -3px; }
+.segment[aria-current='page'] { background: var(--ink); color: var(--paper); }
+.segment svg { width: 14px; height: 14px; }
+
+@media (min-width: 768px) {
+  .segment { min-height: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment { transition: none; }
+}

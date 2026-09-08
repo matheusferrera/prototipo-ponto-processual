@@ -14,21 +14,6 @@
 .workspace[data-density='comfortable'] { --row-block-padding: 14px; }
 .workspace[data-density='spacious'] { --row-block-padding: 20px; }
 
-.tableMeta {
-  flex-shrink: 0;
-  min-height: 38px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--line-soft);
-  background: var(--paper-2);
-  color: var(--ink-3);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 11px;
-}
-
-.tableMetaHint { margin-left: auto; display: none; }
-
 .desktopTableWrap {
   display: none;
   width: 100%;
@@ -72,13 +57,13 @@
 }
 
 .table th {
+  position: sticky;
+  top: 0;
   height: 43px;
   padding: 0 16px;
   border-bottom-color: var(--line);
   border-right-color: var(--line);
-  position: sticky;
-  top: 0;
-  z-index: 3;
+  z-index: 2;
   color: var(--ink-3);
   font-size: 10px;
   font-weight: 700;
@@ -214,7 +199,7 @@
 .stateCell svg { width: 14px; height: 14px; }
 .state_signal { color: var(--brick); background: var(--brick-soft); }
 .state_alert { color: var(--alert); background: var(--alert-soft); }
-.state_quiet { color: var(--quiet); background: var(--quiet-soft); }
+.state_quiet { color: var(--quiet-ink); background: var(--quiet-soft); }
 
 /* Prazo — o chip carrega a urgência: tinto até 2 dias, âmbar até 7, sage acima. */
 .prazoChip {
@@ -231,8 +216,8 @@
 }
 
 .prazo_urgente { color: var(--alert); background: var(--alert-soft); }
-.prazo_proximo { color: var(--signal); background: var(--signal-soft); }
-.prazo_calmo   { color: var(--quiet); background: var(--quiet-soft); }
+.prazo_proximo { color: var(--signal-ink); background: var(--signal-soft); }
+.prazo_calmo   { color: var(--quiet-ink); background: var(--quiet-soft); }
 .prazoEmpty    { color: var(--ink-4); }
 
 /* Expandir linha */
@@ -581,7 +566,9 @@
   font-size: 11px;
 }
 
+.segmented[data-columns='2'] { grid-template-columns: repeat(2, 1fr); }
 .segmented button:last-child { border-right: 0; }
+.segmented button svg { width: 14px; height: 14px; margin-right: 6px; vertical-align: -3px; }
 .segmented button:hover { background: var(--paper-2); color: var(--ink); }
 .segmented button:focus-visible { outline: 2px solid var(--brick); outline-offset: -3px; }
 .segmented .segmentActive { background: var(--brick-soft); color: var(--brick); font-weight: 700; }
@@ -620,9 +607,8 @@
 @media (min-width: 768px) {
   /* A tabela é o único elemento que rola: a área de scroll da página apenas
      reparte a altura, e a rolagem (horizontal e vertical) fica presa aqui
-     dentro. Sem isso, arrastar a tabela para o lado leva junto o resumo, a
-     barra de filtros e o cabeçalho da tabela. Como este wrapper é também o
-     scrollport vertical, o `position: sticky` do <thead> continua valendo. */
+     dentro. Sem isso, arrastar a tabela para o lado leva junto o resumo e a
+     barra de filtros. */
   .workspace {
     border-top: 1px solid var(--line);
     display: flex;
@@ -630,8 +616,6 @@
     flex: 1;
     min-height: 0;
   }
-  .tableMeta { padding: 8px 32px; }
-  .tableMetaHint { display: block; }
   .desktopTableWrap {
     display: block;
     flex: 1;

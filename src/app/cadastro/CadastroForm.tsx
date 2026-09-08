@@ -136,8 +136,8 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
       }
 
       /* `/auth/register` já abriu a sessão. Com OAB, a conta recebe agora o que
-         faltava — `POST /scraper/monitorar-oab` grava a OAB e enfileira DJEN e
-         consulta pública — e a pessoa vai direto ao painel, que abre em
+         faltava — `POST /consulta-publica/geral` grava a OAB e enfileira a
+         sincronização PDPJ + DJEN — e a pessoa vai direto ao painel, que abre em
          "sincronizando". Passar pelo onboarding aqui seria mostrar os mesmos
          processos que ela acabou de ver em `/oab`, um clique antes do painel.
 
@@ -145,11 +145,15 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
          e o campo para informá-la: o pedido não some, e a conta — que é o que
          acabou de ser criada — não fica presa a um erro de outra requisição. */
       if (oab) {
-        await fetch('/api/scraper/monitorar-oab', {
+        const monitoramento = await fetch('/api/consulta-publica/geral', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ oabNumero: oab.numero, oabUf: oab.uf }),
-        }).catch(() => {});
+        }).catch(() => null);
+        if (!monitoramento?.ok) {
+          router.push('/onboarding');
+          return;
+        }
       }
 
       router.push(oab ? ROTA_PAINEL : '/onboarding');
@@ -222,7 +226,9 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
           id="email"
           label="E-mail profissional"
           type="email"
-          autoComplete="email"
+          // Par `username` + `new-password`: é o que faz o Chrome oferecer
+          // GUARDAR a credencial recém-criada. Ver a nota em `AuthField.name`.
+          autoComplete="username"
           value={email}
           onChange={v => {
             setEmail(v);

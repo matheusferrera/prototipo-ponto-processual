@@ -1,0 +1,85 @@
+/* A mesma lista de atos do feed, agrupada por data e sem trilho decorativo. */
+.dias {
+  container: movimento-processo / inline-size;
+  list-style: none;
+  margin: 0 calc(-1 * var(--space-lg));
+  padding: 0;
+}
+.dia + .dia { margin-top: var(--space-xl); }
+/* Só a CALHA muda. `.dias` já sangra `--space-lg` para fora do gutter do
+   painel — é assim que a linha do ato volta a bater no gutter —, então a faixa
+   do cabeçalho ocupa essa largura sangrada e o TEXTO dela recua o mesmo
+   `--space-lg`, alinhando com o texto das linhas. Sem isto o `DateGroupHeader`
+   aplicaria o próprio recuo de desktop (`--space-2xl`) sobre um container que
+   já está deslocado, e o dia ficaria 16px à direita dos atos que ele nomeia.
+   Todo o resto — grude, tipografia, filete, contagem — é o do feed. */
+.diaCabecalho { padding-inline: var(--space-lg); }
+.diaAtos { list-style: none; margin: 0; padding: 0; }
+.maisBotao {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: fit-content;
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-lg);
+  list-style: none;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.maisBotao::-webkit-details-marker { display: none; }
+.maisBotao:hover { color: var(--ink); background: var(--paper-2); }
+.maisBotao:focus-visible, .carregar:focus-visible, .linkDetalhe:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: -2px;
+}
+.maisSeta { flex: none; transition: transform 160ms ease; }
+.mais[open] .maisSeta { transform: rotate(180deg); }
+.maisAberto, .mais[open] .maisFechado { display: none; }
+.mais[open] .maisAberto { display: inline; }
+.rodape {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--line-soft);
+}
+.contagem { font-size: 12px; color: var(--ink-2); }
+.carregar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.carregar:hover:not(:disabled) { background: var(--paper-2); }
+.carregar:disabled { cursor: default; opacity: .7; }
+.girando { animation: girar .8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.erro { color: var(--alert); font-size: 13px; }
+.vazio { padding: var(--space-lg) 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.estadoDetalhe {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.estadoDetalhe p { margin: 0 0 var(--space-sm); }
+.linkDetalhe { display: inline-flex; align-items: center; min-height: 44px; margin-left: var(--space-md); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; }
+  .maisSeta { transition: none; }
+}

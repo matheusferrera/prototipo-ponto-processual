@@ -1,0 +1,15 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--paper-3);
+  border-bottom: 1px solid var(--line);
+}
+.date { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .05em; color: var(--ink-2); white-space: nowrap; }
+.day, .count { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.divider { flex: 1; height: 1px; background: var(--line); }
+@media (min-width: 768px) { .header { padding-inline: var(--space-2xl); } }

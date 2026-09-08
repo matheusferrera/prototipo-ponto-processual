@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import {
   DEFAULT_MOVIMENTACAO_FILTERS,
+  origemMovimentacaoLabel,
   serializeMovimentacaoFilters,
   type MovimentacaoFilterState,
 } from '@/lib/movimentacao-filters';
@@ -74,5 +75,12 @@ function buildChips(filters: MovimentacaoFilterState): Chip[] {
     label: categoriaLabel(value),
     remove: c => ({ ...c, categoria: c.categoria.filter(item => item !== value) }),
   }));
+  // "Origem: Diário (DJEN)" e não só "Diário": sem o prefixo o chip se confunde
+  // com o selo de procedência que cada linha do feed já mostra.
+  if (filters.origem) chips.push({
+    id: `origem-${filters.origem}`,
+    label: `Origem: ${origemMovimentacaoLabel(filters.origem)}`,
+    remove: c => ({ ...c, origem: '' }),
+  });
   return chips;
 }

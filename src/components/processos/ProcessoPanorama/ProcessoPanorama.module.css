@@ -1,0 +1,112 @@
+.panorama{display:grid;grid-template-columns:minmax(0,1fr);margin:0 var(--processo-gutter,16px) 20px;border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+.section{min-width:0;padding:20px}.section+.section{border-top:1px solid var(--line)}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}.heading h2{margin:0;color:var(--ink);font-size:16px;font-weight:750}.heading h3{display:flex;align-items:center;gap:7px}.heading svg{flex-shrink:0;color:var(--ink-2)}
+.section h3{margin:0;font-size:14px;font-weight:700;line-height:1.5;overflow-wrap:anywhere}
+.description{margin:10px 0;color:var(--ink-2);font-size:14px;line-height:1.65;max-width:75ch;overflow-wrap:anywhere}
+.small{display:block;margin:4px 0;color:var(--ink-2);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.link{display:flex;align-items:center;gap:6px;width:fit-content;max-width:100%;min-height:44px;color:var(--brick);font-size:13px;font-weight:650;text-decoration:none}.link:hover{text-decoration:underline}.link:focus-visible,.copy:focus-visible,.basis summary:focus-visible{outline:2px solid var(--brick);outline-offset:3px}
+.deadline{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;color:var(--ink)}.deadline strong{font-size:20px;line-height:1.4}.deadline time{font-family:var(--mono);font-size:13px}.deadline[data-faixa=critico],.deadline[data-faixa=vencidos]{color:var(--alert)}.deadline[data-faixa=proximos],.deadline[data-faixa=atencao]{color:var(--signal-ink)}
+.deadlineTitle{margin:5px 0;font-size:14px;font-weight:650;overflow-wrap:anywhere}.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;background:var(--signal-soft);color:var(--signal-ink);font-size:11px;font-weight:650;border-radius:3px;margin-top:5px}
+.pending{color:var(--alert);font-size:12px;margin:10px 0 4px}.task{border-top:1px solid var(--line);padding-top:16px;margin-top:12px}.task .heading{margin-bottom:8px}.task .description{font-size:13px}.basis{font-size:12px;color:var(--ink-2);margin-top:6px}.basis summary{cursor:pointer;min-height:36px;align-content:center}.basis p{max-width:70ch;overflow-wrap:anywhere}
+.review{margin-top:8px}.review label{display:flex;align-items:center;gap:8px;width:fit-content;min-height:44px;cursor:pointer;font-size:13px;color:var(--ink)}.review input{width:17px;height:17px;accent-color:var(--brick);flex-shrink:0}.review input:focus-visible{outline:2px solid var(--brick);outline-offset:3px}.review .small{font-size:11px}
+.copyGroup{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.copy{display:inline-flex;align-items:center;gap:10px;max-width:100%;padding:0;border:0;background:transparent;color:var(--ink-2);font:12px var(--mono);min-height:44px;text-align:left;cursor:pointer}.copy span{overflow-wrap:anywhere}.copy svg{flex-shrink:0}.copy:hover{color:var(--brick)}
+@media(min-width:1000px){.panorama{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.section+.section{border-top:0;border-left:1px solid var(--line)}.section{padding:22px 24px}}
+
+
+/* ===== Resumo do caso — a CHAMADA, não a cópia =====
+   A aba de IA tem a leitura inteira, com campos rotulados. Aqui é uma olhada:
+   fase, as primeiras linhas da síntese, e a porta. Ver o comentário no TSX.
+
+   Atravessa as duas colunas do panorama porque fala do PROCESSO, não de um ato
+   nem de um prazo — é a única coisa no painel que não pertence a uma coluna. */
+.caso {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* O espaçamento é declarado UMA vez, aqui. A versão anterior o deixava
+     emergir de cinco margens colidindo, e o resultado foi uma escada ao
+     contrário — 14→10→10→8→4, gaps ENCOLHENDO conforme a distância semântica
+     crescia. */
+  gap: var(--space-md);
+  /* Mesma padding das seções irmãs: com 16px contra os 20px delas, a síntese
+     começava 4px à esquerda do texto logo abaixo, deixando a borda esquerda do
+     painel visivelmente irregular. */
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.casoCabeca {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+/* `flex-start`, e não o `space-between` de `.heading`: aquele funciona numa
+   coluna de ~250px, mas aqui o bloco ocupa a largura toda e exilava o chip a
+   mais de mil pixels do título. Era o "badge solto" da tela. */
+.casoTitulo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+}
+.casoTitulo svg { flex: none; color: var(--ink-2); }
+
+.casoFase,
+.casoRessalva {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 650;
+  /* Raio zero: regra editorial do projeto. O `.badge` vizinho tem 3px e é
+     dívida anterior — não se propaga para marcação nova. */
+  border-radius: 0;
+}
+/* Fase é FATO de estado: neutro. */
+.casoFase { background: var(--paper-2); color: var(--ink-2); }
+/* Confiança baixa é ressalva: aí sim o âmbar do sistema. */
+.casoRessalva { background: var(--signal-soft); color: var(--signal-ink); }
+
+/* A síntese é o topo da pirâmide e estava em `--ink-2` — mais apagada que o
+   `<h3>` do card logo abaixo. Sobe para `--ink`.
+
+   62ch, não 75: `ch` é a largura do glifo "0", e numa fonte proporcional como
+   a Manrope 75ch renderiza ~85-90 caracteres por linha — acima do teto de
+   65-75. Aqui o corte finalmente PEGA, porque este é o único bloco do arquivo
+   que ocupa a largura inteira. */
+.casoSintese {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.65;
+  text-wrap: pretty;
+  /* TRÊS LINHAS, e é o que faz disto uma chamada.
+     A síntese tem 3 a 5 frases de prosa jurídica densa — despejada inteira ela
+     ocupava 1.097px e virava a parede que o painel não é. O painel dá o
+     suficiente para reconhecer o caso; a leitura inteira está a um clique, na
+     aba que foi desenhada para ela.
+
+     `line-clamp` (padrão) com o par `-webkit-` para o Safari, que ainda exige
+     `-webkit-box`. Sem `overflow: hidden` nenhum dos dois corta. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.casoRodape {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  margin: 0;
+}
+.casoData { color: var(--ink-2); font-size: 12px; line-height: 1.5; }

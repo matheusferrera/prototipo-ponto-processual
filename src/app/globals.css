@@ -20,8 +20,11 @@
   --color-brick-deep: #14532d;
   --color-signal:     #d97706;
   --color-signal-soft:#fef3c7;
+  /* texto sobre --signal-soft / --quiet-soft precisa de 4,5:1; os tons puros não chegam */
+  --color-signal-ink: #92400e;
   --color-quiet:      #6b7e5e;
   --color-quiet-soft: #e8eee0;
+  --color-quiet-ink:  #4a5d3a;
   --color-alert:      #991b1b;
   --color-alert-soft: #fae5e5;
 
@@ -58,8 +61,10 @@
   --brick-deep: #14532d;
   --signal:     #d97706;
   --signal-soft:#fef3c7;
+  --signal-ink: #92400e;
   --quiet:      #6b7e5e;
   --quiet-soft: #e8eee0;
+  --quiet-ink:  #4a5d3a;
   --alert:      #991b1b;
   --alert-soft: #fae5e5;
   --ui: var(--font-manrope, 'Manrope', system-ui, sans-serif);
@@ -88,6 +93,39 @@
   --chart-4:              #991b1b;
   --chart-5:              #3a4a3d;
   --radius:               0px;
+
+  /* ── Espaçamento ────────────────────────────────────────────────────────
+     Base 4pt. Existe porque não existia: medido em 06/09/2026, os CSS Modules
+     da tela de movimentações usavam 23 valores distintos, com TODOS os
+     inteiros de 1 a 10 presentes — 2px, 3px e 4px fazendo o mesmo trabalho
+     (separar rótulo de valor) em três seletores vizinhos. Sem um conjunto
+     declarado, a próxima linha inventa 7px e ninguém percebe.
+
+     8pt seria grosso demais: entre 8 e 16 falta 12 o tempo todo numa lista
+     densa. O nome é semântico, não numérico — `--space-sm`, não `--space-8`,
+     senão renomear o valor vira renomear a variável. */
+  --space-2xs:  2px;  /* rótulo ↔ valor, dentro do mesmo bloco */
+  --space-xs:   4px;
+  --space-sm:   8px;  /* irmãos de uma linha */
+  --space-md:  12px;
+  --space-lg:  16px;  /* padding de linha, calha do celular */
+  --space-xl:  24px;
+  --space-2xl: 32px;  /* calha do desktop */
+  --space-3xl: 48px;  /* entre blocos distintos */
+
+  /* ── Empilhamento ───────────────────────────────────────────────────────
+     Escala semântica, na ordem em que as camadas se cobrem. Antes eram nove
+     inteiros crus, e a consequência era real: `.sortPanel` tinha 30 na base e
+     20 no ≥768px, com o próprio backdrop em 29 — no desktop o painel de
+     ordenação ficava POR BAIXO do scrim que ele mesmo acende. Número solto
+     não tem como estar errado; camada nomeada tem. */
+  --z-sticky:   10;  /* cabeçalho de dia que gruda no topo da lista */
+  --z-dropdown: 20;
+  --z-scrim:    30;  /* o véu que escurece o fundo de um painel */
+  --z-panel:    40;  /* o painel em si — sempre acima do próprio scrim */
+  --z-modal:    50;
+  --z-toast:    60;
+
   --sidebar:              #eef2ef;
   --sidebar-foreground:   #141a15;
   --sidebar-primary:      #166534;
@@ -100,7 +138,12 @@
 
 * { box-sizing: border-box; }
 
-html, body { height: 100%; }
+/* overflow-x: hidden é o cinto de segurança contra 1px de sobra sub-pixel
+   (bordas, box-shadow) que, sem isso, aciona a barra horizontal da página —
+   e essa barra rouba altura da viewport, o que por sua vez faz o `.root`
+   (100vh fixo) estourar por baixo e abrir uma SEGUNDA barra, vertical. Quem
+   rola de verdade é só a tabela (.desktopTableWrap), nunca o documento. */
+html, body { height: 100%; overflow-x: hidden; }
 
 .sr-only {
   position: absolute;

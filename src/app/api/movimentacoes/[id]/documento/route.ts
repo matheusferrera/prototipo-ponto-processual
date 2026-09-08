@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
 /**
- * A peça anexada à movimentação, em PDF — despacho, decisão, sentença,
- * certidão, petição.
+ * A peça anexada à movimentação — despacho, decisão, sentença, certidão,
+ * petição.
  *
  * Irmã de `certidao/route.ts`, e pela mesma razão dupla: o browser tem o cookie
  * httpOnly e não o Bearer, então quem fala com o backend é o servidor do Next;
@@ -48,12 +48,20 @@ export async function GET(
     return NextResponse.json(erro, { status: backendRes.status });
   }
 
+  // **O tipo vem do backend, não daqui.** Fixar `application/pdf` funcionou
+  // enquanto só o TJDFT servia documento; a consulta pública do PJe (TRF1, TRF3)
+  // não tem PDF do ato, devolve a página HTML dele — e com o tipo fixo o
+  // navegador abria uma aba de lixo binário. `application/pdf` continua sendo o
+  // padrão para o caso de o backend não declarar tipo.
   return new NextResponse(backendRes.body, {
     status: 200,
     headers: {
-      'Content-Type': 'application/pdf',
+      'Content-Type': backendRes.headers.get('content-type') ?? 'application/pdf',
       'Content-Disposition': backendRes.headers.get('content-disposition') ?? 'inline',
-      'Cache-Control': 'private, max-age=86400',
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      ...(backendRes.headers.get('content-type')?.startsWith('text/html')
+        ? { 'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:" } : {}),
     },
   });
 }

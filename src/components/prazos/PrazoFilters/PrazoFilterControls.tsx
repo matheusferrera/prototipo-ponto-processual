@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ArrowUpDown, Funnel, X } from 'lucide-react';
 import { SearchControl } from '@/components/layout/PageHeader/SearchControl';
@@ -18,20 +17,12 @@ import {
   serializePrazoFilters,
   type PrazoFilterState,
   type PrazoSort,
-  type PrazoView,
 } from '@/lib/prazo-filters';
 import type { TribunalOption } from '@/lib/tribunals';
-import headerStyles from '@/components/layout/PageHeader/PageHeader.module.css';
 import styles from '@/components/filters/FilterPanel.module.css';
 
 export const PRAZO_PANEL_HOST_ID = 'prazo-filter-panel-host';
 const PRAZO_PANEL_ID = 'prazo-filter-panel';
-
-const VIEWS: { value: PrazoView; label: string }[] = [
-  { value: 'lista', label: 'Pauta' },
-  { value: 'kanban', label: 'Kanban' },
-  { value: 'calendario', label: 'Calendário' },
-];
 
 const SORT_OPTIONS: { value: `${PrazoSort}:${'asc' | 'desc'}`; label: string }[] = [
   { value: 'fatal:asc', label: 'Prazo fatal · mais próximo' },
@@ -47,10 +38,13 @@ export function PrazoFilterControls({
   filters,
   tribunals,
   variant = 'desktop',
+  trailing,
 }: {
   filters: PrazoFilterState;
   tribunals: readonly TribunalOption[];
   variant?: 'desktop' | 'mobile';
+  /** Botão extra no fim do grupo (o PDF), para alinhar com busca/filtro/ordenação. */
+  trailing?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -108,22 +102,6 @@ export function PrazoFilterControls({
   ]);
 
   const sortValue = `${filters.sort}:${filters.order}`;
-  const tabs = (
-    <div className={headerStyles.tabs} role="tablist" aria-label="Visualização">
-      {VIEWS.map(view => (
-        <Link
-          key={view.value}
-          href={hrefFor(pathname, { ...filters, view: view.value })}
-          role="tab"
-          aria-selected={filters.view === view.value}
-          className={`${headerStyles.tab}${filters.view === view.value ? ` ${headerStyles.tabActive}` : ''}`}
-        >
-          {view.label}
-        </Link>
-      ))}
-    </div>
-  );
-
   const actions = (
     <div className={`${styles.controls} ${variant === 'mobile' ? styles.controlsMobile : ''}`} aria-label="Controles de prazos">
       <SearchControl
@@ -165,22 +143,13 @@ export function PrazoFilterControls({
           ))}
         </NativeSelect>
       </label>
+      {trailing}
     </div>
   );
 
   return (
     <>
-      {variant === 'mobile' ? (
-        <>
-          {actions}
-          <div className={headerStyles.mobileTabsRow}>{tabs}</div>
-        </>
-      ) : (
-        <>
-          {tabs}
-          {actions}
-        </>
-      )}
+      {actions}
 
       <ResponsiveFilterPanel
         open={open}
@@ -364,10 +333,6 @@ export function PrazoFilterControls({
   );
 }
 
-function hrefFor(pathname: string, filters: PrazoFilterState) {
-  const params = serializePrazoFilters(filters);
-  return params.size ? `${pathname}?${params.toString()}` : pathname;
-}
 
 function RangeFields({
   id,

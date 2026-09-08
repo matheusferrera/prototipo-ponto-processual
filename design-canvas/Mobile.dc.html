@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Manrope', system-ui, sans-serif; color: #141a15; background: #e2ebe4; -webkit-font-smoothing: antialiased; }
+    a { color: #166534; text-decoration: none; }
+    a:hover { color: #14532d; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div style="width:390px; min-height:1060px; background:#f8faf8; display:flex; flex-direction:column;">
+
+  <!-- Mobile menu bar -->
+  <header style="display:flex; align-items:center; gap:14px; padding:14px 16px; border-bottom:1px solid #dce6de; background:#f8faf8;">
+    <span style="display:flex; flex-direction:column; gap:4px; width:22px;">
+      <span style="height:2px; background:#141a15; display:block;"></span>
+      <span style="height:2px; background:#141a15; display:block;"></span>
+      <span style="height:2px; background:#141a15; display:block;"></span>
+    </span>
+    <span style="min-width:0;">
+      <span style="display:block; font-weight:800; font-size:16px; letter-spacing:-0.01em;">Dashboard</span>
+      <span style="display:block; font-size:11px; color:#3a4a3d;">Início / Dashboard</span>
+    </span>
+    <span style="width:32px; height:32px; margin-left:auto; flex-shrink:0; background:#dcf0e3; color:#166534; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">I</span>
+  </header>
+
+  <!-- Sync strip -->
+  <div style="padding:9px 16px; border-bottom:1px solid #dce6de;">
+    <span class="mono" style="font-size:11px; color:#4a5d3a;">● Sincronizado · há 10 min</span>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:16px; padding:16px;">
+
+    <!-- HERO -->
+    <section style="background:#f2f8f4; border:1px solid #bcdcc7; padding:20px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+        <span style="display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.12em; color:#3a4a3d;">
+          <span style="width:5px; height:5px; background:#166534; display:block;"></span>
+          Precisa de você
+        </span>
+      </div>
+
+      <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:16px;">
+        <span class="mono" style="font-size:56px; font-weight:800; line-height:0.82; letter-spacing:-0.04em; color:#991b1b;">2</span>
+        <span>
+          <span style="display:block; font-size:15px; font-weight:800; color:#141a15;">prazos críticos</span>
+          <span style="display:block; font-size:12px; color:#3a4a3d; margin-top:2px;">vencem em até 3 dias</span>
+        </span>
+      </div>
+
+      <a href="#" style="display:flex; align-items:center; gap:14px; padding:12px 0; border-top:1px solid #dce6de;">
+        <span class="mono" style="font-size:22px; font-weight:700; color:#991b1b; width:40px; text-align:right;">1d</span>
+        <span style="flex:1; min-width:0;">
+          <span style="display:block; font-size:14px; font-weight:700; color:#141a15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Bem de Família (Voluntário)</span>
+          <span style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+            <span style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#166534; background:#dcf0e3; border:1px solid #9ecbb0; padding:1px 5px;">Manifestação</span>
+            <span style="font-size:12px; color:#3a4a3d;">amanhã</span>
+          </span>
+        </span>
+        <span class="mono" style="font-size:10px; font-weight:700; color:#3a4a3d; border:1px solid #cdd7cf; padding:2px 6px;">TJMT</span>
+      </a>
+
+      <a href="#" style="display:flex; align-items:center; gap:14px; padding:12px 0; border-top:1px solid #dce6de;">
+        <span class="mono" style="font-size:22px; font-weight:700; color:#991b1b; width:40px; text-align:right;">2d</span>
+        <span style="flex:1; min-width:0;">
+          <span style="display:block; font-size:14px; font-weight:700; color:#141a15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Natália de Jesus S. Ferrão</span>
+          <span style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+            <span style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#166534; background:#dcf0e3; border:1px solid #9ecbb0; padding:1px 5px;">Manifestação</span>
+            <span style="font-size:12px; color:#3a4a3d;">em 2 dias</span>
+          </span>
+        </span>
+        <span class="mono" style="font-size:10px; font-weight:700; color:#3a4a3d; border:1px solid #cdd7cf; padding:2px 6px;">TJDFT</span>
+      </a>
+
+      <a href="#" style="display:block; margin-top:12px; padding-top:14px; border-top:1px solid #dce6de; font-size:13px; font-weight:700; color:#166534;">Ver todos os prazos →</a>
+    </section>
+
+    <!-- Prazos por natureza -->
+    <section style="border:1px solid #cdd7cf; background:#f8faf8;">
+      <div style="display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid #dce6de;">
+        <span style="display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.12em; color:#3a4a3d;">
+          <span style="width:5px; height:5px; background:#166534; display:block;"></span>
+          Prazos por natureza
+        </span>
+        <span class="mono" style="margin-left:auto; font-size:11px; font-weight:700; color:#3a4a3d;">21</span>
+      </div>
+      <div style="padding:16px 18px; display:flex; align-items:center; gap:18px;">
+        <svg viewBox="0 0 140 140" width="104" height="104" style="flex-shrink:0;">
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#eef2ef" stroke-width="18"></circle>
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#166534" stroke-width="18" stroke-dasharray="202 327" transform="rotate(-90 70 70)"></circle>
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#d97706" stroke-width="18" stroke-dasharray="125 327" stroke-dashoffset="-202" transform="rotate(-90 70 70)"></circle>
+        </svg>
+        <div style="display:flex; flex-direction:column; gap:10px; flex:1;">
+          <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#3a4a3d;"><span style="width:11px; height:11px; background:#166534; flex-shrink:0;"></span>Manifestação <span class="mono" style="margin-left:auto; font-weight:700; color:#141a15;">13</span></div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#3a4a3d;"><span style="width:11px; height:11px; background:#d97706; flex-shrink:0;"></span>Ciência <span class="mono" style="margin-left:auto; font-weight:700; color:#141a15;">8</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feed -->
+    <section style="border:1px solid #cdd7cf; background:#f8faf8;">
+      <div style="display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid #dce6de;">
+        <span style="display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.12em; color:#3a4a3d;">
+          <span style="width:5px; height:5px; background:#166534; display:block;"></span>
+          Movimentações recentes
+        </span>
+      </div>
+
+      <a href="#" style="display:flex; flex-direction:column; gap:5px; padding:14px 18px; border-bottom:1px solid #dce6de;">
+        <span style="display:flex; align-items:center; gap:8px;">
+          <span class="mono" style="font-size:11px; color:#3a4a3d;">05:14</span>
+          <span style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#3a4a3d; border:1px solid #cdd7cf; padding:1px 6px;">Publicação</span>
+          <span style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#fff; background:#166534; padding:1px 6px;">Nova</span>
+        </span>
+        <span style="font-size:14px; font-weight:700; color:#141a15;">Disponibilizado no DJ Eletrônico</span>
+        <span style="font-size:12px; color:#3a4a3d;">Humberto Melo Bosaipo · TJMT</span>
+      </a>
+
+      <a href="#" style="display:flex; flex-direction:column; gap:5px; padding:14px 18px; border-bottom:1px solid #dce6de;">
+        <span style="display:flex; align-items:center; gap:8px;">
+          <span class="mono" style="font-size:11px; color:#3a4a3d;">05:12</span>
+          <span style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#3a4a3d; border:1px solid #cdd7cf; padding:1px 6px;">Prazo</span>
+          <span style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#fff; background:#166534; padding:1px 6px;">Nova</span>
+        </span>
+        <span style="font-size:14px; font-weight:700; color:#141a15;">Decorrido prazo — exp. nº 51375832</span>
+        <span style="font-size:12px; color:#3a4a3d;">Estado de Mato Grosso · TJMT</span>
+      </a>
+
+      <a href="#" style="display:flex; flex-direction:column; gap:5px; padding:14px 18px;">
+        <span style="display:flex; align-items:center; gap:8px;">
+          <span class="mono" style="font-size:11px; color:#3a4a3d;">04:43</span>
+          <span style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#3a4a3d; border:1px solid #cdd7cf; padding:1px 6px;">Publicação</span>
+        </span>
+        <span style="font-size:14px; font-weight:700; color:#141a15;">Publicada intimação em 04/09/2026</span>
+        <span style="font-size:12px; color:#3a4a3d;">José Quirino Pereira · TJMT</span>
+      </a>
+
+      <a href="#" style="display:block; padding:13px 18px; border-top:1px solid #dce6de; font-size:12px; font-weight:700; color:#166534;">Ver todas (7.108) →</a>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

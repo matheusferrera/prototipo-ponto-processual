@@ -3,8 +3,8 @@
 
 .pageShell {
   flex: 1;
-  min-height: 100dvh;
-  overflow: visible;
+  min-height: 0;
+  overflow: auto;
   background: var(--paper);
   color: var(--ink);
   overscroll-behavior: contain;
@@ -611,12 +611,6 @@
 
 /* Tablet (>=768px) */
 @media (min-width: 768px) {
-  .pageShell {
-    min-height: 0;
-    overflow: auto;
-    overscroll-behavior: contain;
-  }
-
   .cover { padding: 56px 32px 48px; }
   .cover h1 { font-size: 52px; line-height: 1; }
   .cover p { font-size: 15px; }

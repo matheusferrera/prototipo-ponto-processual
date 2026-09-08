@@ -16,7 +16,7 @@ export type StatusType = 'signal' | 'quiet' | 'alert';
  * Linhas gravadas antes disso ainda chegam da API, então tirá-lo do tipo faria
  * a tela quebrar num dado que existe.
  */
-export type OrigemMovimentacao = 'scraper' | 'tribunalPublico' | 'datajud' | 'djen';
+export type OrigemMovimentacao = 'scraper' | 'tribunalPublico' | 'datajud' | 'djen' | 'pdpj';
 
 /**
  * A que serve a movimentação — o eixo que separa o que se lê do que o cartório
@@ -77,6 +77,22 @@ export interface PrazoDoAto {
    */
   metodoPrazo: 'textoExplicito' | 'prazoLegal' | 'padraoCpc218' | 'cienciaPublicacao' | 'analiseIa' | null;
   fechado: boolean;
+  /** De onde o PRAZO veio. `djen` e `tribunalPublico` são cálculo; `painel`/`grid` é o tribunal. */
+  origem?: 'painel' | 'grid' | 'djen' | 'tribunalPublico' | null;
+  /** Diário (ciência na publicação) ou portal (ciência no dia da expedição — a mais cedo possível). */
+  canal?: 'diario' | 'portal' | null;
+  /**
+   * De quem é o prazo, no ato do tribunal. `indefinido` merece um "a confirmar"
+   * na tela: está na agenda, mas ninguém afirmou que é do usuário.
+   */
+  deQuem?: 'destinatario' | 'parteContraria' | 'indefinido' | null;
+  emDobro?: boolean | null;
+  /** O dispositivo que sustenta o número — "apelação — CPC, art. 1.003, § 5º". */
+  fundamento?: string | null;
+  /** A publicação que fez o prazo correr — o marco, não a data do ato. */
+  publicadoEm?: string | null;
+  /** A parte intimada, como o ato a nomeia. */
+  parte?: string | null;
 }
 
 export interface Movimentacao {
@@ -97,6 +113,12 @@ export interface Movimentacao {
   time?: string;
   state: StatusType;
   origem: OrigemMovimentacao;
+  /**
+   * Todas as fontes que confirmaram ESTE ato. Com mais de uma, o ato foi visto
+   * por duas — é o caso do mesmo despacho que sai no diário e aparece na linha
+   * do portal. `[]` em linha anterior ao carimbo.
+   */
+  fontes?: string[];
   /** A que serve o ato. `null` em linha anterior à classificação. */
   categoria: CategoriaMovimentacao | null;
   /** Todos os campos `null` quando a IA não rodou — caminho degradado, não erro. */
@@ -109,6 +131,26 @@ export interface Movimentacao {
    * `undefined` = não foi pedido; `null` = este ato não tem texto.
    */
   textoOriginal?: string | null;
+  /**
+   * **Há TEXTO do ato** — o que o diário publicou ou o que se extraiu do PDF.
+   *
+   * Só isso. Até 08/09/2026 este campo respondia "há algo pra abrir", fundindo
+   * texto com documento anexado, e por isso a linha dizia "Com inteiro teor"
+   * para ato que só tinha um PDF sem texto. São dois fatos independentes e
+   * agora têm dois sinais — ver `documentoEstado`.
+   */
+  temInteiroTeor?: boolean;
+  /**
+   * **Há DOCUMENTO, e o que esperar dele** — calculado pelo backend
+   * (`estadoDocumento`), que é a única camada que enxerga o livro-razão da
+   * aquisição: quais chaves já foram pedidas ao portal e voltaram sem arquivo.
+   *
+   * `trancado` é bloqueio DECLARADO pelo tribunal (abre quando liberarem);
+   * `provavelIndisponivel` é medição nossa (404 registrado, ou o rótulo
+   * genérico do PDPJ). Confundir os dois faz a tela prometer que um arquivo
+   * inexistente vai abrir depois.
+   */
+  documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
 }
 
 export interface MovimentacaoGroup {
@@ -136,8 +178,35 @@ export interface ProximoPrazo {
   diasRestantes: number;
 }
 
+/**
+ * A leitura do CASO pela IA — a síntese do processo inteiro.
+ *
+ * Não confundir com a leitura do ATO (`Movimentacao.ia`): aquela responde "o
+ * que aconteceu nesta linha", esta responde "onde este processo está". Ela é o
+ * topo da pirâmide e consome os resumos dos atos já pagos, em vez de reler o
+ * acervo — ver `ia/tipos/processo.ts` no backend.
+ */
+export interface AnaliseDoCaso {
+  /** Três a cinco frases: do que se trata, entre quem, e como está. */
+  sintese: string;
+  fase: 'conhecimento' | 'instrucao' | 'sentenciado' | 'recursal' | 'execucao' | 'arquivado' | 'indefinido';
+  /** Uma a duas frases sobre o estado de agora. `''` quando a IA não afirmou. */
+  situacao: string;
+  pedidoPrincipal: string | null;
+  ultimaDecisao: { resumo: string; data: string } | null;
+  pendencias: string[];
+  /** O que o JUÍZO tende a fazer pelo rito — não é conselho nem previsão. */
+  proximoPassoProvavel: string | null;
+  pontosDeAtencao: string[];
+  confianca: 'alta' | 'media' | 'baixa';
+  /** Quando a análise foi produzida. */
+  atualizadaEm: string | null;
+}
+
 export interface Processo {
   id: string;
+  /** A síntese do caso pela IA. `null` quando ninguém pediu a análise ainda. */
+  analiseCaso?: AnaliseDoCaso | null;
   tribunal: string;
   cnj: string;
   orgaoJulgador: string;
@@ -166,20 +235,26 @@ export interface Processo {
   /** prazos não fechados e não vencidos */
   prazosAbertos: number;
   proximoPrazo: ProximoPrazo | null;
-  /**
-   * Há certidão de andamento deste processo — o PDF oficial do STJ.
-   *
-   * É documento do PROCESSO, não de uma movimentação: a via pública do STJ não
-   * expõe peça por ato, e essa certidão é o que cobre a timeline inteira. Só
-   * processo do STJ tem. Sai por `/api/processos/{id}/certidao-andamento`.
-   */
-  temCertidaoAndamento?: boolean;
 }
 
 /** Documento anexado a uma movimentação. */
 export interface DocumentoMovimentacao {
+  nDocumento?: string;
+  tribunal?: string;
   nome: string;
   url: string;
+  /** Explicação visível quando o documento foi identificado, mas não há link utilizável. */
+  indisponibilidade?: string;
+  /**
+   * O botão existe, mas a chance de ele não abrir é alta — e isso é MEDIDO,
+   * não palpite. O PDPJ rotula a peça como `'Documento'` quando não sabe
+   * classificá-la, e a sondagem ao vivo (08/09/2026) achou 404 em 3 de 3; no
+   * acervo inteiro, 195 de 309 pedidos de arquivo voltaram sem nada.
+   *
+   * Diferente de `indisponibilidade`, que é o tribunal DECLARANDO o bloqueio.
+   * Aqui ninguém declarou nada: nós é que já tentamos e não veio arquivo.
+   */
+  provavelIndisponivel?: boolean;
 }
 
 export interface TimelineEvent {
@@ -195,16 +270,30 @@ export interface TimelineEvent {
    * quebrarem e outras não.
    */
   ano: string;
+  /** `YYYY-MM-DD` em Brasília — a chave que agrupa os atos sob um cabeçalho. */
+  dia: string;
+  /**
+   * O rótulo curto do cabeçalho de dia — `"HOJE"`, `"ONTEM"`, `"6 AGO 2026"`.
+   *
+   * Sai do MESMO `formatDateGroup` que monta o cabeçalho do feed de
+   * `/movimentacoes`, para as duas listas nomearem o dia do mesmo jeito. A
+   * diferença é o ANO, que entra aqui porque a linha do tempo de um processo
+   * atravessa anos — o acervo tem ato de 2020 ao lado de ato de 2026 — e "6
+   * AGO" sozinho obriga a inferir de qual deles se fala pela posição na lista.
+   */
+  dataCurta: string;
+  /** O dia da semana (`"quinta"`), ou `DD.MM` quando o rótulo é HOJE/ONTEM. */
+  diaSemana: string;
   time?: string;
-  label?: string;
   title: string;
   body?: string;
-  state: StatusType;
   /** número do movimento no tribunal; sem ele, a posição na timeline */
   n: string;
   rawDate?: string;
   documentos: DocumentoMovimentacao[];
   origem?: OrigemMovimentacao;
+  /** Fontes que confirmaram este ato — ver `Movimentacao.fontes`. */
+  fontes?: string[];
   /** A que serve o ato — ver `CategoriaMovimentacao`. */
   categoria?: CategoriaMovimentacao | null;
   /** Leitura do ato pela IA — só existe na origem `djen`. */
@@ -219,6 +308,11 @@ export interface TimelineEvent {
    * que por outra via.
    */
   temCertidao?: boolean;
+  /** Ver `Movimentacao.temInteiroTeor` — o mesmo sinal, na timeline do processo. */
+  temInteiroTeor?: boolean;
+  /** Ver `Movimentacao.documentoEstado` — o mesmo sinal, na timeline do processo. */
+  documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
+  prazo?: PrazoDoAto | null;
 }
 
 /**
@@ -227,6 +321,56 @@ export interface TimelineEvent {
  * backend, a partir do texto do ato. Ver `naturezaDoAto` na API.
  */
 export type NaturezaPrazo = 'ciencia' | 'manifestacao';
+
+/**
+ * O ato que abriu o prazo, do ponto de vista de quem está olhando o PRAZO —
+ * o mesmo recorte que `GET /movements/{id}` serve, só que já embutido na
+ * resposta de `/deadlines` (sem custo de requisição extra). `null` quando o
+ * prazo não tem ato gravado (origem `painel`/`grid`).
+ */
+export interface AtoDoPrazo {
+  id: string;
+  ia: LeituraIa;
+  /** As peças anexadas ao ato — já com `url` resolvida (proxy ou link do tribunal). */
+  documentos: DocumentoMovimentacao[];
+  /** Há certidão de publicação — o PDF oficial do CNJ, sem chave exposta. */
+  temCertidao: boolean;
+  /** O link do PJe, só quando ele NÃO é o documento (`ConsultaDocumento`, com hCaptcha). */
+  link: string | null;
+}
+
+/** O que perder o prazo custa. */
+export type RiscoPrazo = 'preclusao' | 'perdaDeDireito' | 'revelia' | 'multa' | 'nenhum';
+
+/**
+ * A leitura do PRAZO pela IA — o que o advogado PRODUZ até a data, não a data
+ * em si (isso já foi decidido sobre o ato, com o calendário forense — ver
+ * `Prazo.fundamento`/`metodoPrazo`). Pedida sob demanda em
+ * `POST /deadlines/{id}/analise`; pode já vir em cache na própria listagem.
+ */
+export interface AnalisePrazoResultado {
+  /** Nome técnico da peça a produzir — "contrarrazões de apelação". `null` quando é só ciência. */
+  peca: string | null;
+  /** A providência e o efeito prático dela, 2-3 frases. */
+  oQueFazer: string;
+  /** Ações verificáveis — "conferir a data de juntada do AR". */
+  checklist: string[];
+  /** Dá para redigir só com o ato, ou é indispensável abrir o processo? */
+  precisaDosAutos: boolean;
+  /** O que falta obter ou juntar para a peça existir. */
+  documentosNecessarios: string[];
+  risco: RiscoPrazo;
+  complexidade: 'baixa' | 'media' | 'alta';
+  /** Quando o ato diverge do que foi informado (dias, de quem). Nunca muda a data. */
+  observacao: string | null;
+  confianca: 'alta' | 'media' | 'baixa';
+}
+
+export interface AnalisePrazo {
+  atualizadaEm: string;
+  modelo: string;
+  resultado: AnalisePrazoResultado;
+}
 
 export interface Prazo {
   id: string;
@@ -265,6 +409,26 @@ export interface Prazo {
    * faltar o ato.
    */
   movementId: string | null;
+  fechado?: boolean;
+  diasPrazo?: number | null;
+  origemPrazo?: PrazoDoAto['origem'];
+  metodoPrazo?: PrazoDoAto['metodoPrazo'];
+  fundamento?: string | null;
+  deQuem?: PrazoDoAto['deQuem'];
+  /** Diário (ciência na publicação) ou portal (ciência na expedição — a mais cedo possível). */
+  canal?: PrazoDoAto['canal'];
+  /** Dobra do CPC 180/183/186 — só entra quando o cliente é conhecido e o prazo é legal ou supletivo. */
+  emDobro?: boolean | null;
+  /** A publicação que fez o prazo correr — o marco, não a data do ato. ISO. */
+  publicadoEm?: string | null;
+  /** Quando a ciência se deu — pode ser a mesma data da publicação, ou a da expedição no portal. ISO. */
+  cienciaEm?: string | null;
+  /** `true` quando a ciência é a ficta do art. 5º, § 3º — "o sistema registrou", não "você abriu". */
+  cienciaFicta?: boolean | null;
+  /** O ato que abriu este prazo, embutido — ver `AtoDoPrazo`. `null` sem ato gravado. */
+  ato?: AtoDoPrazo | null;
+  /** A leitura do prazo pela IA, quando já em cache. `null`/ausente: ainda não pedida. */
+  analise?: AnalisePrazo | null;
   state: StatusType;
 }
 
@@ -299,5 +463,3 @@ export interface TribunalStatusItem {
   successJobsLast24h?: number;
   failedJobsLast24h?: number;
 }
-
-

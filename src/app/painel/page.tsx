@@ -1,22 +1,24 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { KeyRound, Scale, SearchX, ShieldAlert } from 'lucide-react';
+import { KeyRound, Scale, SearchX } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
+import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
 import {
   getProcessos,
   getMovimentacoes,
   getPrazos,
   getScraperSecrets,
   getUsuarioAtual,
+  getAtividadeDiaria,
 } from '@/lib/api.server';
 import { CadastrarOab } from '@/components/dashboard/CadastrarOab/CadastrarOab';
 import { PainelSincronizando } from '@/components/varredura/PainelSincronizando';
 import { formatarOab, type UsuarioAtual } from '@/lib/usuario';
-import { tituloPrazo } from '@/lib/prazo';
+import { rotuloNatureza, tituloPrazo } from '@/lib/prazo';
+import { categoriaCurta } from '@/lib/categoria-movimentacao';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { Seal } from '@/components/ui/Seal/Seal';
-import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
-import type { Processo } from '@/types';
+import { MovimentacaoRow } from '@/components/movimentacoes/MovimentacaoRow/MovimentacaoRow';
+import type { CategoriaMovimentacao, Prazo, Processo } from '@/types';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
@@ -27,25 +29,47 @@ export const metadata: Metadata = {
 
 /** Amostra usada para as agregações que o backend não expõe (composição da carteira). */
 const AMOSTRA_CARTEIRA = 100;
-/** Horizonte da faixa de prazos, em dias corridos a partir de hoje. */
-const HORIZONTE_DIAS = 14;
-
-const DIA_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+/**
+ * Janela do heatmap: 4 semanas cheias.
+ *
+ * Múltiplo de 7 de propósito — é o que faz cada COLUNA ser sempre o mesmo dia
+ * da semana, com hoje na última. Com 30 dias (o valor até 08/09/2026) as
+ * colunas escorregavam um dia a cada semana e a régua embaixo seria mentira.
+ */
+const HEATMAP_DIAS = 28;
+/** Iniciais de domingo a sábado — a régua sob a grade. */
+const INICIAIS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+/** Degraus do heatmap (claro → escuro) — verde sequencial validado sobre o creme. */
+const HEAT_RAMP = ['#eaf1ec', '#bcdcc7', '#7fb495', '#3f8c62', '#166534'];
+/** Circunferência da rosca de natureza (2·π·r, r = 52). */
+const DONUT_CIRC = 2 * Math.PI * 52;
 
 const toISODate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/** "há 12 min" / "há 3h" / "há 2d" — null quando não houve sincronização alguma. */
-function haQuanto(iso: string | null): string | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  if (Number.isNaN(ms)) return null;
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return 'agora';
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  return `há ${Math.floor(h / 24)}d`;
+/** "vence hoje" / "vence amanhã" / "vence em 3 dias" / "venceu há 2 dias". */
+function quandoVence(dias: number): string {
+  if (dias === 0) return 'vence hoje';
+  if (dias === 1) return 'vence amanhã';
+  if (dias > 1) return `vence em ${dias} dias`;
+  if (dias === -1) return 'venceu ontem';
+  return `venceu há ${Math.abs(dias)} dias`;
+}
+
+/** Degrau do heatmap: 0 vazio, depois 1–2 · 3–5 · 6–10 · 11+. */
+function nivelHeat(count: number): number {
+  if (count <= 0) return 0;
+  if (count <= 2) return 1;
+  if (count <= 5) return 2;
+  if (count <= 10) return 3;
+  return 4;
+}
+
+/** Cor do número dentro da casa do heatmap — claro sobre casa escura, escuro sobre clara. */
+function corHeat(nivel: number): string {
+  if (nivel >= 3) return '#fff';
+  if (nivel === 0) return 'var(--ink-3)';
+  return 'var(--ink-2)';
 }
 
 const moeda = new Intl.NumberFormat('pt-BR', {
@@ -57,367 +81,339 @@ const moeda = new Intl.NumberFormat('pt-BR', {
 
 const plural = (n: number, um: string, muitos: string) => (n === 1 ? um : muitos);
 
-/**
- * O radar público do DJEN é modelado como uma credencial de sigla `DJEN`
- * (ver `setup-djen-secret.ts` no backend). Ela não é acesso autenticado a
- * tribunal nenhum — por isso não conta para a cobertura.
- */
-const SIGLA_DJEN = 'DJEN';
+/** Um prazo é "a confirmar" quando a data é cálculo nosso ou ninguém afirmou que é seu. */
+function prazoAConfirmar(pz: Prazo): { estimado: boolean } | null {
+  const estimado = !!pz.metodoPrazo && pz.metodoPrazo !== 'textoExplicito';
+  if (estimado || pz.deQuem === 'indefinido') return { estimado };
+  return null;
+}
+
 
 export default async function DashboardPage() {
   const [
-    { processos, total: totalProcessos, comNovidade, comErro },
-    { groups: movimentacoes, newToday, total: totalMovs },
-    { prazos, criticos },
+    { processos, total: totalProcessos },
+    { groups: movimentacoes, total: totalMovs },
+    { prazos },
+    atividade,
     secrets,
     usuario,
   ] = await Promise.all([
     getProcessos(1, AMOSTRA_CARTEIRA),
     getMovimentacoes(1, 50),
     getPrazos(),
+    getAtividadeDiaria(HEATMAP_DIAS),
     getScraperSecrets(),
     getUsuarioAtual(),
   ]);
 
-  // Credencial de tribunal = a que dá login no sistema (PJe/CPE/Projudi).
-  // Só com ela o robô entra nos autos; sem nenhuma, a carteira inteira vem do
-  // que é publicado no diário — e a tela precisa dizer isso.
-  const semAutenticacao = !secrets.some(
-    s => s.isActive && s.tribunais.some(t => t !== SIGLA_DJEN),
-  );
 
-  /* Painel vazio tem três causas distintas, e tratá-las como uma só era o que
-     fazia a tela pedir a senha de um tribunal para quem só precisava dizer a
-     própria OAB:
-       1. sem OAB      — não há por onde procurar; é a única pergunta que falta;
-       2. com OAB e sem varredura concluída — está buscando agora;
-       3. com OAB, já varrido e nada — a OAB pode estar errada, ou é uma OAB
-          sem publicação recente no diário. */
   const semProcessos = totalProcessos === 0;
   const semOab = !usuario.oab;
-  /* Só credencial ATIVA conta. Trocar a OAB desativa a anterior sem apagá-la
-     (o acervo dela fica arquivado, recuperável), e ela guarda o `lastSuccessAt`
-     da própria varredura — que não diz nada sobre a OAB de agora. Sem o filtro,
-     quem acabou de trocar veria "já varremos e não achamos nada" enquanto a
-     varredura nova ainda estava rodando. */
   const jaVarreu = secrets.some(s => s.isActive && s.lastSuccessAt);
-
-  // `counts` é global (vem do backend); a amostra só entra como rede de segurança
-  // caso o contrato mude e o campo suma.
-  const novidades = comNovidade || processos.filter(p => p.state === 'signal').length;
-  const comFalha = comErro || processos.filter(p => p.state === 'alert').length;
 
   const allMovs = movimentacoes.flatMap(g => g.items);
 
-  const prazosOrdenados = [...prazos].sort((a, b) => {
+  // ── Prazos ────────────────────────────────────────────────────────────────
+  //
+  // **O painel mostra o que ESTÁ POR VIR.** Até 08/09/2026 ele ordenava por
+  // `diasRestantes` ascendente sem filtrar nada, e o efeito era o pior
+  // possível: os três primeiros eram sempre os MAIS VENCIDOS. Medido na conta
+  // de teste, a lista abria com prazos de 722, 595 e 566 dias atrás — nenhum
+  // acionável, e o que vencia esta semana ficava fora da tela.
+  //
+  // É o mesmo erro que o backend já tinha corrigido em `etapaAnalises` (ver o
+  // CLAUDE.md de lá): janela sem PISO manda o orçamento todo para o passado.
+  const prazosAbertos = prazos.filter(p => !p.fechado);
+  const prazosOrdenados = [...prazosAbertos].sort((a, b) => {
     if (a.diasRestantes === null && b.diasRestantes === null) return 0;
     if (a.diasRestantes === null) return 1;
     if (b.diasRestantes === null) return -1;
     return a.diasRestantes - b.diasRestantes;
   });
-  const prazosCriticos = prazosOrdenados.filter(p => p.diasRestantes !== null && p.diasRestantes <= 3);
-  const prazos7 = prazos.filter(p => p.diasRestantes !== null && p.diasRestantes <= 7).length;
-  const prazosSemData = prazos.filter(p => p.vencimentoISO === null).length;
+  const aVencer = prazosOrdenados.filter(p => p.diasRestantes !== null && p.diasRestantes >= 0);
+  // Crítico é o que vence em até 3 dias — não o que venceu há dois anos.
+  const prazosCriticos = aVencer.filter(p => p.diasRestantes! <= 3);
+  const heroPrazos = aVencer.slice(0, 3);
+  const temCritico = prazosCriticos.length > 0;
+  // O passivo continua visível, mas como NOTA — não como manchete. Ele só
+  // aparece se `fecharPrazosDjenExpirados` ainda não os alcançou.
+  const vencidosEmAberto = prazosOrdenados.filter(p => p.diasRestantes !== null && p.diasRestantes < 0).length;
 
-  // Faixa de HORIZONTE_DIAS dias: bucket por data-calendário (`vencimentoISO`),
-  // não por `diasRestantes` — este último arredonda a partir de "agora", não da
-  // meia-noite, e deslocaria itens de véspera para a coluna seguinte.
+  // ── Prazos por natureza (rosca) ─────────────────────────────────────────────
+  const prazosNat = prazosAbertos;
+  const manifestacoes = prazosNat.filter(p => p.natureza === 'manifestacao').length;
+  const ciencias = prazosNat.filter(p => p.natureza === 'ciencia').length;
+  const totalNat = manifestacoes + ciencias;
+  const arcoManif = totalNat ? (manifestacoes / totalNat) * DONUT_CIRC : 0;
+  const arcoCien = totalNat ? (ciencias / totalNat) * DONUT_CIRC : 0;
+
+  // ── Heatmap de 30 dias ──────────────────────────────────────────────────────
+  const atividadeMap = new Map(atividade.dias.map(d => [d.dia, d.total]));
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  const faixa = Array.from({ length: HORIZONTE_DIAS }, (_, i) => {
-    const data = new Date(hoje);
-    data.setDate(hoje.getDate() + i);
-    const iso = toISODate(data);
-    return {
-      iso,
-      offset: i,
-      dia: data.getDate(),
-      semana: DIA_SEMANA[data.getDay()],
-      fimDeSemana: data.getDay() === 0 || data.getDay() === 6,
-      count: prazos.filter(p => p.vencimentoISO === iso).length,
-    };
+  const heat = Array.from({ length: HEATMAP_DIAS }, (_, i) => {
+    const d = new Date(hoje);
+    d.setDate(hoje.getDate() - (HEATMAP_DIAS - 1 - i));
+    const iso = toISODate(d);
+    return { iso, count: atividadeMap.get(iso) ?? 0 };
   });
-  const picoFaixa = Math.max(1, ...faixa.map(d => d.count));
+  // Movimentações do dia corrente — o número de "últimas 24h" do resumo. O DJEN
+  // publica por data, não por hora, então a granularidade honesta é o dia.
+  const movs24h = atividadeMap.get(toISODate(hoje)) ?? 0;
+  // A régua sai das 7 primeiras casas da janela, não de uma constante: como a
+  // janela é múltipla de 7 e termina hoje, a coluna `i` é sempre o mesmo dia da
+  // semana — e derivar da própria grade é o que garante que a letra embaixo
+  // corresponde à casa acima, hoje e em qualquer outro dia.
+  const diasDaSemana = heat.slice(0, 7).map(d => {
+    const [ano, mes, dia] = d.iso.split('-').map(Number);
+    return INICIAIS_SEMANA[new Date(ano!, mes! - 1, dia!).getDay()];
+  });
 
-  // `lastScrapedAt` já vem normalizado em ISO por `normalizeDate`, então o
-  // maior lexicográfico é o mais recente.
-  const ultimaSync = processos.reduce<string | null>(
-    (best, p) => (p.lastScrapedAt && (!best || p.lastScrapedAt > best) ? p.lastScrapedAt : best),
-    null,
-  );
-  const sincronizadoHa = haQuanto(ultimaSync);
-
-  // Composição da carteira — derivada da amostra; `totalProcessos` é global.
+  // ── Composição da carteira ──────────────────────────────────────────────────
   const amostrado = processos.length;
   const parcial = totalProcessos > amostrado;
   const porTribunal = contarPorTribunal(processos);
-  const grau1 = processos.filter(p => p.grau === '1º').length;
-  const grau2 = processos.filter(p => p.grau === '2º').length;
-  const porScraper = processos.filter(p => p.origem === 'scraper').length;
-  const porDjen = processos.filter(p => p.origem === 'djen').length;
   const valorCausa = processos.reduce((acc, p) => acc + (p.valorCausa ?? 0), 0);
+  const atividadeCat = contarPorCategoria(allMovs);
 
   return (
     <AppLayout active="Dashboard" mobileTitle="Dashboard" mobileBreadcrumb="Início / Dashboard">
-      {/* Topbar */}
-      <div
-        className={styles.topbar}
-        style={{
-          borderBottom: '1px solid var(--line)',
-          background: 'var(--paper)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div className={styles.topbarTitle}>Dashboard</div>
-          <div className={styles.topbarBreadcrumb}>Início / Dashboard</div>
-        </div>
-        {!semProcessos && <SyncBadge sincronizadoHa={sincronizadoHa} />}
-      </div>
+      <PageHeader basePath="/painel" title="Dashboard" breadcrumb="Início / Dashboard" />
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        {semProcessos ? (
-          semOab ? <PainelSemOab />
-          : !jaVarreu ? <PainelSincronizando oab={usuario.oab!} />
-          : <PainelSemResultado oab={usuario.oab!} />
-        ) : (
-        <>
-        {/* Cobertura — precede os alertas: muda como tudo abaixo deve ser lido */}
-        {semAutenticacao && <AvisoDadosPublicos totalProcessos={totalProcessos} />}
+      <div className={styles.scroll}>
+        <div className={styles.content}>
+          {semProcessos ? (
+            semOab ? <PainelSemOab />
+            : !jaVarreu ? <PainelSincronizando oab={usuario.oab!} />
+            : <PainelSemResultado oab={usuario.oab!} />
+          ) : (
+          <>
+          {/* Grade — [hero + feed] | coluna lateral */}
+          <div className={styles.grid}>
+            <div className={styles.mainCol}>
+              {/* Resumo geral */}
+              <section className={styles.hero}>
+                <div className={styles.heroHead}>
+                  <span className={styles.heroTitle}>Resumo geral</span>
+                  <Link href="/prazos" className={styles.heroLink}>Ver todos os prazos →</Link>
+                </div>
 
-        {/* Alertas — só o que exige ação agora */}
-        {prazosCriticos.length > 0 && (
-          <div className={styles.dashAlert} style={{ background: 'var(--alert-soft)', borderLeft: '3px solid var(--alert)', display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--alert)', flexShrink: 0 }}>
-              {prazosCriticos.length} prazo{plural(prazosCriticos.length, '', 's')} crítico{plural(prazosCriticos.length, '', 's')}
-            </span>
-            <span className={styles.dashAlertPart} style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-              — {tituloPrazo(prazosCriticos[0])} vence em {prazosCriticos[0].diasRestantes} dia{plural(prazosCriticos[0].diasRestantes ?? 0, '', 's')}
-            </span>
-            <Link href="/prazos?urgencia=critico" className={styles.dashAlertLink} style={{ color: 'var(--alert)' }}>
-              Ver prazos →
-            </Link>
-          </div>
-        )}
+                <div className={styles.heroStats}>
+                  <div className={styles.heroStat}>
+                    <span className={styles.heroStatNum} style={{ color: temCritico ? 'var(--alert)' : 'var(--ink)' }}>
+                      {prazosCriticos.length}
+                    </span>
+                    <span className={styles.heroStatLabel}>
+                      prazo{plural(prazosCriticos.length, '', 's')} crítico{plural(prazosCriticos.length, '', 's')}
+                    </span>
+                  </div>
+                  <div className={styles.heroStat}>
+                    <span className={styles.heroStatNum} style={{ color: movs24h > 0 ? 'var(--brick)' : 'var(--ink)' }}>
+                      {movs24h}
+                    </span>
+                    <span className={styles.heroStatLabel}>movimentações · 24h</span>
+                  </div>
+                </div>
 
-        {/* Stat cards */}
-        <div className={styles.statCards} style={{ display: 'flex', border: '1px solid var(--line)', background: 'var(--paper)' }}>
-          {[
-            {
-              label: 'Processos monitorados',
-              value: totalProcessos,
-              sub: comFalha > 0
-                ? `${comFalha} com erro de sincronização`
-                : `${totalMovs} movimentaç${plural(totalMovs, 'ão', 'ões')} capturada${plural(totalMovs, '', 's')}`,
-              color: 'var(--ink)',
-              href: '/processos',
-            },
-            {
-              label: 'Com novidade',
-              value: novidades,
-              sub: newToday > 0
-                ? `${newToday} movimentaç${plural(newToday, 'ão', 'ões')} nova${plural(newToday, '', 's')} em 48h`
-                : 'nada novo nas últimas 48h',
-              color: novidades > 0 ? 'var(--brick)' : 'var(--ink)',
-              href: '/processos?state=signal',
-            },
-            {
-              label: 'Vencendo em 7 dias',
-              value: prazos7,
-              sub: criticos > 0
-                ? `${criticos} crítico${plural(criticos, '', 's')} (≤ 3 dias)`
-                : 'nenhum crítico',
-              color: criticos > 0 ? 'var(--alert)' : prazos7 > 0 ? 'var(--brick)' : 'var(--ink)',
-              href: '/prazos?urgencia=urgente',
-            },
-          ].map((card, i) => (
-            <Link key={i} href={card.href} className={styles.statCard}>
-              <div className={styles.statLabel}>{card.label}</div>
-              <div className={styles.statNum} style={{ color: card.color }}>{card.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 10 }}>{card.sub}</div>
-            </Link>
-          ))}
-        </div>
+                <div className={styles.heroList}>
+                    {heroPrazos.length === 0 ? (
+                      <div className={styles.panelEmpty} style={{ padding: '8px 0', textAlign: 'left' }}>
+                        Nenhum prazo com data definida em aberto.
+                      </div>
+                    ) : heroPrazos.map(pz => {
+                      const dias = pz.diasRestantes!;
+                      const isCrit = dias <= 3;
+                      const isUrg = dias <= 7;
+                      const natureza = rotuloNatureza(pz);
+                      const confirmar = prazoAConfirmar(pz);
+                      const href = pz.movementId ? `/movimentacoes/${pz.movementId}` : '/prazos';
+                      return (
+                        <Link key={pz.id} href={href} className={styles.heroRow}>
+                          <span className={styles.heroDias} style={{ color: isCrit ? 'var(--alert)' : isUrg ? 'var(--brick)' : 'var(--ink-2)' }}>
+                            {dias}d
+                          </span>
+                          <span className={styles.heroBody}>
+                            <span className={styles.heroRowTitle}>{pz.parte || tituloPrazo(pz)}</span>
+                            <span className={styles.heroMeta}>
+                              {natureza && (
+                                <span className={styles.chipNat} data-manifestacao={pz.natureza === 'manifestacao' ? '' : undefined}>
+                                  {natureza}
+                                </span>
+                              )}
+                              {confirmar && (
+                                <span className={styles.chipConfirmar}>{confirmar.estimado ? '≈ estimado' : 'a confirmar'}</span>
+                              )}
+                              <span className={styles.heroMetaText}>{quandoVence(dias)}</span>
+                            </span>
+                          </span>
+                          <TribTag label={pz.tribunal} />
+                        </Link>
+                      );
+                    })}
+                </div>
 
-        {/* Faixa dos próximos 14 dias */}
-        <div className={styles.faixaPanel} style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-          <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className={styles.panelTitle}>§ PRÓXIMOS {HORIZONTE_DIAS} DIAS</span>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-              {prazosSemData > 0
-                ? `${prazosSemData} expediente${plural(prazosSemData, '', 's')} sem data definida`
-                : `${prazos.length} prazo${plural(prazos.length, '', 's')} em aberto`}
-            </span>
-          </div>
-          <div className={styles.faixa}>
-            {faixa.map(d => {
-              const cor = d.count === 0
-                ? 'var(--line)'
-                : d.offset <= 3 ? 'var(--alert)' : d.offset <= 7 ? 'var(--brick)' : 'var(--ink-3)';
-              return (
-                <Link
-                  key={d.iso}
-                  href={`/prazos?fatalFrom=${d.iso}&fatalTo=${d.iso}`}
-                  className={styles.faixaDia}
-                  data-vazio={d.count === 0 ? '' : undefined}
-                  data-fds={d.fimDeSemana ? '' : undefined}
-                  title={`${d.count} prazo${plural(d.count, '', 's')} em ${d.iso.split('-').reverse().join('/')}`}
-                >
-                  <span className={styles.faixaSemana}>{d.semana}</span>
-                  <span className={styles.faixaData} style={{ color: d.offset === 0 ? 'var(--brick)' : undefined }}>
-                    {d.dia}
-                  </span>
-                  <span className={styles.faixaBarraTrilho}>
-                    <span
-                      className={styles.faixaBarra}
-                      style={{ height: `${d.count === 0 ? 2 : Math.round((d.count / picoFaixa) * 100)}%`, background: cor }}
-                    />
-                  </span>
-                  <span className={styles.faixaCount} style={{ color: d.count === 0 ? 'var(--ink-4)' : cor }}>
-                    {d.count}
-                  </span>
+                {/* O passivo, como NOTA. Ele só existe quando
+                    `fecharPrazosDjenExpirados` ainda não alcançou a linha — e
+                    mesmo assim não pode liderar o card: "venceu há 2 anos" não é
+                    o que a pessoa abriu o painel para decidir. */}
+                {vencidosEmAberto > 0 && (
+                  <Link href="/prazos" className={styles.heroNota}>
+                    {vencidosEmAberto} prazo{plural(vencidosEmAberto, '', 's')} vencido{plural(vencidosEmAberto, '', 's')} sem baixa →
+                  </Link>
+                )}
+              </section>
+
+              {/* Movimentações recentes */}
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <span className={styles.panelTitle}>Movimentações recentes</span>
+                  <Link href="/movimentacoes" className={styles.panelLink}>
+                    Ver todas ({totalMovs}) →
+                  </Link>
+                </div>
+
+                {allMovs.length === 0 ? (
+                  <div className={styles.panelEmpty}>Nenhuma movimentação capturada ainda.</div>
+                ) : (
+                  <>
+                    {/* No celular mostramos só as 3 primeiras; as demais ficam
+                        num wrapper `display:contents` que some abaixo de 768px. */}
+                    {allMovs.slice(0, 3).map(mov => (
+                      <MovimentacaoRow key={mov.id} m={mov} densidade="compacta" comHora selo />
+                    ))}
+                    {allMovs.length > 3 && (
+                      <div className={styles.feedExtra}>
+                        {allMovs.slice(3, 6).map(mov => (
+                          <MovimentacaoRow key={mov.id} m={mov} densidade="compacta" comHora selo />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Coluna lateral */}
+            <div className={styles.side}>
+              {/* Movimentações — heatmap de 4 semanas */}
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <span className={styles.panelTitle}>Movimentações · 4 semanas</span>
+                  <span className={styles.panelCount}>{atividade.total} movs</span>
+                </div>
+                <div className={styles.heatBody}>
+                  <div className={styles.heatGrid}>
+                    {heat.map(d => {
+                      const nivel = nivelHeat(d.count);
+                      const ehHoje = d.iso === toISODate(hoje);
+                      return (
+                        <span
+                          key={d.iso}
+                          className={`${styles.heatCell} ${ehHoje ? styles.heatHoje : ''}`}
+                          style={{ background: HEAT_RAMP[nivel], color: corHeat(nivel) }}
+                          title={`${d.count} movimentaç${plural(d.count, 'ão', 'ões')} em ${d.iso.split('-').reverse().join('/')}`}
+                        >
+                          {d.count}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* A régua fica FORA da grade das casas: dentro, ela viraria
+                      uma quinta linha de células e o `gap` entre semanas se
+                      aplicaria a ela como se fosse mais um dia. */}
+                  <div className={styles.heatRegua} aria-hidden="true">
+                    {diasDaSemana.map((letra, i) => (
+                      <span key={i} className={styles.heatDia}>{letra}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Prazos por natureza (rosca) */}
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <span className={styles.panelTitle}>Prazos por natureza</span>
+                  <span className={styles.panelCount}>{totalNat}</span>
+                </div>
+                {totalNat === 0 ? (
+                  <div className={styles.panelEmpty}>Nenhum prazo classificado em aberto.</div>
+                ) : (
+                  <div className={styles.donutBody}>
+                    <svg viewBox="0 0 140 140" width="112" height="112" style={{ flexShrink: 0 }} aria-hidden="true">
+                      <circle cx="70" cy="70" r="52" fill="none" stroke="var(--paper-2)" strokeWidth="18" />
+                      <circle cx="70" cy="70" r="52" fill="none" stroke="var(--brick)" strokeWidth="18"
+                        strokeDasharray={`${arcoManif} ${DONUT_CIRC}`} transform="rotate(-90 70 70)" />
+                      <circle cx="70" cy="70" r="52" fill="none" stroke="var(--signal)" strokeWidth="18"
+                        strokeDasharray={`${arcoCien} ${DONUT_CIRC}`} strokeDashoffset={-arcoManif} transform="rotate(-90 70 70)" />
+                    </svg>
+                    <div className={styles.donutLegend}>
+                      <div className={styles.donutRow}>
+                        <span className={styles.donutSwatch} style={{ background: 'var(--brick)' }} />
+                        Manifestação <span className={styles.donutVal}>{manifestacoes}</span>
+                      </div>
+                      <div className={styles.donutRow}>
+                        <span className={styles.donutSwatch} style={{ background: 'var(--signal)' }} />
+                        Ciência <span className={styles.donutVal}>{ciencias}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Processos — composição da carteira */}
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <span className={styles.panelTitle}>Processos</span>
+                  <span className={styles.panelCount}>{totalProcessos}</span>
+                </div>
+
+                <div className={styles.carteiraBody}>
+                  {porTribunal.map(row => (
+                    <div key={row.tribunal} className={styles.barRow}>
+                      <span className={styles.barLabel}>{row.tribunal}</span>
+                      <span className={styles.barTrack}>
+                        <span className={styles.barFill} style={{ width: `${(row.count / porTribunal[0].count) * 100}%`, background: 'var(--brick)' }} />
+                      </span>
+                      <span className={styles.barValue}>{row.count}</span>
+                    </div>
+                  ))}
+
+                  <div className={styles.carteiraDivider}>
+                    {valorCausa > 0 && (
+                      <CarteiraLinha rotulo="Valor em causa" valor={moeda.format(valorCausa)} destaque />
+                    )}
+                    {parcial && (
+                      <span className={styles.carteiraNota}>
+                        Composição sobre os {amostrado} processos mais recentes de {totalProcessos}.
+                      </span>
+                    )}
+                  </div>
+
+                  {atividadeCat.length > 0 && (
+                    <div className={styles.carteiraDivider}>
+                      <span className={styles.subHead}>Atividade recente</span>
+                      {atividadeCat.map(row => (
+                        <div key={row.categoria} className={styles.barRow}>
+                          <span className={styles.barLabel}>{categoriaCurta(row.categoria)}</span>
+                          <span className={styles.barTrack}>
+                            <span className={styles.barFill} style={{ width: `${(row.count / atividadeCat[0].count) * 100}%`, background: 'var(--brick)' }} />
+                          </span>
+                          <span className={styles.barValue}>{row.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Link href="/processos" className={styles.panelFooterLink}>
+                  Ver todos os processos →
                 </Link>
-              );
-            })}
+              </div>
+            </div>
           </div>
+          </>
+          )}
         </div>
-
-        {/* Grade — feed + coluna lateral */}
-        <div className={`${styles.dashGrid} ${styles.dashGridLast}`} style={{ display: 'grid', alignItems: 'start' }}>
-          {/* Movimentações recentes */}
-          <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-            <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className={styles.panelTitle}>§ MOVIMENTAÇÕES RECENTES</span>
-              {newToday > 0 && (
-                <span style={{ flexShrink: 0 }} title="detectadas nas últimas 48h">
-                  <Seal variant="nova" label={`${newToday} NOVAS`} />
-                </span>
-              )}
-              <Link href="/movimentacoes" className={styles.panelLink} style={{ marginLeft: 'auto' }}>
-                Ver todas ({totalMovs}) →
-              </Link>
-            </div>
-
-            {allMovs.length === 0 ? (
-              <PanelVazio texto="Nenhuma movimentação capturada ainda." />
-            ) : allMovs.slice(0, 6).map((mov, i, arr) => (
-              <Link
-                key={mov.id}
-                href={`/movimentacoes/${mov.id}`}
-                className={styles.movRow}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--line-soft)' : 'none',
-                  background:
-                    mov.state === 'signal' ? 'var(--brick-soft)'
-                    : mov.state === 'alert' ? 'var(--alert-soft)'
-                    : 'transparent',
-                }}
-              >
-                <StatusDot state={mov.state} />
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', minWidth: 36 }}>
-                  {mov.time}
-                </div>
-                <TribTag label={mov.tribunal} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {mov.parte}
-                </div>
-                <span className={styles.movTipo} style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ink-3)', flexShrink: 0 }}>
-                  {mov.tipo}
-                </span>
-                {mov.state === 'signal' && <Seal variant="nova" />}
-                {mov.state === 'alert' && <Seal variant="erro" />}
-              </Link>
-            ))}
-          </div>
-
-          {/* Coluna lateral — prazos e composição da carteira */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Próximos prazos */}
-            <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-              <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className={styles.panelTitle}>§ PRÓXIMOS PRAZOS</span>
-                <Link href="/prazos" className={styles.panelLink}>Ver todos ({prazos.length}) →</Link>
-              </div>
-
-              {prazosOrdenados.length === 0 ? (
-                <PanelVazio texto="Nenhum prazo em aberto." />
-              ) : prazosOrdenados.slice(0, 6).map((pz, i, arr) => {
-                const semData = pz.diasRestantes === null;
-                const isCrit = pz.diasRestantes !== null && pz.diasRestantes <= 3;
-                const isUrg = pz.diasRestantes !== null && pz.diasRestantes <= 7;
-                return (
-                  <div
-                    key={pz.id}
-                    className={styles.prazoRow}
-                    style={{ display: 'flex', alignItems: 'center', borderBottom: i < arr.length - 1 ? '1px solid var(--line-soft)' : 'none' }}
-                  >
-                    <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 18, lineHeight: 1, color: isCrit ? 'var(--alert)' : isUrg ? 'var(--brick)' : 'var(--ink-3)', minWidth: 36, textAlign: 'right' }}>
-                      {semData ? '—' : `${pz.diasRestantes}d`}
-                    </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {pz.parte || tituloPrazo(pz)}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
-                        {pz.tipo} · {pz.vencimento ?? 'sem prazo definido'}
-                      </div>
-                    </div>
-                    <TribTag label={pz.tribunal} />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Composição da carteira */}
-            <div style={{ border: '1px solid var(--line)', background: 'var(--paper)' }}>
-              <div className={styles.panelHead} style={{ borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className={styles.panelTitle}>§ CARTEIRA</span>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700, color: 'var(--ink-2)' }}>
-                  {totalProcessos}
-                </span>
-              </div>
-
-              <div className={styles.carteiraBody} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {porTribunal.slice(0, 5).map(row => (
-                  <div key={row.tribunal} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', width: 72, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {row.tribunal}
-                    </div>
-                    <div style={{ flex: 1, height: 6, background: 'var(--paper-2)', position: 'relative' }}>
-                      <div style={{ position: 'absolute', inset: '0 auto 0 0', height: '100%', width: `${(row.count / porTribunal[0].count) * 100}%`, background: 'var(--brick)' }} />
-                    </div>
-                    <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13, color: 'var(--ink-2)', minWidth: 20, textAlign: 'right' }}>
-                      {row.count}
-                    </div>
-                  </div>
-                ))}
-
-                <div style={{ marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--line-soft)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <CarteiraLinha rotulo="1º / 2º grau" valor={`${grau1} / ${grau2}`} />
-                <CarteiraLinha rotulo="Autenticado / público" valor={`${porScraper} / ${porDjen}`} />
-                  {valorCausa > 0 && (
-                    <CarteiraLinha rotulo="Valor em causa" valor={moeda.format(valorCausa)} destaque />
-                  )}
-                  {parcial && (
-                    <div style={{ fontSize: 10, color: 'var(--ink-4)', lineHeight: 1.5 }}>
-                      Composição sobre os {amostrado} processos mais recentes de {totalProcessos}.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Link href="/processos" className={styles.panelFooterLink}>
-                Ver todos os processos →
-              </Link>
-            </div>
-          </div>
-        </div>
-        </>
-        )}
       </div>
     </AppLayout>
   );
@@ -432,126 +428,63 @@ function contarPorTribunal(processos: Processo[]): { tribunal: string; count: nu
     .sort((a, b) => b.count - a.count || a.tribunal.localeCompare(b.tribunal));
 }
 
-function SyncBadge({ sincronizadoHa }: { sincronizadoHa: string | null }) {
-  const [cor, texto] = sincronizadoHa
-    ? ['var(--quiet)', `● SINCRONIZADO · ${sincronizadoHa}`]
-    : ['var(--ink-3)', '○ SEM DADOS DE SINCRONIZAÇÃO'];
-
-  return (
-    <div
-      className={styles.syncBadge}
-      style={{
-        fontFamily: 'var(--mono)',
-        fontSize: 11,
-        color: cor,
-        background: sincronizadoHa ? 'var(--quiet-soft)' : 'var(--paper-2)',
-        padding: '4px 12px',
-        border: `1px solid ${cor}`,
-        flexShrink: 0,
-      }}
-    >
-      {texto}
-    </div>
-  );
-}
-
-/**
- * Sem credencial de tribunal, a carteira inteira vem do diário oficial: dá para
- * saber que algo foi publicado, não o que está nos autos. O aviso fica acima de
- * tudo porque muda como os números abaixo devem ser lidos.
- */
-function AvisoDadosPublicos({ totalProcessos }: { totalProcessos: number }) {
-  return (
-    <div className={styles.avisoCobertura}>
-      <div className={styles.avisoIcone}>
-        <ShieldAlert size={16} />
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className={styles.avisoTitulo}>Somente dados públicos</div>
-        <p className={styles.avisoTexto}>
-          Você ainda não configurou a autenticação de nenhum tribunal. {totalProcessos > 0
-            ? `Os ${totalProcessos} processos abaixo vieram`
-            : 'Tudo que aparece aqui vem'}{' '}
-          do diário oficial eletrônico (DJEN) — o que é publicado, e só isso.
-          Sem o login do tribunal, o robô não entra nos autos: andamentos internos,
-          documentos e os expedientes que só aparecem no painel do PJe ficam de fora.
-        </p>
-      </div>
-      <Link href="/credenciais" className={styles.avisoCta}>
-        Configurar tribunal →
-      </Link>
-    </div>
-  );
+/** Movimentações recentes por categoria, do maior para o menor (ignora sem classificação). */
+function contarPorCategoria(
+  movs: { categoria: CategoriaMovimentacao | null }[],
+): { categoria: CategoriaMovimentacao; count: number }[] {
+  const counts = new Map<CategoriaMovimentacao, number>();
+  for (const m of movs) if (m.categoria) counts.set(m.categoria, (counts.get(m.categoria) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([categoria, count]) => ({ categoria, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 function CarteiraLinha({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{rotulo}</span>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: destaque ? 'var(--brick)' : 'var(--ink-2)' }}>
-        {valor}
-      </span>
-    </div>
-  );
-}
-
-function PanelVazio({ texto }: { texto: string }) {
-  return (
-    <div style={{ padding: '24px 20px', fontSize: 12, color: 'var(--ink-3)', textAlign: 'center' }}>
-      {texto}
+    <div className={styles.carteiraLinha}>
+      <span className={styles.carteiraRotulo}>{rotulo}</span>
+      <span className={styles.carteiraValor} data-destaque={destaque ? '' : undefined}>{valor}</span>
     </div>
   );
 }
 
 /**
- * Painel vazio, causa 1: a conta não tem OAB.
- *
- * Antes esta tela pedia "cadastre o login do tribunal" — o pedido mais caro do
- * produto (senha e MFA de um sistema do Judiciário) para quem ainda não tinha
- * visto processo nenhum. A OAB é o pedido barato que faz a carteira aparecer,
- * e é o que falta de verdade: sem ela não há por onde procurar.
+ * Painel vazio, causa 1: a conta não tem OAB. A OAB é o pedido barato que faz a
+ * carteira aparecer; o login do tribunal fica como saída secundária.
  */
 function PainelSemOab() {
   return (
-    <div className={styles.dashEmpty}>
-      <div className={styles.dashEmptyIcon}>
+    <div className={styles.empty}>
+      <div className={styles.emptyIcon}>
         <Scale size={22} />
       </div>
-      <div className={styles.dashEmptyTitle}>Falta a sua OAB</div>
-      <p className={styles.dashEmptyDesc}>
+      <div className={styles.emptyTitle}>Falta a sua OAB</div>
+      <p className={styles.emptyDesc}>
         É pela OAB que localizamos seus processos nos diários oficiais — sem ela não temos
         por onde começar. Informe abaixo: não precisa da senha de tribunal nenhum.
       </p>
 
       <CadastrarOab rotuloBotao="Buscar meus processos" />
 
-      <Link href="/credenciais" className={styles.dashEmptySecundario}>
+      <Link href="/credenciais" className={styles.emptySecundario}>
         <KeyRound size={13} /> Prefiro conectar o login de um tribunal
       </Link>
     </div>
   );
 }
 
-/* Causa 2 (a OAB está cadastrada e a primeira varredura ainda não terminou)
-   mora em `@/components/varredura/PainelSincronizando`: é a única dos três
-   vazios que muda sozinha enquanto a pessoa olha, então precisa ser Client
-   Component para consultar o backend e ir revelando os processos que chegam. */
-
 /**
- * Causa 3: já varremos e não veio nada.
- *
- * Duas saídas honestas, porque as duas explicações são plausíveis: o número
- * pode estar errado (corrige ali mesmo) ou a OAB pode simplesmente não ter
- * publicação recente — e aí só o login do tribunal alcança os autos.
+ * Causa 3: já varremos e não veio nada. Duas saídas honestas: conferir a OAB ou
+ * conectar o login do tribunal.
  */
 function PainelSemResultado({ oab }: { oab: NonNullable<UsuarioAtual['oab']> }) {
   return (
-    <div className={styles.dashEmpty}>
-      <div className={styles.dashEmptyIcon}>
+    <div className={styles.empty}>
+      <div className={styles.emptyIcon}>
         <SearchX size={22} />
       </div>
-      <div className={styles.dashEmptyTitle}>Nada publicado para a OAB {formatarOab(oab)}</div>
-      <p className={styles.dashEmptyDesc}>
+      <div className={styles.emptyTitle}>Nada publicado para a OAB {formatarOab(oab)}</div>
+      <p className={styles.emptyDesc}>
         Procuramos nos diários oficiais e não encontramos publicações dessa OAB nos últimos
         meses. Se o número não for esse, corrija abaixo. Se estiver certo, o login do tribunal
         alcança o que não passa pelo diário.
@@ -559,7 +492,7 @@ function PainelSemResultado({ oab }: { oab: NonNullable<UsuarioAtual['oab']> }) 
 
       <CadastrarOab oabInicial={oab} rotuloBotao="Procurar de novo" />
 
-      <Link href="/credenciais" className={styles.dashEmptySecundario}>
+      <Link href="/credenciais" className={styles.emptySecundario}>
         <KeyRound size={13} /> Conectar o login de um tribunal
       </Link>
     </div>

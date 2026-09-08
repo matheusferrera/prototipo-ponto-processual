@@ -1,0 +1,497 @@
+/* Blocos compartilhados pelo colapse e pela página do ato.
+   Prazo e providência seguem o fluxo; sem conteúdo, não reservam espaço.
+   O inteiro teor e a ficha usam duas colunas no desktop; a ausência do texto
+   aparece na mesma caixa de leitura. */
+
+/* ── Até quando ─────────────────────────────────────────────────────────── */
+.prazo {
+  --prazo-cor: var(--signal-ink);
+  --prazo-fundo: var(--signal-soft);
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  min-width: 0;
+}
+
+.prazoCalmo { --prazo-cor: var(--quiet-ink); --prazo-fundo: var(--quiet-soft); }
+/* Encerrado: fora da escala de urgência — ver `PrazoDoAto`. */
+.prazoEncerrado { color: var(--ink-2); background: var(--paper-2); }
+.prazoUrgente { --prazo-cor: var(--signal-ink); --prazo-fundo: var(--signal-soft); }
+.prazoVencido { --prazo-cor: var(--alert); --prazo-fundo: var(--alert-soft); }
+
+.prazoResumo { min-width: 0; }
+
+.prazoTopo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.prazoRotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--prazo-cor);
+}
+
+.prazoRotulo svg { flex: none; }
+
+.prazoData {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin: var(--space-sm) 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.prazoDataRotulo {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  color: var(--ink-2);
+}
+
+.prazoQuando {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--prazo-cor);
+  background: var(--prazo-fundo);
+}
+
+.prazoDetalhes {
+  min-width: 0;
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--space-md);
+}
+
+.prazoQualificacao,
+.prazoProcedencia {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 75ch;
+  overflow-wrap: anywhere;
+}
+
+.prazoDetalhes > p + p { margin-top: var(--space-xs); }
+.prazoQualificacao { font-weight: 600; color: var(--ink); }
+
+@media (min-width: 1024px) {
+  .prazo { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--space-xl); }
+  .prazoDetalhes {
+    border-top: 0;
+    border-left: 1px solid var(--line-soft);
+    padding-top: 0;
+    padding-left: var(--space-xl);
+  }
+}
+
+/* ── O que fazer ────────────────────────────────────────────────────────── */
+.acao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.acaoMinha { border-color: var(--brick); }
+.acaoOutra { background: var(--paper-2); }
+
+.acaoRotulo {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.acaoMinha .acaoRotulo { color: var(--brick); }
+
+.acaoTexto {
+  flex: 1 1 16ch;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 70ch;
+  color: var(--ink-2);
+}
+
+.acaoMinha .acaoTexto { color: var(--ink); }
+
+.acaoConferir {
+  flex-basis: 100%;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--alert);
+}
+
+/* ── A leitura da IA ────────────────────────────────────────────────────── */
+/* Irmã do teor, não filha dele: mesma moldura de `.ato` para as duas lerem
+   como um par — o que o tribunal escreveu e o que entendemos disso. O que a
+   distingue é a barra à esquerda, que é o único lugar do painel onde algo diz
+   "isto foi máquina que escreveu". */
+.leitura {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--brick);
+  background: var(--paper);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.leituraCabecalho {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.leituraRotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brick);
+}
+
+.leituraRotulo svg { flex: none; align-self: center; }
+
+/* Empurrado para a direita no desktop; no celular ele quebra e vira a segunda
+   linha do cabeçalho, que é onde um carimbo pertence. */
+.leituraCarimbo {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.leituraResumo {
+  margin: var(--space-sm) 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 70ch;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.leituraFundamento {
+  margin: var(--space-xs) 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 75ch;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.leituraConferir {
+  margin: var(--space-sm) 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--alert);
+}
+
+/* ── O texto ────────────────────────────────────────────────────────────── */
+/* `<details>` nativo e não um toggle em client component: os dois consumidores
+   são Server Components, e abrir/fechar um bloco de texto é o que o elemento
+   faz sem JavaScript. */
+.ato {
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+/* 44px de alvo no celular — é um botão, e o dedo não acerta uma linha de 12px. */
+.atoSummary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-lg);
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background 160ms ease-out;
+}
+
+.atoIndisponivelCabecalho {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-lg);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.atoSummary::-webkit-details-marker { display: none; }
+
+.atoSummary::before {
+  content: '▸';
+  flex: none;
+  display: inline-block;
+  color: var(--ink-2);
+  transition: transform 160ms ease-out;
+}
+
+.ato[open] .atoSummary::before { transform: rotate(90deg); }
+.ato[open] .atoSummary { border-bottom: 1px solid var(--line-soft); }
+
+.atoSummary:hover { background: var(--paper-2); }
+.atoSummary:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.atoSummaryTexto { flex: 1; min-width: 0; }
+
+.atoTamanho {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+/* No celular o texto flui na página: sem `max-height`, sem barra interna. O
+   `<details>` fechado já é o controle de altura, e uma caixa rolável dentro de
+   uma lista rolável rouba o gesto do polegar. */
+.atoTexto {
+  padding: var(--space-lg);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Um bloco por rótulo do ato. O respiro entre eles é o conserto de verdade da
+   leitura: sem ele o texto é um muro, e nem largura nem corpo de fonte
+   resolvem — o que falta é pausa. Ver `lib/ato-texto.ts`. */
+.atoBloco { margin: 0 0 var(--space-lg); }
+.atoBloco:last-child { margin-bottom: 0; }
+
+/* Rótulo sem corpo próprio — encosta no bloco seguinte, que é o conteúdo dele. */
+.atoCabecalho { margin: 0 0 var(--space-xs); }
+
+.atoRotulo {
+  display: block;
+  margin-bottom: var(--space-xs);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--brick);
+}
+
+/* ── A ficha ────────────────────────────────────────────────────────────── */
+/* No celular lê como recibo: rótulo à esquerda, valor à direita, um filete por
+   linha. Não vira tabela em lugar nenhum — são pares, e `<dl>` é o elemento
+   que os descreve. */
+.ficha {
+  margin: 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.fichaLinha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.fichaRotulo {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+
+.fichaValor {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ── Os arquivos ────────────────────────────────────────────────────────── */
+.docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.botao:hover { background: var(--paper-2); }
+.botao:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.botaoForte { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.botaoForte:hover { background: var(--ink-2); }
+
+.botaoFraco { border-color: var(--line); color: var(--ink-2); }
+
+.pjeAviso {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.docIndisponivel {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.docIndisponivel svg {
+  vertical-align: -2px;
+  margin-right: var(--space-xs);
+  flex-shrink: 0;
+}
+
+/* ── O painel ───────────────────────────────────────────────────────────── */
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--paper-2);
+  border-top: 1px solid var(--line);
+}
+
+.conteudo,
+.areaTexto,
+.areaFicha { min-width: 0; }
+
+.conteudo,
+.areaTexto,
+.areaFicha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.rodape {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--space-sm);
+}
+
+.saidas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-lg);
+}
+
+.saida {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.saida:hover { color: var(--ink); border-color: var(--ink); }
+.saida:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+@media (min-width: 768px) {
+  .painel { padding: var(--space-lg) var(--space-2xl); }
+
+  .conteudo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    align-items: start;
+    gap: var(--space-2xl);
+  }
+
+
+  /* No desktop o texto ganha rolagem própria: aqui ele divide a altura com a
+     calha da direita, e um ato de 8 KB solto empurraria a ficha para longe da
+     linha que a pessoa abriu. No celular isso não acontece porque a pilha é
+     vertical e o `<details>` já está fechado. */
+  .atoTexto {
+    max-height: 52vh;
+    overflow: auto;
+    padding: var(--space-lg) var(--space-xl);
+  }
+
+  .botao { min-height: auto; padding: var(--space-sm) var(--space-md); }
+  .saida { min-height: auto; }
+
+  .ficha { border-top: 0; }
+  .fichaLinha:first-child { border-top: 1px solid var(--line-soft); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atoSummary,
+  .atoSummary::before { transition: none; }
+}
+
+/* Dentro do processo, a capa lateral reduz a largura útil da lista. */
+@container movimento-processo (min-width: 0px) {
+  .painel { padding: var(--space-lg); }
+}
+@container movimento-processo (max-width: 850px) {
+  .conteudo { display: flex; flex-direction: column; gap: var(--space-lg); }
+  .areaTexto, .areaFicha { width: 100%; }
+  .prazo { grid-template-columns: minmax(0, 1fr); }
+  .prazoDetalhes { border-left: 0; border-top: 1px solid var(--line-soft); padding-left: 0; padding-top: var(--space-md); }
+  .atoTexto { max-height: none; overflow: visible; padding: var(--space-lg); }
+}

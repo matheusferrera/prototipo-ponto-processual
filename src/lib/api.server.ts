@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type {
+  AnaliseDoCaso,
   Processo,
   ProcessoParte,
   StatusType,
@@ -15,12 +16,16 @@ import type {
   OrigemMovimentacao,
   LeituraIa,
   PrazoDoAto,
+  AtoDoPrazo,
+  AnalisePrazo,
+  AnalisePrazoResultado,
 } from '@/types';
 import { normalizeTribunalOptions, type TribunalOption } from '@/lib/tribunals';
 import { semCodigo } from '@/lib/pje-text';
 import { TIPOS_MOVIMENTACAO, type MovimentacaoSort } from '@/lib/movimentacao-filters';
 import type { UsuarioAtual } from '@/lib/usuario';
 import { wallClock, horaWallClock as horaDoAto } from '@/lib/wall-clock';
+import { diasAteVencimento } from '@/lib/prazo-apresentacao';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -91,9 +96,16 @@ type BackendProcess = {
   valorCausa: string | number | null;
   movementsCount?: number;
   openDeadlinesCount?: number;
-  /** Há certidão de andamento (documento do PROCESSO, só no STJ). */
-  temCertidaoAndamento?: boolean;
   nextDeadline?: BackendNextDeadline | null;
+  /**
+   * A análise do CASO — `ProcessView.analise`, servida pelo backend desde
+   * 07/09/2026 e que o front **nunca leu**: `toProcesso` simplesmente a
+   * ignorava, então a síntese ficava paga no banco e invisível na tela.
+   */
+  analise?: {
+    tipo: string; versao: number; atualizadaEm: string; modelo: string;
+    resultado: Record<string, unknown>;
+  } | null;
   // legado: algumas respostas antigas traziam um objeto summary agregado
   summary?: {
     partes: string | null;
@@ -227,6 +239,31 @@ function toProximoPrazo(deadline: BackendNextDeadline | null | undefined): Proxi
   };
 }
 
+/**
+ * O envelope de `Analise` → a síntese que a tela mostra.
+ *
+ * Tolerante de propósito: o payload vem do modelo e o parse estrito mora no
+ * backend (`AnaliseCaso`, com `.catch()` nos enums pela mesma razão). Aqui, o
+ * que falta vira ausência — nunca uma tela quebrada por um campo a menos numa
+ * análise que já foi paga.
+ */
+function toAnaliseCaso(a: BackendProcess['analise']): AnaliseDoCaso | null {
+  const r = a?.resultado as Partial<AnaliseDoCaso> | undefined;
+  if (!r?.sintese?.trim()) return null;
+  return {
+    sintese: r.sintese.trim(),
+    fase: r.fase ?? 'indefinido',
+    situacao: r.situacao?.trim() ?? '',
+    pedidoPrincipal: r.pedidoPrincipal?.trim() || null,
+    ultimaDecisao: r.ultimaDecisao ?? null,
+    pendencias: Array.isArray(r.pendencias) ? r.pendencias.filter(Boolean) : [],
+    proximoPassoProvavel: r.proximoPassoProvavel?.trim() || null,
+    pontosDeAtencao: Array.isArray(r.pontosDeAtencao) ? r.pontosDeAtencao.filter(Boolean) : [],
+    confianca: r.confianca ?? 'baixa',
+    atualizadaEm: a?.atualizadaEm ?? null,
+  };
+}
+
 function toProcesso(p: BackendProcess): Processo {
   const lastMovAt = normalizeDate(p.lastMovAt);
   let state: StatusType = 'quiet';
@@ -258,6 +295,7 @@ function toProcesso(p: BackendProcess): Processo {
   const assunto = p.assunto?.trim() || classeJudicial;
 
   return {
+    analiseCaso: toAnaliseCaso(p.analise),
     id: p.id,
     tribunal: p.tribunal.replace(/G[12]$/, ''),
     cnj: p.numero,
@@ -284,7 +322,6 @@ function toProcesso(p: BackendProcess): Processo {
     movimentacoesCount: p.movementsCount ?? 0,
     prazosAbertos: p.openDeadlinesCount ?? 0,
     proximoPrazo: toProximoPrazo(p.nextDeadline),
-    temCertidaoAndamento: Boolean(p.temCertidaoAndamento),
   };
 }
 
@@ -296,6 +333,8 @@ type ProcessoPage = {
   /** contagens do conjunto filtrado inteiro (backend), não só da página */
   comNovidade: number;
   comErro: number;
+  /** As mesmas contagens no formato que a barra de resumo consome. */
+  contagem: { todos: number; novidade: number; erro: number };
 };
 
 type CsvFilter = string | readonly string[];
@@ -378,6 +417,14 @@ export async function getProcessos(page = 1, limit = 20, filters: ProcessoFilter
     page: body.page,
     comNovidade: body.counts?.signal ?? 0,
     comErro: body.counts?.alert ?? 0,
+    // Os números da carteira COMO FILTRO — a barra de resumo os transforma em
+    // chips clicáveis. `todos` é o conjunto filtrado inteiro, ignorando o
+    // filtro de estado, e por isso vem do `total` e não da página.
+    contagem: {
+      todos: body.total,
+      novidade: body.counts?.signal ?? 0,
+      erro: body.counts?.alert ?? 0,
+    },
   };
 }
 
@@ -436,9 +483,29 @@ type BackendDocumento = {
    * trocá-la por PDF. Ausente em backend anterior a 05/09/2026.
    */
   baixavel?: boolean;
+  /**
+   * Motivo de o documento não ter link nem ser `baixavel` — hoje só
+   * `'pendenteCiencia'` (PJe de consulta pública, TRF1/TRF3): a grid do
+   * tribunal mostra a âncora, mas o clique dispara `alert('Visualização
+   * indisponível. Pendente de ciência…')` — o documento existe, só não está
+   * liberado enquanto o intimado não toma ciência no sistema do tribunal.
+   * Presente ⇒ documento TRANCADO, não ausente.
+   */
+  indisponibilidade?: string | null;
+  /**
+   * A aquisição já pediu este arquivo e o portal não o serviu — ou o rótulo é
+   * o fallback genérico do PDPJ, que a sondagem mediu como 404 em 3 de 3.
+   *
+   * O backend calcula isto desde 08/09/2026 lendo o livro-razão de `Documento`
+   * (ver `documento-baixavel.ts`), e o front simplesmente não lia: oferecia o
+   * botão para todos e o advogado clicava em erro quase sempre.
+   */
+  provavelIndisponivel?: boolean;
 };
 
 type BackendMovement = {
+  /** Fontes que confirmaram o ato (`["pdpj","djen"]`). `[]` em linha legada. */
+  fontes?: string[];
   id: string;
   nMovimento: string | null;
   // data em que a movimentação efetivamente ocorreu (ISO 8601, fonte da verdade no banco)
@@ -458,6 +525,20 @@ type BackendMovement = {
   origem?: OrigemMovimentacao | null;
   /** A que serve a linha. Ausente em backend anterior a 05/09/2026. */
   categoria?: CategoriaMovimentacao | null;
+  /**
+   * **A resposta do backend para "vale mostrar o botão de documento, e o quê?"**
+   *
+   * Ela é calculada uma vez, lá, por `estadoDocumento` — que é a única camada
+   * que enxerga o livro-razão de `Documento` (quais chaves já responderam 404).
+   * O `CLAUDE.md` do backend a criou justamente para o front parar de refazer
+   * essa conta, e até 08/09/2026 o front não a lia: `temDocumentoTrancado`
+   * reimplementava um pedaço dela aqui, sem acesso à medição.
+   *
+   * Opcional porque backend anterior a 06/09/2026 não a serve — nesse caso os
+   * helpers abaixo caem na conta local, que é o comportamento de antes e não
+   * uma tela vazia.
+   */
+  documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
   /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
   ia?: {
     resumo: string | null; acao: string | null;
@@ -469,9 +550,18 @@ type BackendMovement = {
     id: string; dataLimite: string | null; dias: number | null;
     natureza: PrazoDoAto['natureza']; metodoPrazo: PrazoDoAto['metodoPrazo'];
     fechado: boolean;
+    publicadoEm?: string | null; parte?: string | null;
+    origem?: PrazoDoAto['origem']; canal?: PrazoDoAto['canal']; deQuem?: PrazoDoAto['deQuem'];
+    emDobro?: boolean | null; fundamento?: string | null;
   } | null;
   /** Só em `GET /movements/{id}`: a listagem omite o texto no banco. */
   textoOriginal?: string | null;
+  /**
+   * Disponibilidade do texto, informada pela API SEM transferir o texto na
+   * listagem (que omite `textoOriginal` no banco — ver acima). A listagem
+   * sempre manda este campo; ausente só em backend anterior à instrumentação.
+   */
+  temInteiroTeor?: boolean;
   /** Há certidão de publicação — a CHAVE nunca vem, só o fato. */
   temCertidao?: boolean;
   /**
@@ -549,7 +639,16 @@ function atoRecemPublicado(m: BackendMovement): boolean {
 
 function toPrazoDoAto(m: BackendMovement): PrazoDoAto | null {
   const p = m.prazo;
-  if (!p || p.fechado) return null;
+  // **O prazo FECHADO passa** desde 08/09/2026. Ele era descartado aqui, e o
+  // efeito era a movimentação não ter como dizer "Encerrado": o dado nem
+  // chegava à linha, então o ato que abriu e cumpriu um prazo ficava
+  // indistinguível do que nunca abriu nenhum.
+  //
+  // Quem decide o que fazer com ele é a TELA, que tem `fechado` no objeto —
+  // `vencimentoDoAto` devolve `encerrado: true` e a linha desenha em tom
+  // neutro, sem cor de urgência. `processo-panorama` já filtrava por
+  // `prazo?.fechado`, então nada passou a cobrar o que está encerrado.
+  if (!p) return null;
   return {
     id: p.id,
     dataLimite: p.dataLimite,
@@ -557,6 +656,18 @@ function toPrazoDoAto(m: BackendMovement): PrazoDoAto | null {
     natureza: p.natureza,
     metodoPrazo: p.metodoPrazo,
     fechado: p.fechado,
+    // Os cinco abaixo só existem nas origens calculadas (djen/tribunalPublico) e
+    // até 07/09/2026 o mapeador os descartava — o backend sempre os mandou (ver
+    // `toMovementView` em `movements.router.ts`), mas a qualificação do prazo em
+    // `AtoDetalhe` (`PrazoDoAto`, o componente) ficava sem "manifestação · pelo
+    // diário · sem dobra · do destinatário" por falta de dado, não de código.
+    origem: p.origem,
+    canal: p.canal,
+    deQuem: p.deQuem,
+    emDobro: p.emDobro,
+    fundamento: p.fundamento,
+    publicadoEm: p.publicadoEm,
+    parte: p.parte,
   };
 }
 
@@ -581,9 +692,6 @@ function processParte(p: BackendProcess | null | undefined): string {
 }
 
 function toTimelineEvent(m: BackendMovement, index: number, total: number): TimelineEvent {
-  const detectedAt = new Date(m.detectedAt);
-  const isNew = Date.now() - detectedAt.getTime() < 1000 * 60 * 60 * 48;
-
   // a data exibida é sempre a de "ocorrido em" (ocorridoEm) do banco, lida como
   // wall-clock de Brasília — ver `wallClock`.
   const ocorrido = new Date(m.ocorridoEm);
@@ -595,6 +703,18 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
   // `/movimentacoes` tem o cabeçalho do dia por cima, esta timeline não tem.
   const displayDate = `${w.dia} ${MONTHS[w.mes]}`;
   const displayTime = horaDoAto(ocorrido);
+  // Montados no SERVIDOR a partir do wall-clock já lido, nunca reformatados no
+  // componente: o servidor roda em UTC, e reformatar o ISO lá devolveria o dia
+  // anterior para todo ato da noite.
+  const diaISO = `${w.ano}-${String(w.mes + 1).padStart(2, '0')}-${String(w.dia).padStart(2, '0')}`;
+
+  // O MESMO cabeçalho de dia do feed de `/movimentacoes` — ver `formatDateGroup`.
+  // "HOJE" e "ONTEM" dispensam o ano; os demais o levam, porque a linha do
+  // tempo de um processo atravessa anos.
+  const grupo = formatDateGroup(ocorrido);
+  const dataCurta = grupo.dateLabel === 'HOJE' || grupo.dateLabel === 'ONTEM'
+    ? grupo.dateLabel
+    : `${grupo.dateLabel} ${w.ano}`;
 
   return {
     id: m.id,
@@ -602,17 +722,36 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
     ano: String(w.ano),
     time: displayTime,
     title: m.descricao,
-    state: isNew ? 'signal' : 'quiet',
     // número do movimento no tribunal; sem ele, a posição na timeline
     // (index 0 = mais recente → número mais alto; índice final = mais antigo → § 01)
     n: m.nMovimento?.trim() || String(total - index).padStart(2, '0'),
-    label: isNew ? 'NOVA' : undefined,
     rawDate: m.ocorridoEm,
     documentos: toDocumentos(m),
     temCertidao: Boolean(m.temCertidao),
+    // Ver `temAlgoParaLer`: texto extraído OU documento anexado. Sem isto o
+    // campo ficava `undefined` em toda linha da timeline do processo, e o selo
+    // "Com/Sem inteiro teor" simplesmente não aparecia antes de abrir o ato —
+    // `MovimentacaoRow` só desenha o selo quando o valor está definido.
+    // Dois fatos INDEPENDENTES, dois campos — ver `Movimentacao.temInteiroTeor`.
+    temInteiroTeor: temTexto(m),
+    documentoEstado: m.documentoEstado ?? 'nenhum',
     origem: m.origem ?? 'scraper',
+    // As fontes que confirmaram o ato — o chip de origem da linha mostra as duas
+    // quando o mesmo ato veio do diário e do portal.
+    fontes: m.fontes ?? [],
     categoria: m.categoria ?? null,
+    dataCurta,
+    diaSemana: grupo.dayLabel,
+    dia: diaISO,
     ia: toLeituraIa(m),
+    // Sem isto, `TimelineEvent.prazo` ficava sempre `undefined` na timeline do
+    // processo — o mesmo bug de `temInteiroTeor` antes do conserto: o campo
+    // existe no tipo e `MovimentacaoRow` já sabe desenhar o chip de vencimento
+    // a partir dele, mas ninguém nunca escrevia o valor aqui. O prazo só
+    // aparecia depois de abrir o ato, quando `AtoLinha` troca para
+    // `detalhe.prazo` — e o vencimento é justamente a informação que precisa
+    // aparecer ANTES de abrir, no chip "Prazo · vence em 3 dias" da linha.
+    prazo: toPrazoDoAto(m),
   };
 }
 
@@ -633,6 +772,11 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
  * subdocumentos são mapeados DEPOIS e por outro caminho: `?i=` endereça
  * `documentos[]`, não a concatenação das duas listas.
  */
+/** Mensagem para cada motivo de `indisponibilidade` — o código cru do backend não é para tela. */
+const MOTIVO_TRANCADO: Record<string, string> = {
+  pendenteCiencia: 'Pendente de ciência — o tribunal libera a visualização quando o intimado toma ciência no sistema.',
+};
+
 function toDocumentos(m: BackendMovement): DocumentoMovimentacao[] {
   const principais = (m.documentos ?? []).map((d, i) => ({
     doc: d,
@@ -643,10 +787,20 @@ function toDocumentos(m: BackendMovement): DocumentoMovimentacao[] {
   const subs = (m.subDocumentos ?? []).map(d => ({ doc: d, url: d.urlDocumento ?? '' }));
 
   const doTribunal = [...principais, ...subs]
-    .filter(item => Boolean(item.url))
+    // Sem link E sem motivo de indisponibilidade não tem o que mostrar. Mas
+    // um documento com `indisponibilidade` (ex.: pendente de ciência no PJe)
+    // EXISTE — só está trancado —, e até 08/09/2026 este filtro o descartava
+    // em silêncio: a lista de documentos simplesmente não mostrava a peça, em
+    // vez de mostrá-la com o cadeado que `docUnavailable` já sabia desenhar.
+    .filter(item => Boolean(item.url) || Boolean(item.doc.indisponibilidade))
     .map(item => ({
       nome: item.doc.tipoDocumento?.trim() || item.doc.nDocumento?.trim() || 'Documento',
       url: item.url,
+      ...(item.doc.indisponibilidade
+        ? { indisponibilidade: MOTIVO_TRANCADO[item.doc.indisponibilidade] ?? 'Documento indisponível nesta consulta.' }
+        : {}),
+      // Vem do backend, que mediu — ver `BackendDocumento.provavelIndisponivel`.
+      ...(item.doc.provavelIndisponivel ? { provavelIndisponivel: true } : {}),
     }));
 
   // A peça que NÃO vem em `documentos`: nas origens que não anexam nada à
@@ -663,6 +817,25 @@ function toDocumentos(m: BackendMovement): DocumentoMovimentacao[] {
   return doTribunal;
 }
 
+/**
+ * **Há TEXTO do ato.** Nada além disso.
+ *
+ * Era `temAlgoParaLer`, e o nome dizia a verdade sobre o defeito: ele
+ * respondia "há algo pra abrir" — texto OU documento anexado —, e o selo da
+ * linha usava essa resposta para escrever "Com inteiro teor". Ato do PDPJ com
+ * um PDF sem texto extraído aparecia como se tivesse teor, e ao abrir dizia
+ * "Indisponível". Os dois fatos passaram a ter dois sinais em 08/09/2026.
+ *
+ * `temInteiroTeor` vem do backend já resolvido sobre as DUAS procedências do
+ * teor (o que o diário publicou e o que se extraiu do PDF — ver `teor-do-ato.ts`),
+ * então aqui não há mais nada a inferir: na listagem o campo `textoOriginal` é
+ * omitido e vale o booleano; no detalhe, o próprio texto.
+ */
+function temTexto(m: BackendMovement): boolean {
+  return m.textoOriginal !== undefined
+    ? Boolean(m.textoOriginal?.trim())
+    : Boolean(m.temInteiroTeor);
+}
 /**
  * Palavras-chave buscadas na descrição para classificar o tipo da movimentação,
  * em ordem de prioridade (a 1ª que casar decide o tipo de uma descrição com
@@ -724,7 +897,6 @@ type MovimentacoesResult = {
   total: number;
   totalPages: number;
   page: number;
-  newToday: number;
 };
 
 export type MovimentacaoFilters = {
@@ -742,6 +914,12 @@ export type MovimentacaoFilters = {
    * deixa valer o padrão da API, que esconde `tramite`.
    */
   categoria?: readonly string[];
+  /**
+   * A fonte que escreveu a linha (`pdpj` = portal, `djen` = diário) — filtrada
+   * NO BANCO, um valor por vez, que é o que `?origem=` de `/movements` aceita.
+   * Vazio traz todas.
+   */
+  origem?: OrigemMovimentacao | string;
   /** "" = mais recentes | "antigas" | "tribunal" — "tribunal" exige reordenar no frontend. */
   sort?: MovimentacaoSort | string;
 };
@@ -765,15 +943,16 @@ function sortMovEntries(entries: MovEntry[], sort?: string): void {
 }
 
 /**
- * `/movements` filtra e ordena no banco por `q`, `tribunal` e direção de
- * `ocorridoEm` — nesse caso a página vem pronta do backend. `tipo` (inferido
+ * `/movements` filtra e ordena no banco por `q`, `tribunal`, `categoria`,
+ * `origem` e direção de `ocorridoEm` — nesse caso a página vem pronta do
+ * backend. `tipo` (inferido
  * da descrição) e a ordenação por tribunal não são suportados lá, então esses
  * dois casos buscam um conjunto amplo (limit=100) e resolvem aqui, colapsando
  * em 1 página — mesma técnica de `getPrazos` para os "contém" que o backend
  * não filtra.
  */
 export async function getMovimentacoes(page = 1, limit = 20, filters: MovimentacaoFilters = {}): Promise<MovimentacoesResult> {
-  const { q, tribunal, sort, categoria } = filters;
+  const { q, tribunal, sort, categoria, origem } = filters;
   const tipo = filters.tipo ?? [];
   const needsClientSide = tipo.length > 0 || sort === 'tribunal';
 
@@ -787,6 +966,7 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
   });
   appendQueryValue(params, 'q', q);
   appendQueryValue(params, 'tribunal', tribunal);
+  appendQueryValue(params, 'origem', origem);
   if (categoria?.length) params.set('categoria', categoria.join(','));
 
   const movBody = await backendGet(`/movements?${params.toString()}`) as {
@@ -815,15 +995,20 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       time: timeStr,
       state: isNew ? 'signal' : 'quiet',
       origem: m.origem ?? 'scraper',
+      fontes: m.fontes ?? [],
       categoria: m.categoria ?? null,
       ia: toLeituraIa(m),
       prazo: toPrazoDoAto(m),
+      // Ver `temAlgoParaLer` — sem isto o feed nunca desenhava o selo de
+      // inteiro teor: o campo nunca era escrito aqui, então ficava sempre
+      // `undefined` e `MovimentacaoRow` some com o selo inteiro (não mostra
+      // nem "Com" nem "Sem") quando o valor não está definido.
+      // Dois fatos INDEPENDENTES, dois campos — ver `Movimentacao.temInteiroTeor`.
+      temInteiroTeor: temTexto(m),
+      documentoEstado: m.documentoEstado ?? 'nenhum',
     };
     return { item, ocorrido, isNew };
   });
-
-  // "novas (48h)" reflete o conjunto trazido do backend, antes do filtro de tipo
-  const newToday = entries.filter(e => e.isNew).length;
 
   if (tipo.length) entries = entries.filter(({ item }) => tipo.includes(item.tipo));
 
@@ -844,17 +1029,22 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
     total: needsClientSide ? entries.length : movBody.total,
     totalPages: needsClientSide ? 1 : movBody.totalPages,
     page: needsClientSide ? 1 : movBody.page,
-    newToday,
   };
 }
 
 export type MovimentacaoDetail = {
   id: string;
   data: string;
+  /** Número do movimento nos autos — o que se cita ao falar com o cartório. */
+  nMovimento: string | null;
+  /** Fontes que confirmaram ESTE ato (`["pdpj","djen"]`). `[]` em linha legada. */
+  fontes: string[];
   /** Rótulo do ato ("Despacho — 8ª Turma Cível"). O conteúdo está em `ia.resumo`. */
   descricao: string;
   link: string | null;
   detectedAt: string;
+  /** Ver `Movimentacao.documentoEstado` — o mesmo sinal, no detalhe do ato. */
+  documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
   origem: OrigemMovimentacao;
   /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
   ia: LeituraIa;
@@ -946,7 +1136,12 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
     novo: atoRecemPublicado(m),
     temCertidao: Boolean(m.temCertidao),
     documentos: toDocumentos(m),
+    documentoEstado: m.documentoEstado ?? 'nenhum',
     origem: m.origem ?? 'scraper',
+    nMovimento: m.nMovimento ?? null,
+    // Duas fontes independentes que trouxeram o MESMO ato valem mais que uma —
+    // é o que a ficha do ato mostra como "confirmado por".
+    fontes: m.fontes ?? [],
     ia: toLeituraIa(m),
     prazo: toPrazoDoAto(m),
     textoOriginal: m.textoOriginal?.trim() || null,
@@ -954,10 +1149,46 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
   };
 }
 
+/** O documento anexado ao ato, como `/deadlines` o embute — mesma forma de `BackendDocumento`. */
+type BackendDeadlineDocumento = {
+  nDocumento?: string | null;
+  tipoDocumento?: string | null;
+  urlDocumento?: string | null;
+  baixavel?: boolean;
+};
+
+/**
+ * O ato, embutido na resposta de `/deadlines` — o mesmo recorte de
+ * `BackendMovement`, sem `textoOriginal` (a listagem o omite no banco) nem
+ * `subDocumentos` (o `select` do backend não os traz aqui).
+ */
+type BackendDeadlineMovimentacao = {
+  id: string;
+  ia?: {
+    resumo: string | null; acao: string | null;
+    fundamento?: string | null; confianca?: string | null;
+    deQuem: LeituraIa['deQuem']; analisadoEm: string | null;
+  } | null;
+  documentos?: BackendDeadlineDocumento[] | null;
+  temCertidao?: boolean;
+  temDocumentoDoAto?: boolean;
+  linkTribunal?: string | null;
+} | null;
+
+/** A leitura do PRAZO pela IA, como `AnaliseView` a devolve — ver `toAnaliseView` no backend. */
+type BackendAnaliseView<T = unknown> = {
+  tipo: string;
+  versao: number;
+  atualizadaEm: string;
+  modelo: string;
+  resultado: T;
+} | null;
+
 type BackendDeadline = {
   id: string;
   tipoDocumento: string;
   natureza: NaturezaPrazo | null;
+  metodoPrazo?: PrazoDoAto['metodoPrazo'];
   parte: string | null;
   prazo: number | null;
   dataLimite: string | null;
@@ -965,6 +1196,25 @@ type BackendDeadline = {
   createdAt: string;
   processId: string;
   movementId: string | null;
+  /** De onde o PRAZO veio — não confundir com `process.origem`. */
+  origem?: PrazoDoAto['origem'];
+  /**
+   * Os cinco campos abaixo só existem nas origens calculadas (djen/tribunalPublico)
+   * e, até 07/09/2026, morriam aqui: o tipo não os declarava e `toPrazo` não os
+   * lia, embora `toDeadlineView` sempre os tenha mandado — era por isso que o
+   * painel expandido da pauta não tinha nada além do que a grid do PJe entrega.
+   */
+  canal?: PrazoDoAto['canal'];
+  deQuem?: PrazoDoAto['deQuem'];
+  emDobro?: boolean | null;
+  fundamento?: string | null;
+  publicadoEm?: string | null;
+  cienciaEm?: string | null;
+  cienciaFicta?: boolean | null;
+  /** O ato, embutido — ver `BackendDeadlineMovimentacao`. `null` sem ato gravado. */
+  movimentacao?: BackendDeadlineMovimentacao;
+  /** A leitura do PRAZO pela IA, quando em cache — nunca custa uma requisição a mais. */
+  analise?: BackendAnaliseView;
   process?: {
     numero: string;
     tribunal: string;
@@ -976,33 +1226,50 @@ type BackendDeadline = {
   } | null;
 };
 
-/** Dias corridos entre agora e a dataLimite (arredondado para cima, mínimo 0). */
 /**
- * Dias corridos até o vencimento. **Negativo quando já venceu** — e é aí que
- * mora a correção.
- *
- * Havia um `Math.max(0, …)` grampeando o resultado em zero, então **todo prazo
- * vencido era exibido como "vence hoje"**, em vermelho. Um prazo de 24/05
- * aparecia como vencendo em 04/09. É o pior erro possível num campo de prazo:
- * não é só impreciso, é o oposto do que aconteceu, e ensina o advogado a não
- * confiar no selo.
- *
- * O grampo também apagava três decisões que dependem do sinal:
- *  - `prazosAbertos` filtra `diasRestantes >= 0`, então nenhum vencido saía;
- *  - a contagem de `criticos` (`<= 3`) engolia o acervo vencido inteiro;
- *  - `prazoLabel` tem um ramo `dias < 0 → 'vencido'` que nunca era alcançado.
- *
- * A conta é por DIA DE CALENDÁRIO, não por diferença de horas: `dataLimite`
- * chega como meia-noite UTC do dia certo, e subtrair `Date.now()` cru faria um
- * prazo de amanhã às 00:00 valer "0 dias" durante toda a tarde de hoje. O
- * offset de Brasília entra pelo mesmo motivo que em `vencimentoDoAto`.
+ * O ato, do ponto de vista do PRAZO — mesma lógica de resolução de `toDocumentos`
+ * e `movLink`, adaptada ao recorte que `/deadlines` embute (sem `subDocumentos`).
  */
-function diasAteVencimento(dataLimite: string): number {
-  const limite = new Date(dataLimite);
-  const diaLimite = Date.UTC(limite.getUTCFullYear(), limite.getUTCMonth(), limite.getUTCDate());
-  const agora = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  const hoje = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
-  return Math.round((diaLimite - hoje) / 86_400_000);
+function toAtoDoPrazo(mov: BackendDeadlineMovimentacao): AtoDoPrazo | null {
+  if (!mov) return null;
+
+  const documentos = (mov.documentos ?? [])
+    .map((d, i) => ({
+      nome: d.tipoDocumento?.trim() || d.nDocumento?.trim() || 'Documento',
+      url: d.baixavel
+        ? `/api/movimentacoes/${encodeURIComponent(mov.id)}/documento?i=${i}`
+        : d.urlDocumento ?? '',
+    }))
+    .filter(doc => Boolean(doc.url));
+
+  // A peça que não vem em `documentos` (o STJ é o caso): o documento é o link
+  // que o diário publicou, e só a rota o entrega — ver `movLink`/`toDocumentos`.
+  if (mov.temDocumentoDoAto) {
+    documentos.push({ nome: 'Documento do ato', url: `/api/movimentacoes/${encodeURIComponent(mov.id)}/documento` });
+  }
+
+  return {
+    id: mov.id,
+    ia: {
+      resumo: mov.ia?.resumo?.trim() || null,
+      acao: mov.ia?.acao?.trim() || null,
+      fundamento: mov.ia?.fundamento?.trim() || null,
+      confianca: mov.ia?.confianca?.trim() || null,
+      deQuem: mov.ia?.deQuem ?? null,
+      analisadoEm: mov.ia?.analisadoEm ?? null,
+    },
+    documentos,
+    temCertidao: Boolean(mov.temCertidao),
+    // O link do PJe só sai como saída própria quando ele NÃO é o documento —
+    // quando é, `toDocumentos` já o incluiu acima via `temDocumentoDoAto`.
+    link: (mov.documentos ?? []).find(d => d.urlDocumento)?.urlDocumento ?? mov.linkTribunal ?? null,
+  };
+}
+
+/** A leitura do prazo pela IA, como a tela a consome — `null` fora de cache. */
+function toAnalisePrazo(a: BackendAnaliseView<AnalisePrazoResultado>): AnalisePrazo | null {
+  if (!a) return null;
+  return { atualizadaEm: a.atualizadaEm, modelo: a.modelo, resultado: a.resultado };
 }
 
 const toISODate = (d: Date) =>
@@ -1044,6 +1311,19 @@ function toPrazo(d: BackendDeadline): Prazo {
     vencimentoISO,
     diasRestantes: dias,
     movementId: d.movementId ?? null,
+    fechado: d.fechado,
+    diasPrazo: d.prazo,
+    origemPrazo: d.origem ?? null,
+    metodoPrazo: d.metodoPrazo,
+    fundamento: d.fundamento?.trim() || null,
+    deQuem: d.deQuem ?? null,
+    canal: d.canal ?? null,
+    emDobro: d.emDobro ?? null,
+    publicadoEm: d.publicadoEm ?? null,
+    cienciaEm: d.cienciaEm ?? null,
+    cienciaFicta: d.cienciaFicta ?? null,
+    ato: toAtoDoPrazo(d.movimentacao ?? null),
+    analise: toAnalisePrazo((d.analise ?? null) as BackendAnaliseView<AnalisePrazoResultado>),
     state,
   };
 }
@@ -1120,15 +1400,50 @@ function filtraPrazos(list: Prazo[], f: PrazoFilters): Prazo[] {
   });
 }
 
-function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
+/**
+ * "Mais perto de vencer": primeiro o que ainda vai vencer, depois o que passou.
+ *
+ * Até 07/09/2026 a ordem `fatal` era por DATA ascendente, e isso era o mesmo
+ * que "mais próximo" enquanto a lista trazia só o futuro. Quando a agenda parou
+ * de cortar por data — 313 vencidos e 175 encerrados contra 12 a vencer, numa
+ * conta real —, o topo da lista virou um prazo de 2020.
+ *
+ * A ordem é por FAIXA, e dentro dela por data:
+ *
+ * ```
+ * 1. a vencer      o mais próximo primeiro   (vence amanhã antes de vence em 30d)
+ * 2. vencidos      o mais RECENTE primeiro   (venceu ontem antes de venceu há 900d)
+ * 3. encerrados    o mais recente primeiro
+ * 4. sem data      no fim
+ * ```
+ *
+ * O topo continua sendo o que estava lá antes — o que está vencendo —, e o que
+ * passou aparece logo abaixo em vez de sumir. As duas últimas faixas não são
+ * cosméticas: o encerrado é histórico e não pode empurrar um prazo vivo para
+ * baixo, e o sem data não tem proximidade que se calcule — o lugar dele é
+ * depois do que tem data, não antes por acidente do `null`.
+ */
+function faixaDaOrdem(p: Prazo): number {
+  if (p.fechado) return 2;
+  if (p.diasRestantes === null) return 3;
+  return p.diasRestantes >= 0 ? 0 : 1;
+}
+
+export function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
   const dir = order === 'desc' ? -1 : 1;
-  const datas = (a: string | null, b: string | null) => {
-    if (a === null && b === null) return 0;
-    if (a === null) return 1;
-    if (b === null) return -1;
-    return dir * a.localeCompare(b);
+  const porFatal = (a: Prazo, b: Prazo) => {
+    const fa = faixaDaOrdem(a);
+    const fb = faixaDaOrdem(b);
+    // A faixa manda, e `desc` não a inverte: "mais distante" muda a ordem
+    // DENTRO da faixa, não troca o vencido de lugar com o que está por vencer.
+    if (fa !== fb) return fa - fb;
+    if (fa === 3) return 0;
+    const da = a.diasRestantes ?? 0;
+    const db = b.diasRestantes ?? 0;
+    // A vencer: o menor número de dias primeiro. Vencido e encerrado: o maior
+    // (isto é, o menos negativo — o que venceu mais recentemente).
+    return fa === 0 ? dir * (da - db) : dir * (db - da);
   };
-  const porFatal = (a: Prazo, b: Prazo) => datas(a.vencimentoISO, b.vencimentoISO);
 
   switch (sort) {
     case 'tribunal':
@@ -1157,14 +1472,33 @@ function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
  * sobre a página. Filtros cronológicos excluem os itens sem data.
  */
 export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<PrazoPage> {
+  /* **A página vem do fim, não do começo.** A ordem que a tela mostra é
+     decidida no cliente (`sortPrazos`); o que este `sort` decide é QUAL fatia
+     do acervo cabe na página. Com `asc` a fatia seria a dos prazos mais
+     ANTIGOS — medido em 07/09/2026: de 773 prazos, os 500 primeiros em ordem
+     ascendente traziam 371 vencidos, 129 encerrados e **zero** do que ainda
+     vai vencer. A agenda perdia exatamente o que ela existe para mostrar. */
   const params = new URLSearchParams({
     page: String(Math.max(1, Math.trunc(page))),
     limit: String(Math.max(1, Math.trunc(limit))),
-    sort: 'asc',
+    sort: 'desc',
   });
 
-  // Sem faixa explícita, a lista começa em "agora" — prazos vencidos não entram.
-  params.set('from', filters.fatalFrom ? `${filters.fatalFrom}T00:00:00.000-03:00` : new Date().toISOString());
+  /* **A lista não corta por data.** Até 07/09/2026 ela mandava `from = agora`
+     sempre, e o efeito era categórico: um prazo só é fechado PORQUE a data
+     passou (`fecharPrazosDjenExpirados` fecha em `dataLimite < agora`), então
+     "fechado" e "vence no futuro" eram conjuntos disjuntos — o filtro
+     *Encerrados* e a coluna do kanban nunca podiam ter um item sequer. Medido:
+     218 prazos fechados numa conta, 0 alcançáveis; 555 pendentes, 12 visíveis.
+
+     O que sumia junto era pior que o encerrado: o prazo VENCIDO e ainda aberto
+     — o que passou sem baixa, que é exatamente o que alguém precisa ver. Nada
+     no sistema confere se o documento foi entregue (ver `fecharPrazosDjenExpirados`),
+     então esconder o vencido era esconder trabalho, não ruído.
+
+     Quem organiza agora é a tela: o kanban tem coluna para *Vencidos* e
+     *Encerrados*, e o filtro *Expediente* separa pendente de fechado. */
+  if (filters.fatalFrom) params.set('from', `${filters.fatalFrom}T00:00:00.000-03:00`);
   params.set('includeSemData', 'true');
   if (filters.fatalTo) params.set('to', `${filters.fatalTo}T23:59:59.999-03:00`);
   appendQueryValue(params, 'q', filters.q);
@@ -1197,20 +1531,51 @@ export type ProcessoMovements = {
  * `categorias` vazio deixa o padrão do backend valer — que **esconde o trâmite
  * de cartório**. Passar categorias troca o filtro; `['todas']` desliga.
  */
+/** Busca, faixa de datas, ordem e página da timeline de um processo. */
+export interface FiltrosDaTimeline {
+  /** Busca livre — `?q=` da listagem do backend. */
+  q?: string;
+  /** `YYYY-MM-DD` — `ocorridoEm >= from`. */
+  from?: string;
+  /** `YYYY-MM-DD` — `ocorridoEm <= to`. */
+  to?: string;
+  /** Padrão `desc`: a timeline começa pelo mais recente. */
+  sort?: 'asc' | 'desc';
+  /** 1-based, como o backend. */
+  page?: number;
+  /** `?comDocumento=true` do backend — só movimentações com `documentos`. */
+  comDocumento?: boolean;
+}
+
 export async function getProcessoMovements(
   processId: string,
   limit = 20,
   categorias: readonly string[] = [],
+  filtros: FiltrosDaTimeline = {},
 ): Promise<ProcessoMovements> {
   const take = Math.min(Math.max(1, Math.trunc(limit)), 100);
   const filtro = categorias.length ? `&categoria=${encodeURIComponent(categorias.join(','))}` : '';
+  const query = new URLSearchParams({
+    processId,
+    sort: filtros.sort ?? 'desc',
+    page: String(Math.max(1, Math.trunc(filtros.page ?? 1))),
+    limit: String(take),
+  });
+  if (filtros.q) query.set('q', filtros.q);
+  if (filtros.from) query.set('from', `${filtros.from}T00:00:00.000-03:00`);
+  if (filtros.to) query.set('to', `${filtros.to}T23:59:59.999-03:00`);
+  if (filtros.comDocumento) query.set('comDocumento', 'true');
   const body = await backendGetOrNull<{ data: BackendMovement[]; total: number }>(
-    `/movements?processId=${processId}&sort=desc&page=1&limit=${take}${filtro}`
+    `/movements?${query.toString()}${filtro}`
   );
   if (!body) return { events: [], total: 0 };
-  const sorted = [...body.data].sort(
-    (a, b) => new Date(b.ocorridoEm).getTime() - new Date(a.ocorridoEm).getTime(),
-  );
+  // O backend já ordena; reordenar aqui é a garantia de que a numeração de
+  // fallback (`§ NN`) siga a mesma ordem em que a lista é montada.
+  const asc = (filtros.sort ?? 'desc') === 'asc';
+  const sorted = [...body.data].sort((a, b) => {
+    const d = new Date(a.ocorridoEm).getTime() - new Date(b.ocorridoEm).getTime();
+    return asc ? d : -d;
+  });
   // a numeração de fallback usa o total do processo, não o que foi carregado:
   // assim o § de uma movimentação não muda ao clicar em "carregar mais"
   const total = body.total ?? sorted.length;
@@ -1220,6 +1585,108 @@ export async function getProcessoMovements(
   };
 }
 
+/**
+ * Só a CONTAGEM de movimentações com documento — um `limit=1` filtrado por
+ * `comDocumento`, então o custo é o de uma página, não o de varrer o acervo.
+ *
+ * Existe para o contador da aba "Documentos" aparecer nas OUTRAS abas também
+ * (como "Movimentações 322" e "Prazos 3" já fazem): sem uma chamada dedicada,
+ * o contador só existiria depois de abrir a aba, que é justamente a página
+ * que carrega tudo.
+ */
+export async function getDocumentosCount(processId: string): Promise<number> {
+  const r = await getProcessoMovements(processId, 1, ['todas'], { comDocumento: true });
+  return r.total;
+}
+
+/**
+ * TODAS as movimentações com documento de um processo — não só a primeira
+ * página. Antes esta aba pedia até `MOVS_MAX` (100) movimentações QUAISQUER
+ * (`comDocumento` não existia) para depois filtrar `documentos.length > 0`, e
+ * o teto de 100 valia sobre o acervo INTEIRO, não sobre as documentadas: um
+ * processo com 322 movimentações e 264 documentadas (medido em 07/09/2026,
+ * `0717575-68.2024.8.07.0001`) tinha a aba truncada nas 100 mais recentes,
+ * cortando até 164 peças em silêncio — pior ainda num processo onde as
+ * movimentações recentes por acaso não têm documento, que via a aba vazia
+ * com o acervo cheio de peças mais antigas.
+ *
+ * Filtrar `comDocumento=true` no backend resolve os dois problemas juntos: o
+ * teto de 100 por página passa a valer sobre o conjunto já filtrado (bem
+ * menor que o acervo inteiro), e a paginação por baixo busca as páginas que
+ * faltarem até esgotar `total` — com um teto de segurança (`maxPaginas`) para
+ * nunca virar uma varredura sem fim num acervo patológico.
+ */
+export async function getDocumentosDoProcesso(
+  processId: string,
+  maxPaginas = 10,
+): Promise<ProcessoMovements> {
+  const primeira = await getProcessoMovements(processId, 100, ['todas'], {
+    comDocumento: true, page: 1,
+  });
+  const events = [...primeira.events];
+  const paginasNecessarias = Math.min(Math.ceil(primeira.total / 100), maxPaginas);
+  for (let page = 2; page <= paginasNecessarias; page++) {
+    const pagina = await getProcessoMovements(processId, 100, ['todas'], {
+      comDocumento: true, page,
+    });
+    events.push(...pagina.events);
+  }
+  return { events, total: primeira.total };
+}
+
+export interface CalendarioDoProcesso {
+  dias: { dia: string; total: number }[];
+  total: number;
+  primeiroAno: number | null;
+  ultimoAno: number | null;
+}
+
+/**
+ * Quantas movimentações cada dia do processo teve — a agregação que o calendário
+ * pinta.
+ *
+ * Vem do backend agregada (`GET /movements/por-dia`), e não derivada da lista
+ * carregada na tela: a timeline mostra 50 de cada vez, então derivar dela
+ * pintaria o calendário só do pedaço que já foi rolado — e o mapa de um processo
+ * de 37 anos apareceria como duas semanas.
+ *
+ * `categoria` viaja igual ao da lista (inclusive o `todas`) porque o calendário
+ * tem de pintar o MESMO conjunto que a timeline mostra: um dia aceso que a lista
+ * não tem leva a um clique que não devolve nada.
+ */
+export async function getCalendarioDoProcesso(
+  processId: string,
+  categoria?: string,
+): Promise<CalendarioDoProcesso> {
+  const query = new URLSearchParams({ processId });
+  if (categoria) query.set('categoria', categoria);
+  const body = await backendGetOrNull<CalendarioDoProcesso>(`/movements/por-dia?${query}`);
+  return body ?? { dias: [], total: 0, primeiroAno: null, ultimoAno: null };
+}
+
+export interface AtividadeDiaria {
+  /** Um item por dia COM movimentação — dia sem nada não vem. */
+  dias: { dia: string; total: number }[];
+  /** Soma da janela, não do acervo. */
+  total: number;
+  /** Quantos dias a janela cobre — o backend limita a 90. */
+  janela: number;
+}
+
+/**
+ * O pulso do acervo inteiro nos últimos N dias — o que o heatmap do painel pinta.
+ *
+ * Agregada no backend (`GET /movements/atividade`), pelo mesmo motivo do
+ * calendário do processo: derivar da lista carregada pintaria só a página que a
+ * tela já tem. Dia sem movimentação não volta, então quem consome preenche o
+ * vazio com zero (ver o `atividadeMap` do painel).
+ */
+export async function getAtividadeDiaria(dias = 30): Promise<AtividadeDiaria> {
+  const janela = Math.min(Math.max(1, Math.trunc(dias)), 90);
+  const body = await backendGetOrNull<AtividadeDiaria>(`/movements/atividade?dias=${janela}`);
+  return body ?? { dias: [], total: 0, janela };
+}
+
 /** Prazos de um processo, do vencimento mais próximo ao mais distante. */
 export async function getProcessoPrazos(processId: string): Promise<Prazo[]> {
   const body = await backendGetOrNull<{ data: BackendDeadline[] }>(
@@ -1227,6 +1694,69 @@ export async function getProcessoPrazos(processId: string): Promise<Prazo[]> {
   );
   if (!body) return [];
   return body.data.map(toPrazo);
+}
+
+/**
+ * O DOSSIÊ DE IA de um processo — `GET /processes/{id}/analises`.
+ *
+ * Uma chamada para os três níveis (caso, prazos, atos) porque eles moram em
+ * lugares diferentes no backend e a aba precisa dos três juntos: o caso e os
+ * prazos vêm da tabela `Analise`, os atos das colunas da própria movimentação.
+ * Buscá-los separadamente seriam três idas e três formatos para montar uma tela.
+ *
+ * `null` quando o backend não responde — a aba mostra o estado vazio em vez de
+ * quebrar a página inteira do processo.
+ */
+export interface AnaliseEnvelope {
+  tipo: string;
+  versao: number;
+  atualizadaEm: string;
+  modelo: string;
+  resultado: Record<string, unknown>;
+}
+
+export interface DossieDeIa {
+  caso: AnaliseEnvelope | null;
+  prazos: {
+    id: string;
+    tipoDocumento: string;
+    dataLimite: string | null;
+    prazo: number | null;
+    fechado: boolean;
+    peca: string | null;
+    analisadoEm: string | null;
+    analise: AnaliseEnvelope | null;
+  }[];
+  atos: {
+    id: string;
+    ocorridoEm: string;
+    descricao: string;
+    categoria: string | null;
+    resumoIa: string | null;
+    acaoIa: string | null;
+    fundamentoIa: string | null;
+    confiancaIa: string | null;
+    deQuemIa: string | null;
+    analisadoEm: string | null;
+  }[];
+  cobertura: {
+    movimentacoes: number;
+    /** Quantas TÊM texto — o denominador honesto. Ver a rota no backend. */
+    movimentacoesLegiveis: number;
+    movimentacoesLidas: number;
+    prazos: number;
+    prazosLidos: number;
+    casoLido: boolean;
+  };
+}
+
+export async function getAnalisesDoProcesso(processId: string): Promise<DossieDeIa | null> {
+  // `GET /ia/processos/{id}` desde 07/09/2026 — era `/processes/{id}/analises`.
+  // O caminho antigo virou 404 no backend, e como `backendGetOrNull` trata 404
+  // como "ainda não há análise", a aba passou a dizer "a IA não leu nada deste
+  // processo" para todo processo, inclusive os lidos. Erro mudo: nem a página
+  // quebrava, nem o log acusava.
+  return backendGetOrNull<DossieDeIa>(`/ia/processos/${processId}`);
 }
 
 export type TribunaisStatusResult = {

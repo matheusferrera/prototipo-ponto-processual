@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowUpDown, Columns3, Funnel, X } from 'lucide-react';
+import { ArrowUpDown, Funnel, X } from 'lucide-react';
 import { SearchControl } from '@/components/layout/PageHeader/SearchControl';
 import { ResponsiveFilterPanel } from '@/components/filters/ResponsiveFilterPanel';
-import { ProcessTableSettingsPanel } from '@/components/processos/ProcessTable/ProcessTableProvider';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -36,6 +35,12 @@ const PROCESS_STATUS = [
   { value: 'archived', label: 'Arquivado' },
 ] as const;
 
+/**
+ * O seletor traz TODAS as ordenações da API, não só as das colunas visíveis no
+ * card: no mobile ele é a única ordenação que existe (não há cabeçalho para
+ * clicar), e uma chave fora daqui é uma que chegou pela URL e o seletor não
+ * conseguiria mostrar como ativa.
+ */
 const SORT_OPTIONS: { value: `${ProcessSort}:${'asc' | 'desc'}`; label: string }[] = [
   { value: 'recent:desc', label: 'Movimentação mais recente' },
   { value: 'recent:asc', label: 'Movimentação mais antiga' },
@@ -47,6 +52,24 @@ const SORT_OPTIONS: { value: `${ProcessSort}:${'asc' | 'desc'}`; label: string }
   { value: 'valor:asc', label: 'Menor valor da causa' },
   { value: 'autuado:desc', label: 'Autuação mais recente' },
   { value: 'autuado:asc', label: 'Autuação mais antiga' },
+  { value: 'orgao:asc', label: 'Órgão julgador · A–Z' },
+  { value: 'orgao:desc', label: 'Órgão julgador · Z–A' },
+  { value: 'classe:asc', label: 'Classe judicial · A–Z' },
+  { value: 'classe:desc', label: 'Classe judicial · Z–A' },
+  { value: 'assunto:asc', label: 'Assunto · A–Z' },
+  { value: 'assunto:desc', label: 'Assunto · Z–A' },
+  { value: 'ultimaMov:asc', label: 'Última movimentação · A–Z' },
+  { value: 'ultimaMov:desc', label: 'Última movimentação · Z–A' },
+  { value: 'movimentacoes:desc', label: 'Mais movimentações' },
+  { value: 'movimentacoes:asc', label: 'Menos movimentações' },
+  { value: 'verificado:desc', label: 'Verificado há menos tempo' },
+  { value: 'verificado:asc', label: 'Verificado há mais tempo' },
+  { value: 'sync:asc', label: 'Sincronização · A–Z' },
+  { value: 'sync:desc', label: 'Sincronização · Z–A' },
+  { value: 'situacao:asc', label: 'Situação · A–Z' },
+  { value: 'situacao:desc', label: 'Situação · Z–A' },
+  { value: 'monitoramento:desc', label: 'Monitorados primeiro' },
+  { value: 'monitoramento:asc', label: 'Não monitorados primeiro' },
 ];
 
 interface ProcessFilterControlsProps {
@@ -57,7 +80,7 @@ interface ProcessFilterControlsProps {
   inline?: boolean;
 }
 
-type OpenPanel = 'filters' | 'columns' | null;
+type OpenPanel = 'filters' | null;
 
 export function ProcessFilterControls({
   filters,
@@ -71,7 +94,6 @@ export function ProcessFilterControls({
   const [draft, setDraft] = useState(filters);
   const [isPending, startTransition] = useTransition();
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
-  const columnsButtonRef = useRef<HTMLButtonElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const activeCount = countActiveProcessFilters(filters);
 
@@ -179,32 +201,20 @@ export function ProcessFilterControls({
         {activeCount > 0 && <span className={styles.controlCount} aria-hidden="true">{activeCount}</span>}
       </Button>
 
-      <label className={styles.sortControl} title="Ordenar processos">
-        <ArrowUpDown aria-hidden="true" />
-        <span className="sr-only">Ordenar processos</span>
-        <NativeSelect value={sortValue} onChange={event => changeSort(event.target.value)}>
-          {SORT_OPTIONS.map(option => (
-            <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </label>
+      {/* No desktop a ordenação mora nos cabeçalhos da tabela (ver `SortHeader`);
+          o seletor só existe no mobile, onde os cards não têm cabeçalho. */}
+      {variant === 'mobile' && (
+        <label className={styles.sortControl} title="Ordenar processos">
+          <ArrowUpDown aria-hidden="true" />
+          <span className="sr-only">Ordenar processos</span>
+          <NativeSelect value={sortValue} onChange={event => changeSort(event.target.value)}>
+            {SORT_OPTIONS.map(option => (
+              <NativeSelectOption key={option.value} value={option.value}>{option.label}</NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
+      )}
 
-        <Button
-          ref={columnsButtonRef}
-          type="button"
-          variant="outline"
-          className={styles.panelButton}
-          data-active={openPanel === 'columns' || undefined}
-          aria-expanded={openPanel === 'columns'}
-          aria-controls={PROCESS_FILTER_PANEL_ID}
-          onClick={() => {
-            returnFocusRef.current = columnsButtonRef.current;
-            togglePanel('columns');
-          }}
-        >
-          <Columns3 />
-          <span>Colunas</span>
-        </Button>
       </div>
 
       <ResponsiveFilterPanel
@@ -212,10 +222,9 @@ export function ProcessFilterControls({
         onOpenChange={open => { if (!open) setOpenPanel(null); }}
         panelHostId={PROCESS_FILTER_PANEL_HOST_ID}
         panelId={PROCESS_FILTER_PANEL_ID}
-        title={openPanel === 'columns' ? 'Configurar tabela' : 'Filtrar processos'}
+        title="Filtrar processos"
         returnFocusRef={returnFocusRef}
       >
-          {openPanel === 'filters' ? (
           <form className={`${styles.filterForm} ${styles.inlineFilterForm}`} onSubmit={applyFilters}>
             <div className={styles.sheetHeader}>
               <div>
@@ -390,20 +399,6 @@ export function ProcessFilterControls({
               <span className={styles.autosaveHint}>Aplicação automática</span>
             </div>
           </form>
-          ) : (
-            <div className={styles.inlineSettingsWrap}>
-              <div className={styles.sheetHeader}>
-                <div>
-                  <h2 data-filter-panel-title tabIndex={-1}>Configurar tabela</h2>
-                  <p>As alterações aparecem imediatamente e são salvas automaticamente.</p>
-                </div>
-                <Button type="button" variant="outline" size="icon" onClick={() => setOpenPanel(null)} aria-label="Fechar configuração de colunas">
-                  <X />
-                </Button>
-              </div>
-              <ProcessTableSettingsPanel embedded />
-            </div>
-          )}
       </ResponsiveFilterPanel>
     </>
   );

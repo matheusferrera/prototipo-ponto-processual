@@ -11,10 +11,12 @@ import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/componen
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import {
   DEFAULT_MOVIMENTACAO_FILTERS,
+  ORIGENS_MOVIMENTACAO,
   TIPOS_MOVIMENTACAO,
   countActiveMovimentacaoFilters,
   serializeMovimentacaoFilters,
   type MovimentacaoFilterState,
+  type MovimentacaoOrigem,
   type MovimentacaoSort,
 } from '@/lib/movimentacao-filters';
 import { CATEGORIAS_MOVIMENTACAO } from '@/lib/categoria-movimentacao';
@@ -174,6 +176,37 @@ export function MovimentacaoFilterControls({
                     </FieldGroup>
                   </FieldSet>
                 )}
+
+                {/* Origem fica junto de Tribunal porque responde à mesma pergunta —
+                    de onde veio esta linha —, e vem antes de Categoria porque é
+                    o corte que desdobra a repetição: o ato visto pelo portal e
+                    pelo diário são DUAS linhas, e escolher uma fonte mostra uma
+                    só. É select, e não caixas: marcar as duas seria não filtrar,
+                    e a API aceita um valor por vez. */}
+                <div className={styles.fieldGrid}>
+                  <Field>
+                    <FieldLabel htmlFor={`${variant}-mov-origem`}>Origem</FieldLabel>
+                    <NativeSelect
+                      id={`${variant}-mov-origem`}
+                      value={draft.origem}
+                      onChange={event => changeDraft(current => ({
+                        ...current,
+                        origem: event.target.value as MovimentacaoOrigem,
+                      }), true)}
+                    >
+                      <NativeSelectOption value="">Todas as origens</NativeSelectOption>
+                      {ORIGENS_MOVIMENTACAO.map(origem => (
+                        <NativeSelectOption key={origem.value} value={origem.value}>
+                          {origem.label}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                    <p className={styles.fieldHint}>
+                      O mesmo ato costuma aparecer duas vezes — uma pelo portal, outra
+                      pelo diário. Escolher a origem deixa só uma delas.
+                    </p>
+                  </Field>
+                </div>
 
                 {/* Categoria vem ANTES de Tipo de propósito: ela é o corte que
                     limpa a lista (o trâmite de cartório é 43% do acervo) e é

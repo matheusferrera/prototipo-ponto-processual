@@ -1,0 +1,30 @@
+.erro {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.erro > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tentar {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--brick);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tentar:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}

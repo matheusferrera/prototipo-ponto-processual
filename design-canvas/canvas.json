@@ -1,0 +1,12 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 1400, "title": "Dashboard · Desktop" },
+    { "file": "Mobile.dc.html", "x": 1560, "y": 0, "w": 390, "h": 1060, "title": "Dashboard · Mobile" },
+    { "file": "Componentes.dc.html", "x": 0, "y": 1540, "w": 1440, "h": 2060, "title": "Componentes · buffet de formatos" }
+  ],
+  "annotations": [
+    { "id": "nota-direcao", "x": 0, "y": -132, "w": 620, "text": "Dashboard: mesma identidade (creme + verde-floresta, JetBrains Mono, zero radius, editorial), menos densa. Foco no bloco 'Precisa de você'; ao lado, heatmap de 30 dias, rosca de prazos por natureza e a carteira." },
+    { "id": "nota-buffet", "x": 0, "y": 1408, "w": 620, "text": "Componentes: buffet de formatos (heatmap, linha, área, barras, rosca, medidor, tabela, ranking, bullet, distribuição, empilhada, sparklines). Referência — os escolhidos já entram no dashboard acima. Dados de exemplo." }
+  ],
+  "launch": { "view": "canvas" }
+}

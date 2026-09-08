@@ -13,13 +13,15 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  Columns3,
   GripVertical,
+  List,
   Minus,
   Pin,
   PinOff,
   Plus,
   RotateCcw,
+  Settings2,
+  Table2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -38,6 +40,7 @@ import {
   type ProcessColumnId,
   type ProcessTableDensity,
   type ProcessTablePreferences,
+  type ProcessViewMode,
   saveProcessTablePreferences,
 } from '@/lib/process-table-preferences';
 import styles from './ProcessTable.module.css';
@@ -83,9 +86,9 @@ export function ProcessTableProvider({ children }: { children: ReactNode }) {
           aria-label="Configurar tabela de processos"
         >
           <SheetHeader className={styles.settingsHeader}>
-            <SheetTitle className={styles.settingsTitle}>Configurar tabela</SheetTitle>
+            <SheetTitle className={styles.settingsTitle}>Exibição da carteira</SheetTitle>
             <SheetDescription className={styles.settingsDescription}>
-              Escolha o que aparece e ajuste a leitura da sua carteira.
+              Escolha como ler seus processos. Salvo automaticamente neste navegador.
             </SheetDescription>
           </SheetHeader>
           <ProcessTableSettingsPanel />
@@ -110,10 +113,10 @@ export function ProcessTableSettingsTrigger({ compact = false }: { compact?: boo
       size={compact ? 'icon' : 'default'}
       className={styles.settingsTrigger}
       onClick={openSettings}
-      aria-label={compact ? 'Configurar colunas da tabela' : undefined}
+      aria-label={compact ? 'Configurar exibição dos processos' : undefined}
     >
-      <Columns3 aria-hidden="true" />
-      {!compact && <span>Colunas</span>}
+      <Settings2 aria-hidden="true" />
+      {!compact && <span>Exibição</span>}
     </Button>
   );
 }
@@ -172,8 +175,41 @@ export function ProcessTableSettingsPanel({ embedded = false }: { embedded?: boo
 
   const visibleCount = PROCESS_COLUMN_IDS.filter(id => preferences.columnVisibility[id] !== false).length;
 
+  const isTable = preferences.viewMode === 'table';
+
   return (
     <div className={`${styles.settingsBody} ${embedded ? styles.settingsInline : ''}`}>
+      <section className={styles.settingsSection} aria-labelledby="view-title">
+        <div className={styles.sectionHeading}>
+          <div>
+            <h3 id="view-title">Modo de exibição</h3>
+            <p>
+              {isTable
+                ? 'Tabela: colunas configuráveis, para comparar muitos processos lado a lado.'
+                : 'Lista: cada linha é um caso, com o que mudou por último e o próximo prazo.'}
+            </p>
+          </div>
+        </div>
+        <div className={styles.segmented} data-columns="2" role="group" aria-label="Modo de exibição">
+          {([
+            ['list', 'Lista', List],
+            ['table', 'Tabela', Table2],
+          ] as [ProcessViewMode, string, typeof List][]).map(([value, label, Icon]) => (
+            <button
+              key={value}
+              type="button"
+              className={preferences.viewMode === value ? styles.segmentActive : ''}
+              aria-pressed={preferences.viewMode === value}
+              onClick={() => update('viewMode', value)}
+            >
+              <Icon aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {isTable && (<>
       <section className={styles.settingsSection} aria-labelledby="columns-title">
         <div className={styles.sectionHeading}>
           <div>
@@ -294,6 +330,7 @@ export function ProcessTableSettingsPanel({ embedded = false }: { embedded?: boo
           </button>
         </div>
       </section>
+      </>)}
 
       <div className={styles.settingsFooter}>
         <Button

@@ -42,6 +42,11 @@ import {
   PROCESS_COLUMN_LABELS,
   type ProcessColumnId,
 } from '@/lib/process-table-preferences';
+import {
+  PROCESS_SORT_DEFAULT_ORDER,
+  type ProcessOrder,
+  type ProcessSort,
+} from '@/lib/process-filters';
 import { useProcessTablePreferences } from './ProcessTableProvider';
 import styles from './ProcessTable.module.css';
 
@@ -50,16 +55,52 @@ interface ProcessTableProps {
   listParams?: Record<string, string | undefined>;
 }
 
-type SortKey = 'recent' | 'cnj' | 'tribunal' | 'valor' | 'autuado';
-type SortOrder = 'asc' | 'desc';
+type SortKey = ProcessSort;
+type SortOrder = ProcessOrder;
 
-const SORT_DEFAULTS: Record<SortKey, SortOrder> = {
-  recent: 'desc',
-  cnj: 'asc',
-  tribunal: 'asc',
-  valor: 'desc',
-  autuado: 'desc',
+const SORT_DEFAULTS = PROCESS_SORT_DEFAULT_ORDER;
+
+/**
+ * Coluna da tabela → chave de ordenação da API. Quem não está aqui não ordena,
+ * e é sempre pelo mesmo motivo: a coluna não é um campo do processo.
+ *
+ * `state` e `prazo` são derivados (o estado sai de syncStatus+lastMovAt; o prazo
+ * é o mínimo dos Deadline abertos), `poloAtivo`/`poloPassivo` são Json, e `grau`
+ * é o sufixo de `tribunal` — ordenar por tribunal já os agrupa. Os quatro
+ * precisam de SQL cru na listagem ou de coluna denormalizada; nenhum é "mais um
+ * cabeçalho".
+ *
+ * O mapa é a fonte única: alimenta o cabeçalho clicável E o `aria-sort` do <th>.
+ */
+const SORT_KEY_BY_COLUMN: Partial<Record<ProcessColumnId, SortKey>> = {
+  tribunal: 'tribunal',
+  cnj: 'cnj',
+  orgaoJulgador: 'orgao',
+  classeJudicial: 'classe',
+  assunto: 'assunto',
+  valorCausa: 'valor',
+  autuadoEm: 'autuado',
+  ultimaMov: 'ultimaMov',
+  lastMovAt: 'recent',
+  movimentacoes: 'movimentacoes',
+  lastScrapedAt: 'verificado',
+  syncStatus: 'sync',
+  statusProcesso: 'situacao',
+  whatsEnabled: 'monitoramento',
 };
+
+/** Cabeçalho da coluna: clicável quando ela ordena, texto puro quando não. */
+function headerFor(
+  id: ProcessColumnId,
+  label: string,
+  listParams: Record<string, string | undefined>,
+) {
+  const sortKey = SORT_KEY_BY_COLUMN[id];
+  if (!sortKey) return label;
+  const Header = () => <SortHeader label={label} sortKey={sortKey} listParams={listParams} />;
+  Header.displayName = `ProcessHeader(${id})`;
+  return Header;
+}
 
 const MIN_COLUMN_SIZE = 48;
 
@@ -132,7 +173,7 @@ function PrazoCell({ processo }: { processo: Processo }) {
   if (!prazo) return <span className={styles.prazoEmpty}>—</span>;
 
   const dias = prazo.diasRestantes;
-  const tone = dias <= 2 ? 'urgente' : dias <= 7 ? 'proximo' : 'calmo';
+  const tone = dias <= 7 ? 'urgente' : dias <= 14 ? 'proximo' : 'calmo';
   const extras = processo.prazosAbertos > 1 ? ` +${processo.prazosAbertos - 1}` : '';
 
   return (
@@ -212,7 +253,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'state',
       accessorKey: 'state',
-      header: 'Estado',
+      header: headerFor('state', 'Estado', listParams),
       cell: ({ row }) => <StateCell processo={row.original} />,
       size: 72,
       minSize: MIN_COLUMN_SIZE,
@@ -221,7 +262,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'tribunal',
       accessorKey: 'tribunal',
-      header: () => <SortHeader label="Tribunal" sortKey="tribunal" listParams={listParams} />,
+      header: headerFor('tribunal', 'Tribunal', listParams),
       cell: ({ row }) => (
         <TribTag label={tribunalTagLabel(row.original.tribunal, row.original.grau)} />
       ),
@@ -232,7 +273,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'cnj',
       accessorKey: 'cnj',
-      header: () => <SortHeader label="Número CNJ" sortKey="cnj" listParams={listParams} />,
+      header: headerFor('cnj', 'Número CNJ', listParams),
       cell: ({ getValue, row }) => (
         <Link
           href={`/processos/${encodeURIComponent(row.original.cnj)}`}
@@ -250,7 +291,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'prazo',
       accessorFn: row => row.proximoPrazo ? prazoLabel(row.proximoPrazo) : '—',
-      header: 'Próximo prazo',
+      header: headerFor('prazo', 'Próximo prazo', listParams),
       cell: ({ row }) => <PrazoCell processo={row.original} />,
       size: 150,
       minSize: MIN_COLUMN_SIZE,
@@ -259,7 +300,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'orgaoJulgador',
       accessorKey: 'orgaoJulgador',
-      header: 'Órgão julgador',
+      header: headerFor('orgaoJulgador', 'Órgão julgador', listParams),
       cell: TextCell,
       size: 220,
       minSize: MIN_COLUMN_SIZE,
@@ -268,7 +309,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'classeJudicial',
       accessorFn: row => row.classeJudicial ?? '—',
-      header: 'Classe judicial',
+      header: headerFor('classeJudicial', 'Classe judicial', listParams),
       cell: TextCell,
       size: 190,
       minSize: MIN_COLUMN_SIZE,
@@ -277,7 +318,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'assunto',
       accessorFn: row => row.assunto ?? '—',
-      header: 'Assunto',
+      header: headerFor('assunto', 'Assunto', listParams),
       cell: TextCell,
       size: 240,
       minSize: MIN_COLUMN_SIZE,
@@ -286,7 +327,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'poloAtivo',
       accessorFn: row => displayPartes(row.poloAtivo),
-      header: 'Polo ativo',
+      header: headerFor('poloAtivo', 'Polo ativo', listParams),
       cell: TextCell,
       size: 210,
       minSize: MIN_COLUMN_SIZE,
@@ -295,7 +336,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'poloPassivo',
       accessorFn: row => displayPartes(row.poloPassivo),
-      header: 'Polo passivo',
+      header: headerFor('poloPassivo', 'Polo passivo', listParams),
       cell: TextCell,
       size: 210,
       minSize: MIN_COLUMN_SIZE,
@@ -304,7 +345,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'valorCausa',
       accessorFn: row => row.valorCausa == null ? '—' : currencyFormatter.format(row.valorCausa),
-      header: () => <SortHeader label="Valor da causa" sortKey="valor" listParams={listParams} />,
+      header: headerFor('valorCausa', 'Valor da causa', listParams),
       cell: ({ getValue }) => <span className={styles.numeric}>{String(getValue())}</span>,
       size: 150,
       minSize: MIN_COLUMN_SIZE,
@@ -313,7 +354,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'autuadoEm',
       accessorFn: row => displayDate(row.autuadoEm),
-      header: () => <SortHeader label="Autuação" sortKey="autuado" listParams={listParams} />,
+      header: headerFor('autuadoEm', 'Autuação', listParams),
       cell: DateCell,
       size: 150,
       minSize: MIN_COLUMN_SIZE,
@@ -322,7 +363,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'ultimaMov',
       accessorKey: 'ultimaMov',
-      header: 'Última movimentação',
+      header: headerFor('ultimaMov', 'Última movimentação', listParams),
       cell: TextCell,
       size: 260,
       minSize: MIN_COLUMN_SIZE,
@@ -331,7 +372,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'lastMovAt',
       accessorFn: row => displayDate(row.lastMovAt),
-      header: () => <SortHeader label="Data da última movimentação" sortKey="recent" listParams={listParams} />,
+      header: headerFor('lastMovAt', 'Data da última movimentação', listParams),
       cell: DateCell,
       size: 180,
       minSize: MIN_COLUMN_SIZE,
@@ -340,7 +381,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'movimentacoes',
       accessorFn: row => String(row.movimentacoesCount),
-      header: 'Movimentações',
+      header: headerFor('movimentacoes', 'Movimentações', listParams),
       cell: ({ getValue }) => <span className={styles.numeric}>{String(getValue())}</span>,
       size: 130,
       minSize: MIN_COLUMN_SIZE,
@@ -349,7 +390,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'lastScrapedAt',
       accessorFn: row => timeAgo(row.lastScrapedAt),
-      header: 'Última verificação',
+      header: headerFor('lastScrapedAt', 'Última verificação', listParams),
       cell: DateCell,
       size: 160,
       minSize: MIN_COLUMN_SIZE,
@@ -358,7 +399,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'syncStatus',
       accessorFn: row => displaySync(row.syncStatus),
-      header: 'Sincronização',
+      header: headerFor('syncStatus', 'Sincronização', listParams),
       cell: ({ getValue, row }) => (
         <span className={styles.ellipsis} title={row.original.syncError ?? String(getValue())}>
           {String(getValue())}
@@ -371,7 +412,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'grau',
       accessorKey: 'grau',
-      header: 'Grau',
+      header: headerFor('grau', 'Grau', listParams),
       cell: TextCell,
       size: 80,
       minSize: MIN_COLUMN_SIZE,
@@ -380,7 +421,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'statusProcesso',
       accessorFn: row => displayStatus(row.status),
-      header: 'Situação',
+      header: headerFor('statusProcesso', 'Situação', listParams),
       cell: TextCell,
       size: 130,
       minSize: MIN_COLUMN_SIZE,
@@ -389,7 +430,7 @@ function makeColumns(listParams: Record<string, string | undefined>): ColumnDef<
     {
       id: 'whatsEnabled',
       accessorFn: row => row.whatsEnabled ? 'Ativo' : 'Inativo',
-      header: 'Monitoramento',
+      header: headerFor('whatsEnabled', 'Monitoramento', listParams),
       cell: TextCell,
       size: 150,
       minSize: MIN_COLUMN_SIZE,
@@ -737,11 +778,6 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
       style={{ '--process-font-size': `${preferences.fontSize}px` } as CSSProperties}
       aria-label="Tabela de processos"
     >
-      <div className={styles.tableMeta}>
-        <span>{table.getVisibleLeafColumns().length} colunas visíveis</span>
-        <span className={styles.tableMetaHint}>Arraste os divisores do cabeçalho para ajustar as larguras.</span>
-      </div>
-
       <div
         className={styles.desktopTableWrap}
         tabIndex={0}
@@ -755,18 +791,13 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
                 <th
                   scope="col"
                   className={styles.expanderCell}
-                  style={{ width: EXPANDER_WIDTH, left: 0, position: 'sticky', top: 0, zIndex: 4 }}
+                  style={{ width: EXPANDER_WIDTH, position: 'sticky', left: 0, zIndex: 4 }}
                 >
                   <span className="sr-only">Detalhes</span>
                 </th>
                 {headerGroup.headers.map(header => {
                   const columnId = header.column.id as ProcessColumnId;
-                  const sortKey = columnId === 'cnj' ? 'cnj'
-                    : columnId === 'tribunal' ? 'tribunal'
-                      : columnId === 'valorCausa' ? 'valor'
-                        : columnId === 'autuadoEm' ? 'autuado'
-                          : columnId === 'lastMovAt' ? 'recent'
-                            : null;
+                  const sortKey = SORT_KEY_BY_COLUMN[columnId];
                   const isSorted = sortKey === activeSort;
                   return (
                     <th
@@ -775,7 +806,6 @@ export function ProcessTable({ processos, listParams = {} }: ProcessTableProps) 
                       style={{
                         width: header.getSize(),
                         ...pinnedStyle(header.column),
-                        top: 0,
                         zIndex: header.column.getIsPinned() ? 4 : 3,
                       }}
                       className={header.column.getIsPinned() ? styles.pinnedCell : undefined}

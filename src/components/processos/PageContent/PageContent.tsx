@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { Processo } from '@/types';
 import { FilterWorkspace } from '@/components/filters/FilterWorkspace';
-import { ProcessTable } from '../ProcessTable/ProcessTable';
+import { ProcessView } from '../ProcessView/ProcessView';
 import { buttonVariants } from '@/components/ui/button';
 import { cn, buildQuery } from '@/lib/utils';
 import styles from './PageContent.module.css';
@@ -16,14 +16,15 @@ interface PageContentProps {
   currentPage: number;
   /** params de filtro/busca a preservar nos links de paginação */
   listParams?: Record<string, string | undefined>;
-  pageInfo?: ReactNode;
+  /** barra de resumo: chips de estado + controles de exibição */
+  summary?: ReactNode;
   /** Busca/filtro/ordenação — só aparece no mobile, em fluxo com o conteúdo (não fixo no topo). */
   mobileControls?: ReactNode;
   tableControls?: ReactNode;
   panelHostId: string;
 }
 
-export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, pageInfo, mobileControls, tableControls, panelHostId }: PageContentProps) {
+export function PageContent({ processos, total, totalPages, currentPage, listParams = {}, summary, mobileControls, tableControls, panelHostId }: PageContentProps) {
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(currentPage * PAGE_SIZE, total);
   const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
@@ -42,14 +43,14 @@ export function PageContent({ processos, total, totalPages, currentPage, listPar
     <FilterWorkspace panelHostId={panelHostId}>
       <div className={styles.contentColumn}>
         <div className={styles.scrollArea}>
-          {pageInfo}
           {mobileControls && <div className={styles.mobileControls}>{mobileControls}</div>}
+          {summary}
           {tableControls}
 
           {isEmpty ? (
             <EmptyState hasFilters={hasFilters} />
           ) : (
-            <ProcessTable processos={processos} listParams={listParams} />
+            <ProcessView processos={processos} listParams={listParams} />
           )}
         </div>
 
@@ -74,6 +75,11 @@ export function PageContent({ processos, total, totalPages, currentPage, listPar
 }
 
 function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+  const buttonClass = cn(
+    buttonVariants({ variant: 'outline', size: 'sm' }),
+    'border-[var(--line)] text-[var(--ink)] hover:bg-[var(--paper-2)]',
+  );
+
   return (
     <div className={`px-page ${styles.empty}`}>
       <div className={styles.emptyMark} aria-hidden="true" />
@@ -81,19 +87,16 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
         <>
           <p className={styles.emptyTitle}>Nenhum processo encontrado</p>
           <p className={styles.emptyText}>Nenhum processo corresponde aos filtros ou à busca atual.</p>
-          <Link
-            href="/processos"
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-[var(--line)] text-[var(--ink)] hover:bg-[var(--paper-2)]')}
-          >
-            Limpar filtros
-          </Link>
+          <Link href="/processos" className={buttonClass}>Limpar filtros</Link>
         </>
       ) : (
         <>
-          <p className={styles.emptyTitle}>Nenhum processo monitorado ainda</p>
+          <p className={styles.emptyTitle}>Sua carteira ainda está vazia</p>
           <p className={styles.emptyText}>
-            Assim que um processo for adicionado às suas credenciais, ele aparece aqui com o histórico de movimentações.
+            Cadastre uma credencial de tribunal. A partir daí, cada processo aparece aqui
+            com o nome das partes, a última movimentação e o próximo prazo.
           </p>
+          <Link href="/credenciais" className={buttonClass}>Cadastrar credencial</Link>
         </>
       )}
     </div>

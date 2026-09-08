@@ -1,0 +1,18 @@
+/* A barra acima da lista: só o corte por categoria. A contagem de "novas"
+   que ficava à direita saiu junto com o selo — ver `MovimentacaoRow`. */
+.barra {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--paper-3);
+}
+
+/* `min-width: 0` no filho é o que permite a faixa de categorias rolar dentro
+   do flex em vez de esticar a barra. */
+.barra > :first-child { min-width: 0; flex: 1 1 auto; }
+
+@media (min-width: 768px) {
+  .barra { padding: var(--space-md) var(--space-2xl); }
+}

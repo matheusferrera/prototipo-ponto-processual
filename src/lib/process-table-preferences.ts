@@ -31,6 +31,8 @@ export const PROCESS_COLUMN_IDS = [
 
 export type ProcessColumnId = (typeof PROCESS_COLUMN_IDS)[number];
 export type ProcessTableDensity = 'compact' | 'comfortable' | 'spacious';
+/** `list` é o padrão: o caso e o que mudou. `table` é a planilha de colunas configuráveis. */
+export type ProcessViewMode = 'list' | 'table';
 
 export interface ProcessTablePreferences {
   version: 1;
@@ -40,6 +42,7 @@ export interface ProcessTablePreferences {
   columnPinning: ColumnPinningState;
   density: ProcessTableDensity;
   fontSize: number;
+  viewMode: ProcessViewMode;
 }
 
 export const PROCESS_COLUMN_LABELS: Record<ProcessColumnId, string> = {
@@ -117,6 +120,7 @@ export function createDefaultProcessTablePreferences(): ProcessTablePreferences 
     columnPinning: { left: ['state', 'cnj'], right: [] },
     density: 'comfortable',
     fontSize: 14,
+    viewMode: 'list',
   };
 }
 
@@ -168,8 +172,11 @@ export function normalizeProcessTablePreferences(value: unknown): ProcessTablePr
     ? Math.min(18, Math.max(12, Math.round(source.fontSize)))
     : 14;
 
+  const viewMode: ProcessViewMode = source.viewMode === 'table' ? 'table' : 'list';
+
   return {
     version: 1,
+    viewMode,
     columnOrder: normalizedOrder(source.columnOrder),
     columnVisibility: normalizedVisibility(source.columnVisibility),
     columnSizing: normalizedSizing(source.columnSizing),

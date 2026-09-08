@@ -41,7 +41,7 @@ export async function ligarMonitoramento(
 ): Promise<ResultadoMonitorar> {
   let res: Response;
   try {
-    res = await fetch('/api/scraper/monitorar-oab', {
+    res = await fetch('/api/consulta-publica/geral', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ oabNumero: oab.numero, oabUf: oab.uf, confirmarTroca }),

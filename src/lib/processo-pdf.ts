@@ -309,7 +309,7 @@ export async function createProcessoPdf(dossie: DossieProcesso, generatedAt = ne
 
   // ── Documentos ─────────────────────────────────────────────────────────────
   const documentos = timeline.flatMap((ev) => [
-    ...ev.documentos.map((d) => [`${ev.date} ${ev.ano}`, textoOu(ev.title), textoOu(d.nome), 'Anexo do tribunal']),
+    ...ev.documentos.map((d) => [`${ev.date} ${ev.ano}`, textoOu(ev.title), textoOu(d.nome), d.indisponibilidade || 'Anexo do tribunal']),
     ...(ev.temCertidao ? [[`${ev.date} ${ev.ano}`, textoOu(ev.title), 'Certidão de publicação', 'PDF oficial do CNJ']] : []),
   ]);
 

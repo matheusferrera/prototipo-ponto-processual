@@ -102,7 +102,12 @@ export function LoginForm({ emailInicial, next, erroGoogle, googleAtivo }: Login
           id="email"
           label="E-mail profissional"
           type="email"
-          autoComplete="email"
+          // `username`, e não `email`: é o par que o gerenciador de senhas
+          // reconhece junto com `current-password`. Com `email` o Chrome trata
+          // o campo como autofill de contato e não oferece salvar a
+          // credencial. O `type="email"` continua — ele é sobre o teclado e a
+          // validação, não sobre o que o campo significa para o login.
+          autoComplete="username"
           value={email}
           onChange={v => { setEmail(v); limparMensagens(); }}
           placeholder="voce@escritorio.com.br"

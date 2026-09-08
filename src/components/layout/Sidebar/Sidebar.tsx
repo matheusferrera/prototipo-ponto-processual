@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import { CalendarDays, FolderClosed, LayoutGrid, Activity, ChevronDown, X, type LucideIcon } from 'lucide-react';
 import styles from './Sidebar.module.css';
 import { LogoutButton } from './LogoutButton';
 import { useUsuarioAtual } from '@/components/layout/useUsuarioAtual';
 import { formatarOab, iniciaisDe } from '@/lib/usuario';
-import { ROTA_LANDING, ROTA_PAINEL } from '@/lib/rotas';
+import { ROTA_PAINEL } from '@/lib/rotas';
 
 export interface SidebarProps {
   active: 'Dashboard' | 'Processos' | 'Movimentações' | 'Prazos' | 'Status' | 'WhatsApp' | 'E-mail' | 'Credenciais' | 'Configurações' | 'Design System';
@@ -13,123 +15,94 @@ export interface SidebarProps {
 }
 
 const navMain = [
-  { label: 'Processos',     href: '/processos',     badge: null },
-  { label: 'Movimentações', href: '/movimentacoes',  badge: '03' },
-  { label: 'Prazos',        href: '/prazos',         badge: '02' },
+  { label: 'Dashboard', href: ROTA_PAINEL, icon: LayoutGrid },
+  { label: 'Processos', href: '/processos', icon: FolderClosed },
+  { label: 'Movimentações', href: '/movimentacoes', icon: Activity },
+  { label: 'Prazos', href: '/prazos', icon: CalendarDays },
+  { label: 'WhatsApp', href: '/whatsapp', icon: WhatsAppIcon },
 ] as const;
 
-function NavItem({ label, href, badge, active }: { label: string; href: string; badge?: string | null; active: boolean }) {
+function NavItem({ label, href, icon: Icon, active, onNavigate }: {
+  label: string;
+  href: string;
+  icon: LucideIcon | typeof WhatsAppIcon;
+  active: boolean;
+  onNavigate?: () => void;
+}) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
       className={`${styles.navItem}${active ? ` ${styles.navItemActive}` : ''}`}
     >
-      {label}
-      {badge && (
-        <span className={`${styles.navBadge}${active ? ` ${styles.navBadgeActive}` : ''}`}>
-          {badge}
-        </span>
-      )}
+      <Icon size={17} strokeWidth={1.5} aria-hidden="true" />
+      <span>{label}</span>
     </Link>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div className={styles.sectionLabel}>{children}</div>;
-}
-
 export function Sidebar({ active, onClose }: SidebarProps) {
   return (
-    <aside className={`${styles.aside}${onClose ? ` ${styles.asideDrawer}` : ''}`}>
-      <div className={styles.brand}>
-        {/* A marca é o caminho de volta para a raiz — em qualquer tela, em
-            qualquer lugar do produto. Quem já tem sessão é devolvido ao painel
-            pelo middleware, então o mesmo clique serve para os dois estados. */}
-        <Link href={ROTA_LANDING} className={styles.brandLink}>
-          <span className={styles.brandDot} />
-          Ponto
-        </Link>
-        {onClose && (
-          <button onClick={onClose} className={styles.closeBtn}>✕</button>
-        )}
+    <aside aria-label="Menu lateral" className={`${styles.aside}${onClose ? ` ${styles.asideDrawer}` : ''}`}>
+      <div className={styles.accountHeader}>
+        <UsuarioMenu />
+        {onClose && <button type="button" onClick={onClose} className={styles.closeBtn} aria-label="Fechar menu"><X size={20} aria-hidden="true" /></button>}
       </div>
 
-      <NavItem label="Dashboard" href={ROTA_PAINEL} active={active === 'Dashboard'} />
+      <nav className={styles.navigation} aria-label="Navegação principal">
+        {navMain.map(item => (
+          <NavItem key={item.label} {...item} active={active === item.label} onNavigate={onClose} />
+        ))}
+      </nav>
 
-      <div className={styles.spacer} />
-
-      <SectionLabel>Carteira</SectionLabel>
-      {navMain.map(item => (
-        <NavItem key={item.label} label={item.label} href={item.href} badge={item.badge} active={active === item.label} />
-      ))}
-
-      <div className={styles.spacer} />
-
-      <SectionLabel>Monitoramento</SectionLabel>
-      <NavItem label="Status dos Tribunais" href="/status" badge="LIVE" active={active === 'Status'} />
-
-      <div className={styles.spacer} />
-
-      <SectionLabel>Conta</SectionLabel>
-      <NavItem label="Credenciais" href="/credenciais" active={active === 'Credenciais'} />
-      <NavItem label="WhatsApp" href="/whatsapp" active={active === 'WhatsApp'} />
-
-      <div className={styles.spacer} />
-
-      <SectionLabel>Produto</SectionLabel>
-      <NavItem label="Design System" href="/design-system" active={active === 'Design System'} />
-
-      <div className={styles.grow} />
-
-      <div className={styles.divider} />
-
-      <UsuarioRodape />
     </aside>
   );
 }
 
-/**
- * Rodapé do menu: quem está logado.
- *
- * A segunda linha é a OAB — e, quando ela não existe, o e-mail. Inventar uma
- * OAB de exemplo ali (era "DF/12.345") faz a pessoa confiar num dado que não é
- * dela; o e-mail é verdadeiro e serve ao mesmo propósito, que é confirmar em
- * qual conta ela está.
- */
-function UsuarioRodape() {
-  const { usuario, carregando } = useUsuarioAtual();
+function WhatsAppIcon({ size = 17, strokeWidth = 1.5 }: { size?: number; strokeWidth?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.5 11.7a8.5 8.5 0 0 1-12.6 7.5L3 20.5l1.3-4.8A8.5 8.5 0 1 1 20.5 11.7Z" /><path d="m8 7 1.5 2.5-1 1a8 8 0 0 0 4 4l1-1L16 15c-.5 1.5-1.5 2-3 1.5-3.5-1.2-5.5-3.5-6.5-7C6.2 8.3 6.8 7.4 8 7Z" /></svg>;
+}
 
-  if (carregando || !usuario) {
-    return (
-      <div className={styles.user} aria-busy={carregando}>
-        <div className={styles.avatar} data-vazio="" />
-        <div className={styles.userInfo}>
-          <span className={styles.userName} data-esqueleto="" />
-          <span className={styles.userOAB} data-esqueleto="" />
-        </div>
+function UsuarioMenu() {
+  const { usuario, carregando } = useUsuarioAtual();
+  const menu = useRef<HTMLDetailsElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [fotoFalhou, setFotoFalhou] = useState(false);
+  useEffect(() => {
+    function outside(event: PointerEvent) {
+      if (menu.current && !menu.current.contains(event.target as Node)) menu.current.open = false;
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && menu.current?.open) {
+        menu.current.open = false;
+        menu.current.querySelector('summary')?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, []);
+  return <>
+    <details ref={menu} className={styles.account}>
+      <summary className={styles.user} aria-busy={carregando}>
+        {usuario?.avatarUrl && !fotoFalhou ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className={styles.avatar} src={usuario.avatarUrl} alt="" width={28} height={28} onError={() => setFotoFalhou(true)} />
+        ) : <span className={styles.avatar} aria-hidden="true">{usuario ? iniciaisDe(usuario.name) : '—'}</span>}
+        <span className={styles.userName} title={usuario?.name}>{carregando ? 'Carregando…' : usuario?.name || 'Minha conta'}</span>
+        <ChevronDown size={12} className={styles.chevron} aria-hidden="true" />
+      </summary>
+      <div className={styles.accountOptions}>
+        {usuario && <p className={styles.email}>{usuario.email}</p>}
+        {usuario ? <button type="button" onClick={() => { if (menu.current) menu.current.open = false; dialog.current?.showModal(); }}>Minha conta</button> : <p className={styles.email}>Não foi possível carregar os dados da conta.</p>}
         <LogoutButton />
       </div>
-    );
-  }
-
-  return (
-    <div className={styles.user}>
-      {usuario.avatarUrl ? (
-        /* Foto da conta Google: domínio externo, e `next/image` exigiria
-           configurar `remotePatterns` para um avatar de 28px que não ganha nada
-           com otimização. */
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className={styles.avatar} src={usuario.avatarUrl} alt="" width={28} height={28} />
-      ) : (
-        <div className={styles.avatar}>{iniciaisDe(usuario.name)}</div>
-      )}
-      <div className={styles.userInfo}>
-        <span className={styles.userName} title={usuario.name}>{usuario.name}</span>
-        <span className={styles.userOAB} title={usuario.email}>
-          {usuario.oab ? formatarOab(usuario.oab) : usuario.email}
-        </span>
-      </div>
-      <LogoutButton />
-    </div>
-  );
+    </details>
+    <dialog ref={dialog} className={styles.accountDialog} aria-label="Minha conta" onClose={() => menu.current?.querySelector('summary')?.focus()}>
+      <h2>Minha conta</h2>
+      <dl><dt>Nome</dt><dd>{usuario?.name}</dd><dt>E-mail</dt><dd>{usuario?.email}</dd>{usuario?.oab && <><dt>OAB</dt><dd>{formatarOab(usuario.oab)}</dd></>}</dl>
+      <button type="button" className={styles.logoutBtn} onClick={() => dialog.current?.close()}>Fechar</button>
+    </dialog>
+  </>;
 }

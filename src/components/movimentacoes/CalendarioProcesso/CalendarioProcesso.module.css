@@ -1,0 +1,214 @@
+/* O calendário do processo — heatmap sequencial, uma hue, mais escuro = mais.
+ *
+ * A rampa saiu do verde do projeto (`--brick`) e foi VALIDADA, não escolhida a
+ * olho: lightness monótona, ΔL >= 0.06 entre passos vizinhos, hue única (8° de
+ * variação) e o passo mais claro em 2.04:1 contra a superfície.
+ *
+ * O `--brick-soft` do sistema (#dcf0e3) foi a primeira tentativa e FALHOU: dá
+ * **1.14:1** sobre o creme `--paper`, ou seja, o degrau 1 — que é 61% dos dias
+ * com movimentação — seria praticamente invisível. Por isso o degrau 1 aqui é
+ * bem mais escuro do que a intuição pede: sobre fundo creme, verde claro some. */
+
+.calendario {
+  --nivel-0: var(--paper-2);
+  --nivel-1: #91bba1;
+  --nivel-2: #6aa383;
+  --nivel-3: #428463;
+  --nivel-4: #22683f;
+  --nivel-5: #14532d;
+
+  padding: 4px 0 8px;
+}
+
+.cabecalho {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+  /* O título quebra; a faixa de anos rola. Sem `min-width: 0` no container, a
+     faixa não teria como encolher. */
+  min-width: 0;
+}
+
+.titulo {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* Uma FAIXA que rola, não uma grade que quebra.
+ *
+ * Com `flex-wrap: wrap` os 37 anos do processo mais antigo da base viravam uma
+ * parede: medido no mobile, **495 px de altura** só de botões de ano, empurrando
+ * o calendário inteiro para fora da tela — quem abria a aba via a lista de anos
+ * e mais nada. Em faixa, o seletor ocupa uma linha em qualquer largura.
+ *
+ * `scrollbar-width: thin` porque a barra some no mobile e a faixa precisa
+ * parecer rolável; a máscara à direita faz o mesmo trabalho visualmente. */
+.anos {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  /* `min-width: 0` é o que permite a faixa encolher dentro do cabeçalho flex —
+     sem ele o conteúdo define a largura e o overflow vaza para a página. */
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.ano { flex-shrink: 0; }
+
+.ano {
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+}
+
+.ano:hover { background: var(--paper-2); }
+.ano:focus-visible { outline: 2px solid var(--brick); outline-offset: 1px; }
+
+.anoAtivo {
+  border-color: var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+/* A grade rola na horizontal em vez de encolher as casas: casa menor que 10px
+   deixa de ser alvo de clique e o degrau de cor deixa de ser distinguível. */
+.grade {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.diasSemana {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  gap: 3px;
+  /* alinha com as casas, que começam abaixo da régua de meses */
+  margin-top: 18px;
+  flex-shrink: 0;
+}
+
+.diaSemana {
+  display: flex;
+  align-items: center;
+  height: 12px;
+  color: var(--ink-3);
+  font-family: var(--ui);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.semanas { min-width: 0; }
+
+.meses {
+  display: flex;
+  gap: 3px;
+  height: 15px;
+}
+
+.mes {
+  width: 12px;
+  color: var(--ink-3);
+  font-family: var(--ui);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.casas {
+  display: flex;
+  gap: 3px;
+}
+
+.semana {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  gap: 3px;
+}
+
+.casa {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--nivel-0);
+  text-decoration: none;
+}
+
+.casa[data-nivel="1"] { background: var(--nivel-1); }
+.casa[data-nivel="2"] { background: var(--nivel-2); }
+.casa[data-nivel="3"] { background: var(--nivel-3); }
+.casa[data-nivel="4"] { background: var(--nivel-4); }
+.casa[data-nivel="5"] { background: var(--nivel-5); }
+
+/* O anel é da SUPERFÍCIE, não uma borda escura: ele separa a casa das vizinhas
+   sem inventar um sexto tom que competiria com a escala. */
+a.casa:hover {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+a.casa:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 1px;
+}
+
+.vazia {
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+.escala {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 12px;
+}
+
+/* A rampa é indivisível: os cinco degraus e os rótulos "menos/mais" formam uma
+   escala só, e quebrá-la ao meio a torna ilegível. As faixas por extenso, essas,
+   podem cair para a linha de baixo. */
+.escalaRampa {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.escalaRotulo {
+  color: var(--ink-2);
+  font-family: var(--ui);
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* As faixas por extenso — o que transforma "mais escuro" em quantidade. Sem
+   isto o verde é intensidade sem unidade. */
+.escalaFaixas {
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+@media (min-width: 768px) {
+  .titulo { font-size: 15px; }
+  /* Aqui há largura para o seletor voltar ao canto direito, ao lado do título. */
+  .anos { margin-left: auto; max-width: 60%; }
+}

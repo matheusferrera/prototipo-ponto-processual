@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
-import { PageInfo } from '@/components/layout/PageInfo/PageInfo';
-import type { PageInfoContent } from '@/components/layout/PageInfo/PageInfo';
 import { PageContent } from '@/components/processos/PageContent/PageContent';
 import { ActiveProcessFilters } from '@/components/processos/ProcessFilters/ActiveProcessFilters';
 import {
   PROCESS_FILTER_PANEL_HOST_ID,
   ProcessFilterControls,
 } from '@/components/processos/ProcessFilters/ProcessFilterControls';
+import { ProcessSummaryBar } from '@/components/processos/ProcessSummaryBar/ProcessSummaryBar';
 import { ProcessTableProvider } from '@/components/processos/ProcessTable/ProcessTableProvider';
+import { ProcessViewToolbar } from '@/components/processos/ProcessView/ProcessView';
 import { getProcessos, getTribunaisDaCarteira } from '@/lib/api.server';
 import {
   parseProcessFilters,
@@ -43,23 +43,8 @@ export default async function ProcessosPage({
     total,
     totalPages,
     page: backendPage,
-    comNovidade,
+    contagem,
   } = await getProcessos(currentPage, 20, processFiltersToApi(filters));
-
-  // prazos abertos só são conhecidos na página carregada — o backend não agrega isso
-  const prazosNaPagina = processos.reduce((soma, processo) => soma + processo.prazosAbertos, 0);
-
-  const pageInfoContent: PageInfoContent = [
-    {
-      title: 'Carteira',
-      variant: 'compact',
-      items: [
-        { label: 'Total filtrado', value: String(total).padStart(2, '0') },
-        { label: 'Com novidade', value: String(comNovidade).padStart(2, '0'), tone: 'signal' },
-        { label: 'Prazos abertos nesta página', value: String(prazosNaPagina).padStart(2, '0') },
-      ],
-    },
-  ];
 
   const listParams = processFiltersToRecord(filters);
 
@@ -69,6 +54,7 @@ export default async function ProcessosPage({
         active="Processos"
         mobileTitle="Processos"
         mobileBreadcrumb="Início / Processos"
+        mobileActions={<ProcessFilterControls filters={filters} tribunals={tribunals} variant="mobile" />}
       >
         <PageHeader basePath="/processos" title="Processos" breadcrumb="Início / Processos">
           <ProcessFilterControls filters={filters} tribunals={tribunals} />
@@ -81,9 +67,10 @@ export default async function ProcessosPage({
           currentPage={backendPage}
           listParams={listParams}
           panelHostId={PROCESS_FILTER_PANEL_HOST_ID}
-          pageInfo={<PageInfo pageInfoContent={pageInfoContent} />}
-          mobileControls={(
-            <ProcessFilterControls filters={filters} tribunals={tribunals} variant="mobile" inline />
+          summary={(
+            <ProcessSummaryBar contagem={contagem} listParams={listParams}>
+              <ProcessViewToolbar />
+            </ProcessSummaryBar>
           )}
           tableControls={(
             <ActiveProcessFilters filters={filters} />

@@ -1,14 +1,10 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
 import type { Prazo } from '@/types';
-import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { Seal } from '@/components/ui/Seal/Seal';
+import { DateGroupHeader } from '@/components/ui/DateGroupHeader/DateGroupHeader';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ExportPrazosPdfButton } from '@/components/prazos/ExportPrazosPdfButton/ExportPrazosPdfButton';
-import { tituloPrazo, parteSecundaria, clientePrazo, expedientePrazo, assuntoSecundario, rotuloNatureza } from '@/lib/prazo';
-import { tribunalTagLabel } from '@/lib/tribunals';
+import { PrazoRow } from '../PrazoRow/PrazoRow';
+import { faixaPrazo, type FaixaPrazo } from '@/lib/prazo-apresentacao';
 import styles from './PrazosView.module.css';
 
 export type PrazoView = 'lista' | 'kanban' | 'calendario';
@@ -29,30 +25,11 @@ const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julh
 const DAY_NAMES   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const WEEKDAY_FULL = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 
-/**
- * "ver o ato" — o link para a movimentação que abriu este prazo.
- *
- * Devolve `null` quando não há ato, e isso é caminho normal, não erro: prazo
- * de origem `painel`/`grid` vem da agenda que o próprio tribunal calculou e
- * não tem movimentação correspondente gravada. A linha do prazo continua
- * inteira sem o link — o que não pode é o prazo sumir por faltar o ato.
- */
-function LinkDoAto({ pz, className }: { pz: Prazo; className?: string }) {
-  if (!pz.movementId) return null;
-  return (
-    <Link
-      href={`/movimentacoes/${pz.movementId}`}
-      className={className ? `${styles.atoLink} ${className}` : styles.atoLink}
-    >
-      ver o ato
-    </Link>
-  );
-}
-
-function accentColor(state: Prazo['state']) {
-  if (state === 'alert')  return 'var(--alert)';
-  if (state === 'signal') return 'var(--brick)';
-  return 'var(--quiet)';
+function accentColor(p: Prazo) {
+  const faixa = faixaPrazo(p);
+  if (faixa === 'vencidos' || faixa === 'critico') return 'var(--alert)';
+  if (faixa === 'proximos') return 'var(--signal-ink)';
+  return 'var(--ink-2)';
 }
 
 function parseVencISO(v: string): { year: number; month: number; day: number } {
@@ -69,16 +46,6 @@ const dd = (n: number) => String(n).padStart(2, '0');
 const fmtDataCurta = (d: Date) => `${dd(d.getDate())}.${dd(d.getMonth() + 1)}`;
 const fmtDataLonga = (d: Date) => `${fmtDataCurta(d)}.${d.getFullYear()}`;
 
-function diasColorClass(dias: number, s: typeof styles) {
-  if (dias <= 3) return s.diasColorCritical;
-  if (dias <= 7) return s.diasColorUrgent;
-  return s.diasColorNormal;
-}
-
-// ─── Pauta (lista) ───────────────────────────────────────────────────────────
-// Agrupada pelo PRAZO FATAL: cada bloco é uma data de vencimento, e a linha
-// carrega quantos dias faltam para ela.
-
 interface FatalGrupo {
   key: string;
   data: Date;
@@ -88,7 +55,23 @@ interface FatalGrupo {
 }
 
 /** Preserva a ordem de `prazos` dentro de cada grupo, respeitando o sort escolhido. */
-function agruparPorFatal(prazos: PrazoComData[], desc: boolean): FatalGrupo[] {
+/**
+ * Agrupa por data de vencimento **preservando a ordem que a lista já tem**.
+ *
+ * Até 07/09/2026 esta função reordenava os grupos por data
+ * (`a.localeCompare(b)`), e isso jogava fora a ordem construída em
+ * `sortPrazos`: a vencer primeiro, depois o vencido mais recente. O sintoma
+ * aparecia ao revelar os vencidos — em vez de a lista CONTINUAR para baixo, o
+ * grupo mais antigo (2020) pulava para o topo e empurrava o que vence amanhã
+ * para o fim.
+ *
+ * `Map` preserva a ordem de inserção, então percorrer o array já ordenado e
+ * agrupar na chegada é o bastante: o primeiro grupo é o da primeira linha, o
+ * último é o da última. A direção `asc`/`desc` continua sendo decidida em
+ * `sortPrazos`, um lugar só — que é o motivo de o parâmetro `desc` ter saído
+ * daqui.
+ */
+function agruparPorFatal(prazos: PrazoComData[]): FatalGrupo[] {
   const mapa = new Map<string, PrazoComData[]>();
   for (const pz of prazos) {
     const atual = mapa.get(pz.vencimentoISO);
@@ -96,258 +79,66 @@ function agruparPorFatal(prazos: PrazoComData[], desc: boolean): FatalGrupo[] {
     else mapa.set(pz.vencimentoISO, [pz]);
   }
 
-  return [...mapa.entries()]
-    .sort(([a], [b]) => (desc ? b.localeCompare(a) : a.localeCompare(b)))
-    .map(([key, itens]) => ({
-      key,
-      data: parseISODate(key),
-      dias: itens[0].diasRestantes,
-      itens,
-    }));
+  return [...mapa.entries()].map(([key, itens]) => ({
+    key,
+    data: parseISODate(key),
+    dias: itens[0].diasRestantes,
+    itens,
+  }));
 }
 
-function rotuloGrupo(dias: number): { texto: string; className: string } {
-  if (dias <= 0)  return { texto: 'Vence hoje', className: styles.pautaRelHoje };
-  if (dias === 1) return { texto: 'Amanhã',     className: styles.pautaRelProx };
-  return { texto: `em ${dias} dias`, className: styles.pautaRelProx };
-}
-
-function PautaItem({ pz }: { pz: PrazoComData }) {
-  const fatal      = parseISODate(pz.vencimentoISO);
-  const isCritical = pz.diasRestantes <= 3;
-  const cliente    = clientePrazo(pz);
-  const assunto    = assuntoSecundario(pz, cliente);
-  const natureza   = rotuloNatureza(pz);
-  const stateClass =
-    pz.state === 'alert'  ? styles.pautaItemAlert  :
-    pz.state === 'signal' ? styles.pautaItemSignal :
-    styles.pautaItemQuiet;
-
+function ListView({ prazos, sort, hasSemData = false }: {
+  prazos: PrazoComData[]; sort?: string; hasSemData?: boolean;
+}) {
+  if (!prazos.length) return !hasSemData ? <p className={styles.emptyState}>Nenhum prazo encontrado com os filtros atuais.</p> : null;
+  // Ordenação por cliente, expediente ou tribunal deve manter a ordem recebida.
+  if (sort && sort !== 'fatal') return (
+    <div className={styles.listView}>
+      {prazos.map(p => <PrazoRow key={p.id} prazo={p} />)}
+    </div>
+  );
+  const grupos = agruparPorFatal(prazos);
   return (
-    <div className={`${styles.pautaItem} ${stateClass}`}>
-      <Link
-        href={`/processos/${encodeURIComponent(pz.cnj)}`}
-        className={styles.cardLink}
-        aria-label={`Abrir o processo ${pz.cnj}`}
-      />
-
-      <div className={styles.pautaFatal}>
-        <span className={styles.pautaFatalLabel}>prazo fatal</span>
-        <span className={`${styles.pautaFatalData} ${diasColorClass(pz.diasRestantes, styles)}`}>
-          {fmtDataCurta(fatal)}
-        </span>
-        <span className={styles.pautaFatalSub}>
-          {DAY_NAMES[fatal.getDay()].toLowerCase()} · {pz.diasRestantes}d
-        </span>
-      </div>
-
-      <div className={styles.pautaBody}>
-        <div className={styles.pautaTags}>
-          <TribTag label={tribunalTagLabel(pz.tribunal, pz.grau)} />
-          {isCritical && <Seal variant="erro" label="CRÍTICO" />}
-        </div>
-
-        {/* Título: o cliente. Subtítulo: o que fazer + a matéria. */}
-        <div className={styles.pautaCliente}>{cliente}</div>
-        <div className={styles.pautaExpediente}>
-          {expedientePrazo(pz)}
-          {natureza && (
-            <>
-              <span className={styles.metaSep} aria-hidden="true"> · </span>
-              <span className={styles.pautaNatureza}>prazo para {natureza}</span>
-            </>
-          )}
-          {assunto && (
-            <>
-              <span className={styles.metaSep} aria-hidden="true"> · </span>
-              <span className={styles.pautaAssunto}>{assunto}</span>
-            </>
-          )}
-        </div>
-
-        <div className={styles.pautaMeta}>
-          <span className={styles.pautaCnj}>autos nº {pz.cnj}</span>
-          {pz.orgaoJulgador !== '—' && (
-            <>
-              <span className={styles.metaSep} aria-hidden="true">·</span>
-              <span className={styles.prazoOrgao}>{pz.orgaoJulgador}</span>
-            </>
-          )}
-          {pz.movementId && (
-            <>
-              <span className={styles.metaSep} aria-hidden="true">·</span>
-              <LinkDoAto pz={pz} />
-            </>
-          )}
-        </div>
-      </div>
-
-      <span className={styles.pautaGo} aria-hidden="true">→</span>
+    <div className={styles.listView}>
+      {grupos.map(g => (
+        <section key={g.key} className={styles.pautaGrupo} aria-label={`Vencimento em ${fmtDataLonga(g.data)}`}>
+          <DateGroupHeader
+            date={fmtDataLonga(g.data)}
+            day={WEEKDAY_FULL[g.data.getDay()]}
+            dateTime={g.key}
+            count={`${g.itens.length} ${g.itens.length === 1 ? 'prazo' : 'prazos'}`}
+          />
+          {g.itens.map(p => <PrazoRow key={p.id} prazo={p} />)}
+        </section>
+      ))}
     </div>
   );
 }
 
-function ListView({
-  prazos,
-  sort,
-  order,
-  hasSemData = false,
-}: {
-  prazos: PrazoComData[];
-  sort?: string;
-  order?: string;
-  hasSemData?: boolean;
-}) {
-  // A pauta é cronológica; só uma ordenação por data explicitamente decrescente a inverte.
-  const desc = order === 'desc' && sort === 'fatal';
-  const grupos = agruparPorFatal(prazos, desc);
+const KANBAN_COLS: { key: FaixaPrazo; label: string }[] = [
+  { key: 'vencidos', label: 'Vencidos' },
+  { key: 'critico', label: 'Até 3 dias' },
+  { key: 'proximos', label: 'De 4 a 7 dias' },
+  { key: 'atencao', label: 'De 8 a 14 dias' },
+  { key: 'posteriores', label: 'Após 14 dias' },
+  { key: 'encerrados', label: 'Encerrados' },
+];
 
+function KanbanView({ prazos }: { prazos: PrazoComData[] }) {
+  const colunas = KANBAN_COLS.filter(col => !['vencidos', 'encerrados'].includes(col.key) || prazos.some(p => faixaPrazo(p) === col.key));
   return (
-    <div className={`px-page ${styles.listView}`}>
-      <div className={styles.listHeader}>
-        <span className={styles.listHeaderLabel}>§ PAUTA DE PRAZOS</span>
-        <div className={styles.listDivider} />
-        <span className={styles.pautaTotal}>
-          {prazos.length} {prazos.length === 1 ? 'prazo' : 'prazos'}
-        </span>
-
-      </div>
-
-      <p className={styles.pautaNota}>
-        Agrupado pelo <strong>prazo fatal</strong> — a data em que o expediente vence.
-      </p>
-
-      {grupos.length === 0 && !hasSemData && (
-        <div className={styles.emptyState}>Nenhum prazo encontrado com os filtros atuais.</div>
-      )}
-
-      {grupos.map(g => {
-        const rot = rotuloGrupo(g.dias);
+    <div className={styles.kanbanWrap}>
+      {colunas.map(col => {
+        const items = prazos.filter(p => faixaPrazo(p) === col.key);
         return (
-          <section key={g.key} className={styles.pautaGrupo} aria-label={`Prazo fatal em ${fmtDataLonga(g.data)}`}>
-            <div className={styles.pautaHead}>
-              <span className={`${styles.pautaRel} ${rot.className}`}>{rot.texto}</span>
-              <span className={styles.pautaHeadData}>
-                {fmtDataLonga(g.data)} — {WEEKDAY_FULL[g.data.getDay()]}
-              </span>
-              <div className={styles.listDivider} />
-              <span className={styles.pautaHeadCount}>
-                {g.itens.length} {g.itens.length === 1 ? 'prazo' : 'prazos'}
-              </span>
+          <section key={col.key} className={styles.kanbanCol} aria-label={col.label}>
+            <div className={styles.kanbanColHead} data-faixa={col.key}>
+              <h2>{col.label}</h2><span>{items.length}</span>
             </div>
-
-            {g.itens.map(pz => <PautaItem key={pz.id} pz={pz} />)}
+            {items.length ? items.map(p => <PrazoRow key={p.id} prazo={p} compacto />) : <p className={styles.kanbanEmpty}>Nenhum prazo nesta faixa.</p>}
           </section>
         );
       })}
-    </div>
-  );
-}
-
-// ─── Kanban ──────────────────────────────────────────────────────────────────
-
-const KANBAN_COLS = [
-  { label: 'Crítico', minD: 0,  maxD: 3,       accent: 'var(--alert)',  soft: 'var(--alert-soft)'  },
-  { label: 'Urgente', minD: 4,  maxD: 7,       accent: 'var(--signal)', soft: 'var(--signal-soft)' },
-  { label: 'Atenção', minD: 8,  maxD: 14,      accent: 'var(--brick)',  soft: 'var(--brick-soft)'  },
-  { label: 'Normal',  minD: 15, maxD: Infinity, accent: 'var(--quiet)', soft: 'var(--quiet-soft)'  },
-] as const;
-
-function KanbanView({ prazos }: { prazos: PrazoComData[] }) {
-  return (
-    <div className={`px-page ${styles.kanbanWrap}`}>
-      {KANBAN_COLS.map(col => {
-        const items = prazos.filter(p => p.diasRestantes >= col.minD && p.diasRestantes <= col.maxD);
-        return (
-          <div key={col.label} className={styles.kanbanCol}>
-            <div
-              className={styles.kanbanColHead}
-              style={{ background: col.soft, borderTop: `2px solid ${col.accent}` }}
-            >
-              <span className={styles.kanbanColLabel} style={{ color: col.accent }}>{col.label}</span>
-              <span className={styles.kanbanColCount} style={{ color: col.accent }}>{items.length}</span>
-            </div>
-
-            {items.length === 0 ? (
-              <div className={styles.kanbanEmpty}>Nenhum prazo</div>
-            ) : items.map(pz => {
-              const titulo = tituloPrazo(pz);
-              const parte  = parteSecundaria(pz, titulo);
-              return (
-              <div
-                key={pz.id}
-                className={styles.kanbanCard}
-                style={{ borderTop: `2px solid ${col.accent}` }}
-              >
-                <div className={styles.kanbanCardHead}>
-                  <TribTag label={pz.tribunal} />
-                  <span className={styles.kanbanCardTipo}>{pz.tipo}</span>
-                </div>
-                {rotuloNatureza(pz) && (
-                  <div className={styles.kanbanCardNatureza}>prazo para {rotuloNatureza(pz)}</div>
-                )}
-                <div className={styles.kanbanCardAssunto}>{titulo}</div>
-                {parte && (
-                  <div className={styles.kanbanCardParte}>
-                    <span className={styles.kanbanCardParteLabel}>Parte</span>
-                    <span className={styles.kanbanCardParteNome}>{parte}</span>
-                  </div>
-                )}
-                <div className={styles.kanbanCardProcess}>
-                  <span className={styles.kanbanCardCnj}>{pz.cnj}</span>
-                  {pz.orgaoJulgador !== '—' && (
-                    <span className={styles.kanbanCardOrgao}>{pz.orgaoJulgador}</span>
-                  )}
-                </div>
-                <LinkDoAto pz={pz} className={styles.kanbanCardAto} />
-                <div className={styles.kanbanCardFoot}>
-                  <span className={styles.kanbanDias} style={{ color: col.accent }}>{pz.diasRestantes}d</span>
-                  <span className={styles.kanbanVence}>{pz.vencimento}</span>
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Calendário ──────────────────────────────────────────────────────────────
-
-function AgendaItem({ pz, showDay }: { pz: PrazoComData; showDay?: number }) {
-  const titulo = tituloPrazo(pz);
-  const parte  = parteSecundaria(pz, titulo);
-  return (
-    <div
-      className={styles.agendaItem}
-      style={{ borderLeftColor: accentColor(pz.state) }}
-    >
-      <Link
-        href={`/processos/${encodeURIComponent(pz.cnj)}`}
-        className={styles.cardLink}
-        aria-label={`Abrir o processo ${pz.cnj}`}
-      />
-
-      <div className={styles.agendaItemHead}>
-        {showDay != null && <span className={styles.agendaDayBadge}>dia {String(showDay).padStart(2, '0')}</span>}
-        <TribTag label={pz.tribunal} />
-        <span className={styles.prazoTipo}>{pz.tipo}</span>
-        <span className={`${styles.agendaDias} ${diasColorClass(pz.diasRestantes, styles)}`}>{pz.diasRestantes}d</span>
-      </div>
-      <div className={styles.agendaAssunto}>{titulo}</div>
-      {rotuloNatureza(pz) && (
-        <div className={styles.agendaNatureza}>prazo para {rotuloNatureza(pz)}</div>
-      )}
-      {parte && (
-        <div className={styles.agendaParte}>
-          <span className={styles.agendaParteLabel}>Parte</span>
-          <span className={styles.agendaParteNome}>{parte}</span>
-        </div>
-      )}
-      <div className={styles.agendaCnj}>{pz.cnj}</div>
-      <LinkDoAto pz={pz} />
     </div>
   );
 }
@@ -417,7 +208,7 @@ function CalendarioView({
 
               <span className={styles.calDots} aria-hidden="true">
                 {items.slice(0, 3).map(pz => (
-                  <span key={pz.id} className={styles.calDot} style={{ background: accentColor(pz.state) }} />
+                  <span key={pz.id} className={styles.calDot} style={{ background: accentColor(pz) }} />
                 ))}
                 {items.length > 3 && <span className={styles.calMore}>+{items.length - 3}</span>}
               </span>
@@ -430,7 +221,7 @@ function CalendarioView({
         {selectedDay ? (
           <>
             <div className={styles.agendaHead}>
-              <span className={styles.agendaHeadLabel}>§ {selectedWeekday}, {selectedDay} de {MONTH_NAMES[month - 1]}</span>
+              <span className={styles.agendaHeadLabel}>{selectedWeekday}, {selectedDay} de {MONTH_NAMES[month - 1]}</span>
               <div className={styles.listDivider} />
               <button type="button" className={styles.agendaClear} onClick={() => onSelectDay(null)}>
                 Ver mês inteiro
@@ -438,17 +229,17 @@ function CalendarioView({
             </div>
             {dayItems.length === 0 ? (
               <div className={styles.agendaEmpty}>Nenhum prazo neste dia.</div>
-            ) : dayItems.map(pz => <AgendaItem key={pz.id} pz={pz} />)}
+            ) : dayItems.map(pz => <PrazoRow key={pz.id} prazo={pz} />)}
           </>
         ) : (
           <>
             <div className={styles.agendaHead}>
-              <span className={styles.agendaHeadLabel}>§ PRAZOS DE {MONTH_NAMES[month - 1].toUpperCase()}</span>
+              <span className={styles.agendaHeadLabel}>Prazos de {MONTH_NAMES[month - 1]}</span>
               <div className={styles.listDivider} />
             </div>
             {inMonth.length === 0 ? (
               <div className={styles.agendaEmpty}>Nenhum prazo em {MONTH_NAMES[month - 1]} de {year}.</div>
-            ) : inMonth.map(({ day, pz }) => <AgendaItem key={pz.id} pz={pz} showDay={day} />)}
+            ) : inMonth.map(({ pz }) => <PrazoRow key={pz.id} prazo={pz} />)}
           </>
         )}
       </section>
@@ -457,57 +248,15 @@ function CalendarioView({
 }
 
 function ExpedientesSemData({ prazos }: { prazos: Prazo[] }) {
-  if (prazos.length === 0) return null;
-
+  if (!prazos.length) return null;
   return (
-    <section className={`px-page ${styles.semDataSection}`} aria-labelledby="expedientes-sem-data-title">
+    <section className={styles.semDataSection} aria-labelledby="expedientes-sem-data-title">
       <div className={styles.semDataHeader}>
-        <div>
-          <span className={styles.semDataEyebrow}>§ ACOMPANHAMENTO</span>
-          <h2 id="expedientes-sem-data-title" className={styles.semDataTitle}>Expedientes sem prazo definido</h2>
-        </div>
-        <span className={styles.semDataCount}>
-          {prazos.length} {prazos.length === 1 ? 'expediente' : 'expedientes'}
-        </span>
+        <h2 id="expedientes-sem-data-title">Sem data definida</h2>
+        <span>{prazos.length} {prazos.length === 1 ? 'expediente' : 'expedientes'}</span>
       </div>
-
-      <p className={styles.semDataNote}>
-        O PJe ainda não informou uma data limite. Estes expedientes não entram nos cálculos de prazo fatal ou urgência.
-      </p>
-
-      <div className={styles.semDataList}>
-        {prazos.map(pz => {
-          const cliente = clientePrazo(pz);
-          const assunto = assuntoSecundario(pz, cliente);
-          const natureza = rotuloNatureza(pz);
-          return (
-            <div key={pz.id} className={styles.semDataItem}>
-              <Link
-                href={`/processos/${encodeURIComponent(pz.cnj)}`}
-                className={styles.cardLink}
-                aria-label={`Abrir o processo ${pz.cnj}`}
-              />
-
-              <div className={styles.semDataBadge}>SEM DATA</div>
-              <div className={styles.semDataBody}>
-                <div className={styles.semDataTags}>
-                  <TribTag label={tribunalTagLabel(pz.tribunal, pz.grau)} />
-                  <span className={styles.semDataTipo}>{expedientePrazo(pz)}</span>
-                  {natureza && <span className={styles.semDataNatureza}>para {natureza}</span>}
-                </div>
-                <div className={styles.semDataCliente}>{cliente}</div>
-                {assunto && <div className={styles.semDataAssunto}>{assunto}</div>}
-                <div className={styles.semDataMeta}>
-                  <span>autos nº {pz.cnj}</span>
-                  {pz.orgaoJulgador !== '—' && <span>{pz.orgaoJulgador}</span>}
-                  <LinkDoAto pz={pz} />
-                </div>
-              </div>
-              <span className={styles.semDataGo} aria-hidden="true">→</span>
-            </div>
-          );
-        })}
-      </div>
+      <p className={styles.semDataNote}>Não há data de vencimento informada para estes expedientes.</p>
+      {prazos.map(p => <PrazoRow key={p.id} prazo={p} />)}
     </section>
   );
 }
@@ -518,15 +267,17 @@ export function PrazosView({
   prazos,
   view,
   sort,
-  order,
-  criticos,
 }: {
   prazos: Prazo[];
   view: PrazoView;
+  /**
+   * Só para saber se a lista está agrupada por vencimento (`fatal`) ou numa
+   * ordem alfabética que deve ser respeitada como veio. A DIREÇÃO (`asc`/`desc`)
+   * não chega aqui: ela já foi aplicada em `sortPrazos`, no servidor, e ter os
+   * dois lugares decidindo ordem foi o que fez o grupo de 2020 subir ao topo
+   * quando os vencidos eram revelados.
+   */
   sort?: string;
-  order?: string;
-  /** Contagem já calculada no servidor sobre o conjunto filtrado. */
-  criticos?: number;
 }) {
   const now                     = new Date();
   const [calYear, setCalYear]   = useState(now.getFullYear());
@@ -535,8 +286,24 @@ export function PrazosView({
 
   const prazosComData = prazos.filter(temDataDefinida);
   const prazosSemData = prazos.filter(prazo => !temDataDefinida(prazo));
-  const criticalCount = criticos ?? prazosComData.filter(p => p.diasRestantes <= 3).length;
-  const firstCritical = prazosComData.find(p => p.diasRestantes <= 3);
+  const criticalCount = prazosComData.filter(p => faixaPrazo(p) === 'critico').length;
+  const overdueCount = prazosComData.filter(p => faixaPrazo(p) === 'vencidos').length;
+
+  /* **A lista abre no que está por vencer; o que passou fica atrás de um
+     botão.** A agenda deixou de cortar por data em 07/09/2026, e numa conta
+     real isso é 313 vencidos e 175 encerrados contra 12 a vencer — despejados
+     de uma vez, eles afogam justamente o que a tela existe para mostrar.
+     Esconder não é o mesmo que cortar: eles ESTÃO carregados, o contador do
+     resumo já os conta, e um clique os revela.
+
+     Só na visão de LISTA. O kanban tem coluna própria para *Vencidos* e
+     *Encerrados* e o calendário os põe nos meses passados — nesses dois, a
+     separação já é a estrutura da tela. */
+  const passados = new Set(['vencidos', 'encerrados']);
+  const jaVencidos = prazosComData.filter(prazo => passados.has(faixaPrazo(prazo)));
+  const aVencer = prazosComData.filter(prazo => !passados.has(faixaPrazo(prazo)));
+  const [mostrarVencidos, setMostrarVencidos] = useState(false);
+  const listaVisivel = mostrarVencidos ? prazosComData : aVencer;
 
   const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth() + 1;
 
@@ -562,10 +329,6 @@ export function PrazosView({
 
   return (
     <div className={styles.root}>
-      <div className={styles.exportBar}>
-        <ExportPrazosPdfButton prazos={prazos} />
-      </div>
-
       {view === 'calendario' && (
         <div className={styles.calNavBar}>
           <div className={styles.calNavGroup}>
@@ -580,20 +343,29 @@ export function PrazosView({
       )}
 
       <div className={styles.scrollArea}>
-        {criticalCount > 0 && (
-          <Alert className={styles.alert}>
-            <AlertTitle className={styles.alertCount}>
-              {criticalCount} prazo{criticalCount > 1 ? 's' : ''} crítico{criticalCount > 1 ? 's' : ''}
-            </AlertTitle>
-            {firstCritical && (
-              <AlertDescription className={styles.alertDesc}>
-                — {clientePrazo(firstCritical)}: {expedientePrazo(firstCritical)} vence em {firstCritical.diasRestantes} dia{firstCritical.diasRestantes !== 1 ? 's' : ''}
-              </AlertDescription>
-            )}
-          </Alert>
-        )}
+        <div className={styles.resumo} aria-label="Resumo dos prazos filtrados">
+          <span><strong>{prazos.length}</strong> {prazos.length === 1 ? 'expediente no recorte' : 'expedientes no recorte'}</span>
+          {criticalCount > 0 && <span className={styles.resumoUrgente}><strong>{criticalCount}</strong> com vencimento em até 3 dias</span>}
+          {overdueCount > 0 && <span className={styles.resumoUrgente}><strong>{overdueCount}</strong> {overdueCount === 1 ? 'vencido' : 'vencidos'}</span>}
+          {prazosSemData.length > 0 && <span><strong>{prazosSemData.length}</strong> sem data definida</span>}
+        </div>
 
-        {view === 'lista'      && <ListView      prazos={prazosComData} sort={sort} order={order} hasSemData={prazosSemData.length > 0} />}
+        {view === 'lista'      && <ListView      prazos={listaVisivel} sort={sort} hasSemData={prazosSemData.length > 0} />}
+
+        {view === 'lista' && jaVencidos.length > 0 && (
+          <div className={styles.maisVencidos}>
+            <Button
+              variant="outline"
+              onClick={() => setMostrarVencidos(atual => !atual)}
+              aria-expanded={mostrarVencidos}
+              className="border-[var(--line)] text-[var(--ink-2)] max-md:h-11"
+            >
+              {mostrarVencidos
+                ? 'Ocultar expedientes vencidos'
+                : `Mostrar expedientes vencidos (${jaVencidos.length})`}
+            </Button>
+          </div>
+        )}
         {view === 'kanban'     && <KanbanView     prazos={prazosComData} />}
         {view === 'calendario' && (
           <CalendarioView prazos={prazosComData} year={calYear} month={calMonth} selectedDay={calDay} onSelectDay={setCalDay} />

@@ -1,27 +1,44 @@
+/* No celular é uma FAIXA QUE ROLA, não uma grade que quebra: com `wrap`, as
+   seis opções viram quatro linhas de pílula e ~110px de cabeçalho antes da
+   primeira movimentação. Mesmo tratamento que o seletor de anos do calendário
+   do processo, e pelo mesmo motivo medido lá. */
 .filtro {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 14px;
+  flex-wrap: nowrap;
+  gap: var(--space-sm);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
+.filtro::-webkit-scrollbar { display: none; }
+
+.pill { flex: none; }
+
+@media (min-width: 768px) {
+  .filtro { flex-wrap: wrap; overflow-x: visible; }
+}
+
+/* Sem `border-radius`: a regra editorial do projeto é bordas retas, e a pílula
+   arredondada de 999px que este componente trazia nasceu antes de ele ser
+   montado em alguma tela. */
 .pill {
   border: 1px solid var(--line);
   background: var(--paper);
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-family: var(--ui);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 5px 10px;
-  border-radius: 999px;
+  padding: var(--space-xs) var(--space-md);
   transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
 }
 
 .pill:hover {
   color: var(--ink);
-  border-color: var(--ink-3);
+  border-color: var(--ink-2);
 }
 
 /* Selecionada: a tinta forte do projeto, não uma cor nova. */

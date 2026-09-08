@@ -291,7 +291,7 @@
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 29;
+  z-index: var(--z-scrim);
   background: rgba(20, 26, 21, 0.34);
   pointer-events: none;
 }
@@ -304,7 +304,7 @@
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 30;
+  z-index: var(--z-panel);
   width: 100%;
   max-height: min(76dvh, 560px);
   overflow-y: auto;
@@ -493,7 +493,11 @@
     right: 0;
     bottom: auto;
     left: auto;
-    z-index: 20;
+    /* Era `20` — abaixo do `29` do próprio scrim, então no desktop o painel de
+       ordenação abria POR BAIXO do véu que ele mesmo acende. Camada nomeada em
+       vez de inteiro solto: `--z-panel` é, por definição, acima de
+       `--z-scrim`. */
+    z-index: var(--z-panel);
     width: min(420px, calc(100vw - 64px));
     max-height: none;
     overflow-y: visible;

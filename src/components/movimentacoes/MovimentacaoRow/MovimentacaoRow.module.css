@@ -1,0 +1,331 @@
+/* A linha de movimentação — feed e painel.
+   Mobile-first: no celular empilha (ato, cliente, calha). >=768px vira duas
+   colunas, corpo à esquerda e calha à direita, como `ProcessList`. */
+
+.row {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--line-soft);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 150ms ease;
+}
+
+.row:hover  { background: var(--paper-2); }
+.row:active { background: var(--paper-3); }
+.row:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: -2px;
+}
+
+/* Largura fixa mesmo vazia: o ato do diário tem data e não hora, e com a
+   coluna dimensionada por `auto` cada linha calcula a própria — as linhas sem
+   hora começavam 28px à esquerda das outras, e a lista perdia a margem comum
+   que é justamente o que faz uma coluna existir. */
+.hora {
+  min-width: 36px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.corpo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+/* O ato — o que aconteceu. Título da linha desde 06/09/2026. Uma linha só:
+   o resumo da IA é uma frase inteira e, sem corte, ela sozinha empurrava a
+   linha para 200px. Quem quer a frase inteira abre o ato. */
+.ato {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linha2 {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--space-sm);
+  font-size: 13px;
+  line-height: 1.4;
+  /* `--ink-2` (9,0:1), nunca `--ink-3`: medido nesta tela, `--ink-3` dá
+     4,32:1 e reprova o mínimo de 4,5:1 do AA. Era a cor de três campos da
+     linha antiga — assunto, órgão e "autos nº". */
+  color: var(--ink-2);
+}
+
+.cliente {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orgao {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.orgao::before {
+  content: '·';
+  margin-right: var(--space-sm);
+  color: var(--ink-3);
+}
+
+/* A providência do destinatário. Marcador + frase, no lugar da caixa com
+   moldura e rótulo em caixa alta que ocupava ~50px. */
+.acao {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-top: var(--space-2xs);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.conferir {
+  margin-left: var(--space-sm);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--alert);
+  white-space: nowrap;
+}
+
+/* No celular a calha é uma LINHA que quebra, não uma coluna: empilhada, ela
+   somava três linhas próprias (chips, CNJ, prazo) e a movimentação chegava a
+   133px — a mesma altura do cartão que este redesenho substituiu. Em linha,
+   os mesmos elementos cabem em uma ou duas. */
+.calha {
+  min-width: 0;
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.ident {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+/* DE ONDE VEIO — a mesma altura e peso da categoria, um degrau mais discreto
+   na cor: as duas dividem a calha, e a categoria responde "a que serve" (o que
+   o advogado filtra), enquanto a origem responde "quem disse" (o que ele
+   confere). Sem moldura, para não competir com o selo "Nova". */
+.origem {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.categoria {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.selo {
+  padding: 1px 6px;
+  border: 1px solid var(--brick);
+  background: var(--brick-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--brick);
+  white-space: nowrap;
+}
+
+.cnj {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.chevron {
+  display: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+  transition: transform 150ms ease, color 150ms ease;
+}
+
+.row:hover .chevron { color: var(--ink); transform: translateX(2px); }
+
+/* Linha aberta: o chevron aponta para baixo (é o que diz "isto se fecha") e a
+   linha ganha o mesmo fundo do painel, para os dois lerem como um bloco só. */
+.aberta { background: var(--paper-2); }
+.aberta:hover { background: var(--paper-3); }
+.aberta .chevron { transform: rotate(90deg); color: var(--ink); }
+.aberta:hover .chevron { transform: rotate(90deg) translateX(2px); }
+.aberta .ato { font-weight: 700; }
+
+/* Vermelho até 7 dias, amarelo até 14 e verde acima de 14. */
+.prazo {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: 5px 8px;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  max-width: 100%;
+}
+
+.prazo svg { flex: none; }
+
+.prazoVencido { color: var(--alert);      background: var(--alert-soft); }
+.prazoUrgente { color: var(--signal-ink); background: var(--signal-soft); }
+.prazoCalmo   { color: var(--quiet-ink);  background: var(--quiet-soft); }
+/* Encerrado sai da escala de urgência: cinza sobre o fundo da página. A cor é
+   o que chama atenção, e o que já acabou não disputa atenção com o que corre. */
+.prazoEncerrado { color: var(--ink-2); background: var(--paper-2); font-weight: 500; }
+
+.estimado {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: inherit;
+}
+
+.quando {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* Densidade compacta (painel): uma linha só, sem resumo nem providência. */
+.compacta {
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+}
+
+.compacta .ato { font-size: 13px; }
+.compacta .linha2 { font-size: 12px; }
+
+/* O órgão julgador sai no celular: é constante por processo, e o processo já
+   está nomeado pelo cliente na mesma linha. Numa tela de 396px ele custava uma
+   linha inteira ("TERCEIRA VARA DA FAZENDA PÚBLICA DA COMARCA DA CAPITAL") por
+   movimentação. */
+@media (max-width: 767px) {
+  .orgao { display: none; }
+}
+
+@media (min-width: 768px) {
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-2xl);
+    align-items: start;
+    padding: var(--space-md) var(--space-2xl);
+  }
+
+  .calha { flex-direction: column; flex-wrap: nowrap; }
+
+  .row:has(.hora) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: var(--space-lg);
+  }
+
+  .hora { padding-top: 2px; }
+
+  .calha {
+    align-items: flex-end;
+    text-align: right;
+    max-width: 320px;
+  }
+
+  .chevron { display: block; }
+
+  /* Medida de leitura. Sem teto, o resumo do ato corria ~160 caracteres por
+     linha num monitor de 1440px — o dobro do confortável. */
+  .ato { max-width: 80ch; }
+  .acao { max-width: 80ch; }
+  .orgao { max-width: 34ch; }
+
+  .compacta { padding: var(--space-sm) var(--space-lg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row, .chevron { transition: none; }
+  .row:hover .chevron { transform: none; }
+  .aberta:hover .chevron { transform: rotate(90deg); }
+}
+
+/* DOIS SINAIS, lado a lado: à esquerda o TEXTO do ato, à direita a PEÇA.
+   Eram um rótulo escrito ("Com inteiro teor") que fundia os dois; virou ícone
+   porque a pergunta é binária e a linha é densa — o texto por extenso vai no
+   `title` e no leitor de tela, onde não custa largura. */
+.sinais {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.sinal {
+  display: inline-flex;
+  align-items: center;
+  /* `--ink-3` reprova como texto (4,32:1), mas aqui é ÍCONE com rótulo no
+     `title` e no `sr-only` — o AA de 4.5 vale para texto, e o alvo do ícone
+     apagado é justamente parecer apagado. */
+  color: var(--ink-3);
+}
+
+.sinal svg { flex: none; }
+/* Tem: verde-floresta, o mesmo peso do resto do sistema. */
+.sinalAtivo { color: var(--brick); }
+/* Existe a referência, mas a aquisição já mediu que o arquivo não vem —
+   âmbar, que é ressalva, não erro. Ver `documentoEstado`. */
+.sinalIncerto { color: var(--signal-ink); }
+
+.row.noProcesso { padding: var(--space-md) var(--space-lg); }
+
+@container movimento-processo (max-width: 680px) {
+  .row.noProcesso { display: flex; flex-direction: column; gap: var(--space-sm); }
+  .noProcesso .calha { flex-direction: row; flex-wrap: wrap; align-items: center; text-align: left; max-width: none; }
+  .noProcesso .chevron { display: block; }
+  .noProcesso .hora { padding: 0; }
+}

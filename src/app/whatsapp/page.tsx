@@ -17,8 +17,8 @@ export default function WhatsappPage() {
     >
       <PageHeader
         basePath="/whatsapp"
-        title="WhatsApp"
-        breadcrumb="Início / Configurações / WhatsApp"
+        title={<h1>Avisos no WhatsApp</h1>}
+        breadcrumb="Início / WhatsApp"
       />
       <WhatsappPageContent />
     </AppLayout>

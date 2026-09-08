@@ -9,6 +9,20 @@ interface AuthFieldProps {
   label: string;
   type: string;
   autoComplete: string;
+  /**
+   * O `name` do campo. **Sem ele o Chrome não oferece salvar a senha.**
+   *
+   * O gerenciador de credenciais identifica os campos de um formulário pelo
+   * `name` — é o que iria no corpo de um submit de verdade —, e um `<input>` só
+   * com `id` deixa a heurística sem o sinal principal. Como o formulário aqui é
+   * uma SPA (`preventDefault` + `fetch`), nenhum submit real acontece, e é
+   * justamente nesse caso que os sinais declarados no HTML carregam todo o
+   * peso.
+   *
+   * Default é o próprio `id`, que é o que os campos já queriam: `email`,
+   * `senha`, `nome`.
+   */
+  name?: string;
   value: string;
   onChange: (v: string) => void;
   onBlur?: () => void;
@@ -26,7 +40,7 @@ interface AuthFieldProps {
 }
 
 export function AuthField({
-  id, label, type, autoComplete, value, onChange, onBlur, placeholder, disabled, error, toggle, labelRight,
+  id, label, type, autoComplete, name, value, onChange, onBlur, placeholder, disabled, error, toggle, labelRight,
   inputMode, maxLength,
 }: AuthFieldProps) {
   return (
@@ -38,6 +52,7 @@ export function AuthField({
       <div className={styles.inputWrap}>
         <input
           id={id}
+          name={name ?? id}
           type={type}
           autoComplete={autoComplete}
           value={value}

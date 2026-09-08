@@ -23,8 +23,37 @@ export const PROCESS_FILTER_KEYS = [
 ] as const;
 
 export type ProcessFilterKey = (typeof PROCESS_FILTER_KEYS)[number];
-export type ProcessSort = 'recent' | 'cnj' | 'tribunal' | 'valor' | 'autuado';
 export type ProcessOrder = 'asc' | 'desc';
+
+/**
+ * Ordenações aceitas pela API, com a direção padrão de cada uma — o espelho de
+ * `PROCESS_SORT` em `processes.router.ts`.
+ *
+ * A direção padrão precisa bater com a do backend: é ela que decide para onde a
+ * seta do cabeçalho aponta antes do primeiro clique e qual direção o clique
+ * seguinte pede. Divergir aqui desenha uma seta que mente sobre a lista.
+ *
+ * Texto sobe (A→Z), data/valor/contagem descem (o mais recente, o maior, quem
+ * mais se mexeu) — é o que se quer ver primeiro em cada tipo.
+ */
+export const PROCESS_SORT_DEFAULT_ORDER = {
+  recent: 'desc',
+  cnj: 'asc',
+  tribunal: 'asc',
+  valor: 'desc',
+  autuado: 'desc',
+  orgao: 'asc',
+  classe: 'asc',
+  assunto: 'asc',
+  ultimaMov: 'asc',
+  verificado: 'desc',
+  sync: 'asc',
+  situacao: 'asc',
+  monitoramento: 'desc',
+  movimentacoes: 'desc',
+} as const satisfies Record<string, ProcessOrder>;
+
+export type ProcessSort = keyof typeof PROCESS_SORT_DEFAULT_ORDER;
 
 export type ProcessFilterState = {
   q: string;
@@ -74,7 +103,7 @@ export const DEFAULT_PROCESS_FILTERS: ProcessFilterState = {
 const FALLBACK_TRIBUNAL_CODES = FALLBACK_TRIBUNALS.map(tribunal => tribunal.code);
 const ALLOWED_STATUS = new Set(['active', 'archived']);
 const ALLOWED_STATE = new Set(['signal', 'alert', 'quiet']);
-const ALLOWED_SORT = new Set<ProcessSort>(['recent', 'cnj', 'tribunal', 'valor', 'autuado']);
+const ALLOWED_SORT = new Set<string>(Object.keys(PROCESS_SORT_DEFAULT_ORDER));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function first(value: string | string[] | undefined): string {
@@ -193,7 +222,7 @@ export function processFiltersToApi(filters: ProcessFilterState): ProcessoFilter
 }
 
 export function defaultOrderFor(sort: ProcessSort): ProcessOrder {
-  return sort === 'cnj' || sort === 'tribunal' ? 'asc' : 'desc';
+  return PROCESS_SORT_DEFAULT_ORDER[sort] ?? 'desc';
 }
 
 export function countActiveProcessFilters(filters: ProcessFilterState): number {

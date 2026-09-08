@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Manrope', system-ui, sans-serif; color: #141a15; background: #e2ebe4; -webkit-font-smoothing: antialiased; }
+    a { color: #166534; text-decoration: none; }
+    a:hover { color: #14532d; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .tile { border:1px solid #cdd7cf; background:#f8faf8; display:flex; flex-direction:column; }
+    .th { display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid #dce6de; }
+    .tt { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.12em; color:#3a4a3d; }
+    .tt::before { content:''; width:5px; height:5px; background:#166534; flex-shrink:0; }
+    .tm { margin-left:auto; font-size:11px; color:#3a4a3d; }
+    .tb { padding:18px; flex:1; }
+  </style>
+</helmet>
+
+<div style="width:1440px; min-height:2060px; background:#e2ebe4; padding:32px;">
+  <div style="margin-bottom:20px;">
+    <div style="font-weight:800; font-size:22px; letter-spacing:-0.02em;">Componentes — formatos para escolher</div>
+    <div style="font-size:13px; color:#3a4a3d; margin-top:4px;">Um buffet de widgets na identidade do produto. Aponte os que quer no dashboard e eu monto a versão final.</div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px; align-items:start;">
+
+    <!-- Números-síntese (span 3) -->
+    <section class="tile" style="grid-column:span 3;">
+      <div class="th"><span class="tt">Números-síntese · variação vs mês anterior</span></div>
+      <div class="tb" style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:0; padding:0;">
+        <div style="padding:20px 24px; border-right:1px solid #dce6de;">
+          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:#3a4a3d;">Movimentações</div>
+          <div class="mono" style="font-size:36px; font-weight:800; color:#141a15; line-height:1; margin-top:10px;">312</div>
+          <div style="font-size:12px; color:#166534; margin-top:8px; font-weight:600;">▲ 14% vs agosto</div>
+        </div>
+        <div style="padding:20px 24px; border-right:1px solid #dce6de;">
+          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:#3a4a3d;">Prazos cumpridos</div>
+          <div class="mono" style="font-size:36px; font-weight:800; color:#141a15; line-height:1; margin-top:10px;">19</div>
+          <div style="font-size:12px; color:#166534; margin-top:8px; font-weight:600;">▲ 100% no prazo</div>
+        </div>
+        <div style="padding:20px 24px; border-right:1px solid #dce6de;">
+          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:#3a4a3d;">Novos processos</div>
+          <div class="mono" style="font-size:36px; font-weight:800; color:#141a15; line-height:1; margin-top:10px;">6</div>
+          <div style="font-size:12px; color:#3a4a3d; margin-top:8px; font-weight:600;">— estável</div>
+        </div>
+        <div style="padding:20px 24px;">
+          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:#3a4a3d;">Tempo médio de resposta</div>
+          <div class="mono" style="font-size:36px; font-weight:800; color:#141a15; line-height:1; margin-top:10px;">4,2<span style="font-size:16px; color:#3a4a3d;">d</span></div>
+          <div style="font-size:12px; color:#166534; margin-top:8px; font-weight:600;">▼ 0,8d mais rápido</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. Heatmap 30 dias (span 2) -->
+    <section class="tile" style="grid-column:span 2;">
+      <div class="th"><span class="tt">Heatmap · atividade 30 dias</span><span class="tm mono">312 movimentações</span></div>
+      <div class="tb">
+        <div style="display:grid; grid-template-columns:repeat(15, minmax(0,1fr)); gap:5px;">
+          <span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#3f8c62;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#166534;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#3f8c62;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#166534;"></span>
+          <span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#3f8c62;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#166534;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#3f8c62;"></span><span style="height:28px; background:#bcdcc7;"></span><span style="height:28px; background:#7fb495;"></span><span style="height:28px; background:#eaf1ec;"></span><span style="height:28px; background:#bcdcc7;"></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; margin-top:14px;">
+          <span style="font-size:10px; color:#3a4a3d;">menos</span>
+          <span style="width:14px; height:14px; background:#eaf1ec;"></span><span style="width:14px; height:14px; background:#bcdcc7;"></span><span style="width:14px; height:14px; background:#7fb495;"></span><span style="width:14px; height:14px; background:#3f8c62;"></span><span style="width:14px; height:14px; background:#166534;"></span>
+          <span style="font-size:10px; color:#3a4a3d;">mais</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Donut cobertura -->
+    <section class="tile">
+      <div class="th"><span class="tt">Rosca · prazos por natureza</span></div>
+      <div class="tb" style="display:flex; align-items:center; gap:20px;">
+        <svg viewBox="0 0 140 140" width="128" height="128" style="flex-shrink:0;">
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#eef2ef" stroke-width="18"></circle>
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#166534" stroke-width="18" stroke-dasharray="202 327" transform="rotate(-90 70 70)"></circle>
+          <circle cx="70" cy="70" r="52" fill="none" stroke="#d97706" stroke-width="18" stroke-dasharray="125 327" stroke-dashoffset="-202" transform="rotate(-90 70 70)"></circle>
+        </svg>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="mono" style="font-size:26px; font-weight:800; color:#141a15; line-height:1;">21</div>
+          <div style="font-size:11px; color:#3a4a3d; margin-top:-6px;">prazos em aberto</div>
+          <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#166534;"></span>Manifestação <span class="mono" style="margin-left:auto; font-weight:700;">13</span></div>
+          <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#d97706;"></span>Ciência <span class="mono" style="margin-left:auto; font-weight:700;">8</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Line chart movimentações/semana (span 2) -->
+    <section class="tile" style="grid-column:span 2;">
+      <div class="th"><span class="tt">Linha · movimentações por semana</span><span class="tm">12 semanas</span></div>
+      <div class="tb">
+        <svg viewBox="0 0 860 200" width="100%" height="180" preserveAspectRatio="xMidYMid meet">
+          <line x1="0" y1="30" x2="860" y2="30" stroke="#dce6de" stroke-width="1"></line>
+          <line x1="0" y1="90" x2="860" y2="90" stroke="#dce6de" stroke-width="1"></line>
+          <line x1="0" y1="150" x2="860" y2="150" stroke="#dce6de" stroke-width="1"></line>
+          <path d="M20,150 L96,120 L172,158 L248,100 L324,132 L400,70 L476,110 L552,52 L628,96 L704,34 L780,80 L840,88 L840,180 L20,180 Z" fill="#dcf0e3"></path>
+          <polyline points="20,150 96,120 172,158 248,100 324,132 400,70 476,110 552,52 628,96 704,34 780,80 840,88" fill="none" stroke="#166534" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+          <circle cx="704" cy="34" r="4" fill="#166534"></circle>
+        </svg>
+        <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:10px; color:#3a4a3d;" class="mono"><span>jun</span><span>jul</span><span>ago</span><span>set</span></div>
+      </div>
+    </section>
+
+    <!-- 4. Gauge sincronização -->
+    <section class="tile">
+      <div class="th"><span class="tt">Medidor · sincronização 24h</span></div>
+      <div class="tb" style="display:flex; flex-direction:column; align-items:center;">
+        <svg viewBox="0 0 180 104" width="180" height="104">
+          <path d="M14,92 A76,76 0 0 1 166,92" fill="none" stroke="#eef2ef" stroke-width="14" stroke-linecap="round"></path>
+          <path d="M14,92 A76,76 0 0 1 166,92" fill="none" stroke="#166534" stroke-width="14" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="5"></path>
+        </svg>
+        <div class="mono" style="font-size:34px; font-weight:800; color:#166534; line-height:1; margin-top:-14px;">98%</div>
+        <div style="font-size:12px; color:#3a4a3d; margin-top:6px;">312 de 318 execuções OK</div>
+      </div>
+    </section>
+
+    <!-- 5. Vertical bars: prazos por mês -->
+    <section class="tile">
+      <div class="th"><span class="tt">Barras · prazos por mês</span></div>
+      <div class="tb">
+        <div style="display:flex; align-items:flex-end; gap:12px; height:150px;">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><span class="mono" style="font-size:11px; font-weight:700; color:#3a4a3d;">18</span><span style="width:100%; height:60px; background:#166534;"></span><span class="mono" style="font-size:10px; color:#3a4a3d;">abr</span></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><span class="mono" style="font-size:11px; font-weight:700; color:#3a4a3d;">24</span><span style="width:100%; height:80px; background:#166534;"></span><span class="mono" style="font-size:10px; color:#3a4a3d;">mai</span></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><span class="mono" style="font-size:11px; font-weight:700; color:#3a4a3d;">15</span><span style="width:100%; height:50px; background:#166534;"></span><span class="mono" style="font-size:10px; color:#3a4a3d;">jun</span></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><span class="mono" style="font-size:11px; font-weight:700; color:#3a4a3d;">31</span><span style="width:100%; height:104px; background:#166534;"></span><span class="mono" style="font-size:10px; color:#3a4a3d;">jul</span></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><span class="mono" style="font-size:11px; font-weight:700; color:#3a4a3d;">27</span><span style="width:100%; height:90px; background:#166534;"></span><span class="mono" style="font-size:10px; color:#3a4a3d;">ago</span></div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;"><span class="mono" style="font-size:11px; font-weight:700; color:#3a4a3d;">21</span><span style="width:100%; height:70px; background:#3f8c62;"></span><span class="mono" style="font-size:10px; color:#3a4a3d;">set</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Histograma: prazos por faixa -->
+    <section class="tile">
+      <div class="th"><span class="tt">Distribuição · dias até vencer</span></div>
+      <div class="tb" style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px;"><span style="width:52px; font-size:11px; color:#3a4a3d;">0–3</span><span style="flex:1; height:14px; background:#eef2ef;"><span style="display:block; height:100%; width:15%; background:#991b1b;"></span></span><span class="mono" style="width:22px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">2</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="width:52px; font-size:11px; color:#3a4a3d;">4–7</span><span style="flex:1; height:14px; background:#eef2ef;"><span style="display:block; height:100%; width:8%; background:#d97706;"></span></span><span class="mono" style="width:22px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">1</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="width:52px; font-size:11px; color:#3a4a3d;">8–15</span><span style="flex:1; height:14px; background:#eef2ef;"><span style="display:block; height:100%; width:54%; background:#166534;"></span></span><span class="mono" style="width:22px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">7</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="width:52px; font-size:11px; color:#3a4a3d;">16–30</span><span style="flex:1; height:14px; background:#eef2ef;"><span style="display:block; height:100%; width:38%; background:#166534;"></span></span><span class="mono" style="width:22px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">5</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="width:52px; font-size:11px; color:#3a4a3d;">30+</span><span style="flex:1; height:14px; background:#eef2ef;"><span style="display:block; height:100%; width:46%; background:#166534;"></span></span><span class="mono" style="width:22px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">6</span></div>
+      </div>
+    </section>
+
+    <!-- 7. Ranking órgãos -->
+    <section class="tile">
+      <div class="th"><span class="tt">Ranking · órgãos julgadores</span></div>
+      <div class="tb" style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; flex-direction:column; gap:4px;"><div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d;"><span>Cuiabá — Vara Esp. Fazenda</span><span class="mono" style="font-weight:700;">28</span></div><span style="height:5px; background:#166534; width:100%;"></span></div>
+        <div style="display:flex; flex-direction:column; gap:4px;"><div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d;"><span>1ª Câmara de Direito Púb.</span><span class="mono" style="font-weight:700;">19</span></div><span style="height:5px; background:#166534; width:68%;"></span></div>
+        <div style="display:flex; flex-direction:column; gap:4px;"><div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d;"><span>Gabinete 2 — Des. Relator</span><span class="mono" style="font-weight:700;">14</span></div><span style="height:5px; background:#166534; width:50%;"></span></div>
+        <div style="display:flex; flex-direction:column; gap:4px;"><div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d;"><span>Vara Esp. Ações Coletivas</span><span class="mono" style="font-weight:700;">11</span></div><span style="height:5px; background:#166534; width:39%;"></span></div>
+        <div style="display:flex; flex-direction:column; gap:4px;"><div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d;"><span>STJ — 2ª Turma</span><span class="mono" style="font-weight:700;">9</span></div><span style="height:5px; background:#166534; width:32%;"></span></div>
+      </div>
+    </section>
+
+    <!-- 8. Tabela top processos por valor (span 2) -->
+    <section class="tile" style="grid-column:span 2;">
+      <div class="th"><span class="tt">Tabela · maiores valores de causa</span><span class="tm">5 de 241</span></div>
+      <div class="tb" style="padding:0;">
+        <div style="display:grid; grid-template-columns:1fr 90px 130px; padding:10px 18px; border-bottom:1px solid #dce6de; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#3a4a3d;"><span>Parte</span><span>Tribunal</span><span style="text-align:right;">Valor</span></div>
+        <div style="display:grid; grid-template-columns:1fr 90px 130px; padding:13px 18px; border-bottom:1px solid #dce6de; font-size:13px; align-items:center;"><span style="color:#141a15; font-weight:600;">Município de Sonora</span><span class="mono" style="color:#3a4a3d; font-size:11px;">TJMT</span><span class="mono" style="text-align:right; font-weight:700; color:#166534;">R$ 42,1 mi</span></div>
+        <div style="display:grid; grid-template-columns:1fr 90px 130px; padding:13px 18px; border-bottom:1px solid #dce6de; font-size:13px; align-items:center;"><span style="color:#141a15; font-weight:600;">Centro de Ensino Unificado</span><span class="mono" style="color:#3a4a3d; font-size:11px;">TJDFT</span><span class="mono" style="text-align:right; font-weight:700; color:#166534;">R$ 28,7 mi</span></div>
+        <div style="display:grid; grid-template-columns:1fr 90px 130px; padding:13px 18px; border-bottom:1px solid #dce6de; font-size:13px; align-items:center;"><span style="color:#141a15; font-weight:600;">Estado de Mato Grosso</span><span class="mono" style="color:#3a4a3d; font-size:11px;">TRF1</span><span class="mono" style="text-align:right; font-weight:700; color:#166534;">R$ 19,4 mi</span></div>
+        <div style="display:grid; grid-template-columns:1fr 90px 130px; padding:13px 18px; border-bottom:1px solid #dce6de; font-size:13px; align-items:center;"><span style="color:#141a15; font-weight:600;">Cavalcante Reis Sociedade</span><span class="mono" style="color:#3a4a3d; font-size:11px;">STJ</span><span class="mono" style="text-align:right; font-weight:700; color:#166534;">R$ 15,2 mi</span></div>
+        <div style="display:grid; grid-template-columns:1fr 90px 130px; padding:13px 18px; font-size:13px; align-items:center;"><span style="color:#141a15; font-weight:600;">Natália de J. S. Ferrão</span><span class="mono" style="color:#3a4a3d; font-size:11px;">TJDFT</span><span class="mono" style="text-align:right; font-weight:700; color:#166534;">R$ 9,8 mi</span></div>
+      </div>
+    </section>
+
+    <!-- 9. Área acumulada publicações -->
+    <section class="tile">
+      <div class="th"><span class="tt">Área · publicações acumuladas</span></div>
+      <div class="tb">
+        <svg viewBox="0 0 400 170" width="100%" height="150" preserveAspectRatio="xMidYMid meet">
+          <path d="M10,160 L60,150 L110,138 L160,120 L210,96 L260,72 L310,44 L390,20 L390,170 L10,170 Z" fill="#dcf0e3"></path>
+          <polyline points="10,160 60,150 110,138 160,120 210,96 260,72 310,44 390,20" fill="none" stroke="#166534" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        </svg>
+        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:#3a4a3d;" class="mono"><span>mar</span><span>mai</span><span>jul</span><span>set</span></div>
+      </div>
+    </section>
+
+    <!-- 10. Bullet carga da semana -->
+    <section class="tile">
+      <div class="th"><span class="tt">Bullet · carga da semana</span></div>
+      <div class="tb" style="display:flex; flex-direction:column; gap:16px; justify-content:center;">
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d; margin-bottom:8px;"><span>Prazos desta semana</span><span class="mono" style="font-weight:700; color:#141a15;">8</span></div>
+          <div style="position:relative; height:16px; background:#eef2ef;">
+            <div style="position:absolute; inset:0 0 0 0; width:100%; background:#e8eee0;"></div>
+            <div style="position:absolute; inset:0 auto 0 0; height:100%; width:62%; background:#166534;"></div>
+            <div style="position:absolute; top:-3px; bottom:-3px; left:75%; width:2px; background:#141a15;"></div>
+          </div>
+          <div style="font-size:10px; color:#3a4a3d; margin-top:6px;">marcador = média das últimas 8 semanas (≈10)</div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:#3a4a3d; margin-bottom:8px;"><span>Manifestações a produzir</span><span class="mono" style="font-weight:700; color:#141a15;">5</span></div>
+          <div style="position:relative; height:16px; background:#eef2ef;">
+            <div style="position:absolute; inset:0 auto 0 0; height:100%; width:83%; background:#d97706;"></div>
+            <div style="position:absolute; top:-3px; bottom:-3px; left:66%; width:2px; background:#141a15;"></div>
+          </div>
+          <div style="font-size:10px; color:#3a4a3d; margin-top:6px;">acima da média — semana pesada</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. Barra empilhada: atividade por categoria (span 2) -->
+    <section class="tile" style="grid-column:span 2;">
+      <div class="th"><span class="tt">Empilhada · atividade por tipo de ato</span><span class="tm">312 no mês</span></div>
+      <div class="tb">
+        <div style="display:flex; width:100%; height:26px;">
+          <span style="width:41%; background:#166534;"></span>
+          <span style="width:26%; background:#3f8c62; box-shadow:inset 2px 0 0 #f8faf8;"></span>
+          <span style="width:19%; background:#7fb495; box-shadow:inset 2px 0 0 #f8faf8;"></span>
+          <span style="width:14%; background:#bcdcc7; box-shadow:inset 2px 0 0 #f8faf8;"></span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:14px;">
+          <span style="display:inline-flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#166534;"></span>Publicação <span class="mono" style="font-weight:700;">128</span></span>
+          <span style="display:inline-flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#3f8c62;"></span>Decisão <span class="mono" style="font-weight:700;">81</span></span>
+          <span style="display:inline-flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#7fb495;"></span>Petição <span class="mono" style="font-weight:700;">59</span></span>
+          <span style="display:inline-flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#bcdcc7;"></span>Cartório <span class="mono" style="font-weight:700;">44</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13. Processos por UF -->
+    <section class="tile">
+      <div class="th"><span class="tt">Barras · processos por UF</span></div>
+      <div class="tb" style="display:flex; flex-direction:column; gap:11px;">
+        <div style="display:flex; align-items:center; gap:12px;"><span class="mono" style="width:32px; font-size:11px; color:#3a4a3d;">MT</span><span style="flex:1; height:12px; background:#eef2ef;"><span style="display:block; height:100%; width:100%; background:#166534;"></span></span><span class="mono" style="width:26px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">96</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span class="mono" style="width:32px; font-size:11px; color:#3a4a3d;">DF</span><span style="flex:1; height:12px; background:#eef2ef;"><span style="display:block; height:100%; width:58%; background:#166534;"></span></span><span class="mono" style="width:26px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">56</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span class="mono" style="width:32px; font-size:11px; color:#3a4a3d;">AM</span><span style="flex:1; height:12px; background:#eef2ef;"><span style="display:block; height:100%; width:44%; background:#166534;"></span></span><span class="mono" style="width:26px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">42</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span class="mono" style="width:32px; font-size:11px; color:#3a4a3d;">PI</span><span style="flex:1; height:12px; background:#eef2ef;"><span style="display:block; height:100%; width:31%; background:#166534;"></span></span><span class="mono" style="width:26px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">30</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span class="mono" style="width:32px; font-size:11px; color:#3a4a3d;">Out.</span><span style="flex:1; height:12px; background:#eef2ef;"><span style="display:block; height:100%; width:18%; background:#7fb495;"></span></span><span class="mono" style="width:26px; text-align:right; font-size:12px; font-weight:700; color:#3a4a3d;">17</span></div>
+      </div>
+    </section>
+
+    <!-- 14. Estado da carteira: donut 3 estados -->
+    <section class="tile">
+      <div class="th"><span class="tt">Estado da carteira</span></div>
+      <div class="tb" style="display:flex; align-items:center; gap:18px;">
+        <svg viewBox="0 0 120 120" width="112" height="112" style="flex-shrink:0;">
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#166534" stroke-width="16" stroke-dasharray="269 276" transform="rotate(-90 60 60)"></circle>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#d97706" stroke-width="16" stroke-dasharray="3 276" stroke-dashoffset="-269" transform="rotate(-90 60 60)"></circle>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#991b1b" stroke-width="16" stroke-dasharray="3 276" stroke-dashoffset="-273" transform="rotate(-90 60 60)"></circle>
+        </svg>
+        <div style="display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#166534;"></span>Em dia <span class="mono" style="margin-left:auto; font-weight:700;">235</span></div>
+          <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#d97706;"></span>Com novidade <span class="mono" style="margin-left:auto; font-weight:700;">3</span></div>
+          <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:#3a4a3d;"><span style="width:10px; height:10px; background:#991b1b;"></span>Com erro <span class="mono" style="margin-left:auto; font-weight:700;">3</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15. Mini sparklines -->
+    <section class="tile">
+      <div class="th"><span class="tt">Mini-tendências</span></div>
+      <div class="tb" style="display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="flex:1;"><div style="font-size:11px; color:#3a4a3d;">Prazos abertos</div><div class="mono" style="font-size:22px; font-weight:800; color:#141a15;">21</div></div>
+          <svg viewBox="0 0 120 40" width="120" height="40"><polyline points="4,30 24,26 44,28 64,18 84,22 104,10 116,14" fill="none" stroke="#166534" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; border-top:1px solid #dce6de; padding-top:16px;">
+          <div style="flex:1;"><div style="font-size:11px; color:#3a4a3d;">Novidades/dia</div><div class="mono" style="font-size:22px; font-weight:800; color:#141a15;">6</div></div>
+          <svg viewBox="0 0 120 40" width="120" height="40"><polyline points="4,20 24,24 44,14 64,26 84,12 104,20 116,8" fill="none" stroke="#166534" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

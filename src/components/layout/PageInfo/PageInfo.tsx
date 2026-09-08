@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { type CSSProperties, useRef, useState } from 'react';
 import styles from './PageInfo.module.css';
 
 export type PageInfoItem = {
@@ -189,7 +189,13 @@ function PageInfoBars({ items }: { items: PageInfoItem[] }) {
             </div>
           </div>
           <div className={styles.barTrack} aria-hidden="true">
-            <div className={styles.barFill} style={{ width: `${item.percent ?? 0}%` }} />
+            {/* Fator de escala, não largura — ver `.barFill`. O piso de 0,03
+                substitui o `min-width: 8px` de antes: sem ele, 1% vira uma
+                barra invisível e a linha parece não ter valor nenhum. */}
+            <div
+              className={styles.barFill}
+              style={{ '--preenchimento': Math.max((item.percent ?? 0) / 100, 0.03) } as CSSProperties}
+            />
           </div>
         </div>
       ))}

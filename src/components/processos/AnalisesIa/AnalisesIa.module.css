@@ -1,0 +1,345 @@
+/* Aba de IA — dados estruturados.
+ *
+ * Vocabulário emprestado da própria página: par rótulo/valor como
+ * `.capaLabel`/`.capaValue`, `<details>` de fundamento como o `.basis` de
+ * `ProcessoPanorama`, faixa de vencimento com os mesmos `data-faixa` e as
+ * mesmas cores do `.deadline` daquele cartão. Nada aqui é invenção nova.
+ *
+ * Duas coisas que NÃO estão aqui, de propósito:
+ *  - barra colorida à esquerda dos blocos. É o que dava o ar de "callout de
+ *    IA": um acento decorativo em vez de estrutura. A separação é feita por
+ *    regra fina e espaço, como no resto da tela.
+ *  - rótulo em caixa alta com tracking em toda seção. O projeto titula em
+ *    `--mono` sem uppercase (`.sectionHeader h2`), e uma caixa-alta por bloco
+ *    lê como scaffold, não como hierarquia.
+ */
+
+/* Só o ritmo entre os blocos. Gutter, padding e título de seção são de
+   `.panel`/`.sectionHeader` da página, como nas abas de Prazos e Documentos —
+   ver o comentário no topo do componente. O teto que existia aqui (880px, mais
+   `padding: … 0`) tirava a aba do `--processo-gutter` e a deixava mais estreita
+   que as irmãs; a medida de leitura é aplicada ao TEXTO (`.destaque`,
+   `.paragrafo`, `.valor`, `.linhaTitulo`), que é onde ela significa alguma
+   coisa. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+/* ─── blocos ───────────────────────────────────────────────────────────── */
+
+/* A regra no topo é o que faz "Onde o caso está", "O que produzir" e "Ato por
+   ato" lerem como três seções e não como um texto contínuo: sem ela, os três
+   títulos tinham o mesmo peso das linhas e o olho não achava a fronteira. Não
+   vai no primeiro porque ali a fronteira já é o cabeçalho do painel. */
+.bloco { display: flex; flex-direction: column; gap: var(--space-md); }
+.bloco + .bloco { padding-top: var(--space-2xl); border-top: 1px solid var(--line); }
+
+.blocoCabeca {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.blocoTitulo {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.contagem {
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A prosa que sobrevive: síntese do caso. */
+.destaque {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+.paragrafo {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+/* ─── par rótulo / valor ───────────────────────────────────────────────── */
+
+/* Duas colunas no desktop: o rótulo vira uma calha que o olho percorre para
+   achar o campo, em vez de ler tudo. Empilha abaixo de 640px, onde 140px de
+   calha custariam metade da linha de texto. */
+.dados {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xs) var(--space-lg);
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .dados { grid-template-columns: 132px minmax(0, 1fr); gap: var(--space-sm) var(--space-lg); }
+}
+
+.rotulo {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.valor {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* `list-style` some no reset do Tailwind (Preflight zera `ul/ol`) — o marcador
+   é um `::before` próprio, nunca o `disc` do navegador. */
+.itens {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.itens li { position: relative; padding-left: 1.1em; }
+.itens li::before { content: '–'; position: absolute; left: 0; color: var(--ink-3); }
+
+/* ─── linhas de prazo e de ato ─────────────────────────────────────────── */
+
+.linhas { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+
+.linha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg) 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.linha:first-child { padding-top: 0; border-top: none; }
+
+.linhaCabeca {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+/* Tabular para as datas ficarem em coluna, alinhadas verticalmente. */
+.data {
+  flex-shrink: 0;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Não cresce: crescer empurraria os chips para o fim da linha. Encolhe e quebra
+   quando a descrição da movimentação é longa, que é o caso comum. O teto de
+   medida é o mesmo do resto — sem ele, num painel fluido, a descrição de uma
+   movimentação do PJe viraria uma linha única de tela cheia. */
+.linhaTitulo {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 70ch;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* O link do ato herda a medida e o peso do título: ele É o título da linha, não
+   um "ver mais" pendurado no fim. Sublinha no hover, como todo link da página. */
+.linhaLink {
+  composes: linhaTitulo;
+  color: var(--brick);
+  text-decoration: none;
+}
+
+.linhaLink:hover { text-decoration: underline; }
+.linhaLink:focus-visible { outline: 2px solid var(--brick); outline-offset: 3px; }
+
+/* ─── vencimento: a primeira coisa da linha de prazo ───────────────────── */
+
+/* "Vence em 8 dias · 14/09/2026". A cor vem do MESMO mapa de `data-faixa` que
+   `ProcessoPanorama` usa no cartão "Precisa de atenção" — a mesma pergunta
+   respondida com a mesma escala, senão o advogado aprende a ler prazo duas
+   vezes na mesma tela. A palavra vem junto com a cor de propósito: quem não
+   distingue vermelho de âmbar lê "Venceu há 111 dias" do mesmo jeito. */
+.vencimento {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+  margin: 0;
+  color: var(--ink);
+}
+
+.vencimento strong { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.vencimento time { color: var(--ink-2); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.vencimento[data-faixa='critico'],
+.vencimento[data-faixa='vencidos'] { color: var(--alert); }
+.vencimento[data-faixa='proximos'] { color: var(--signal-ink); }
+.vencimento[data-faixa='encerrados'],
+.vencimento[data-faixa='semData'] { color: var(--ink-2); }
+.vencimento[data-faixa='encerrados'] strong,
+.vencimento[data-faixa='semData'] strong { font-size: 13px; font-weight: 600; }
+
+/* ─── chips de estado ──────────────────────────────────────────────────── */
+
+/* Junto do que descrevem, nunca empurrados para a borda com `margin-left:auto`:
+   o container desta página é largo, e o estado acabava a meia tela do seu
+   próprio título — lido como enfeite solto em vez de atributo. */
+.chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-xs); }
+
+.chip {
+  padding: 2px var(--space-sm);
+  color: var(--ink-2);
+  background: var(--paper-3);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Cor só onde ela significa alguma coisa. `alerta` é o que se perde se o prazo
+   passar; `cliente` marca o prazo que é do nosso lado; `atencao` é o que ainda
+   precisa ser confirmado por gente. O resto fica neutro. */
+.chip[data-tom='alerta']  { color: var(--alert);       background: var(--alert-soft); }
+.chip[data-tom='atencao'] { color: var(--signal-ink);  background: var(--signal-soft); }
+.chip[data-tom='quieto']  { color: var(--quiet-ink);   background: var(--quiet-soft); }
+.chip[data-tom='cliente'] { color: var(--brick-deep);  background: var(--brick-soft); }
+
+/* `ausente` não é um valor, é a falta de um: a leitura ainda não foi feita.
+   Chip preenchido daria a ele o mesmo peso visual de "30 dias" ou "perde o
+   prazo", que são dado. Vazado e em `--ink-3` ele lê como lacuna — e não some,
+   que é o ponto de mostrar o prazo não analisado na lista. */
+.chip[data-tom='ausente'] {
+  color: var(--ink-3);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* ─── o que está recolhido ─────────────────────────────────────────────── */
+
+/* Prazo vencido e prazo encerrado não somem — ficam a um clique, com a
+   contagem no rótulo. `<details>` e não estado de React: o componente é
+   servidor, e o que abre e fecha uma lista não precisa de JavaScript. */
+.recolhido { margin-top: var(--space-sm); border-top: 1px solid var(--line); }
+
+.recolhido summary {
+  min-height: 44px;
+  align-content: center;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recolhido summary:hover { color: var(--ink); }
+.recolhido summary:focus-visible { outline: 2px solid var(--brick); outline-offset: 3px; }
+.recolhido[open] summary { margin-bottom: var(--space-sm); }
+
+/* Dentro do recolhido o vermelho sai. Ali TODA linha está vencida — dezenove
+   títulos em `--alert` não diferenciam nada e ainda gastam o vermelho que a
+   lista de cima usa para o prazo que corre e a `.divergencia` usa para a
+   discordância da IA. A frase continua dizendo o que aconteceu ("Venceu há
+   1.085 dias"), que é o que sobrevive a quem não distingue as duas cores. */
+.recolhido .vencimento[data-faixa='vencidos'] { color: var(--ink-2); }
+.recolhido .vencimento strong { font-size: 13px; font-weight: 600; }
+
+/* O fundamento é a citação de artigo que sustenta a leitura do ato. Mesmo
+   tratamento do `.basis` de `ProcessoPanorama`, inclusive o alvo de 36px no
+   `summary`. */
+.fundamento { color: var(--ink-2); font-size: 12px; }
+.fundamento summary { min-height: 36px; align-content: center; cursor: pointer; }
+.fundamento summary:focus-visible { outline: 2px solid var(--brick); outline-offset: 3px; }
+.fundamento p { max-width: 70ch; margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+
+.divergencia { color: var(--alert); }
+
+/* ─── procedência: o rodapé de confiança ───────────────────────────────── */
+
+/* Fica no fim porque é nota de rodapé, não manchete: abrir a aba com "0 de 22 ·
+   292 movimentações, 270 sem texto" respondia a uma pergunta sobre a
+   FERRAMENTA antes de responder qualquer uma sobre o processo. Mas continua na
+   tela — é o que impede o advogado de achar que a IA leu tudo. */
+.procedencia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--line);
+}
+
+/* Três medidas lado a lado; empilham sozinhas em telas estreitas. */
+.cobertura {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-2xl);
+  margin: 0;
+}
+
+.cobertura > div { display: flex; flex-direction: column; gap: 2px; }
+
+.cobertura dt {
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.cobertura dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.cobertura strong { color: var(--ink); font-weight: 700; }
+.coberturaNota { font-weight: 400; }
+
+/* Uma frase, uma vez. Repetida por linha ela vira moldura e o olho para de ler
+   — que é o oposto do que um aviso existe para fazer. */
+.aviso {
+  margin: 0;
+  max-width: 75ch;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ─── vazio ────────────────────────────────────────────────────────────── */
+
+.vazio {
+  margin: 0;
+  max-width: 65ch;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
