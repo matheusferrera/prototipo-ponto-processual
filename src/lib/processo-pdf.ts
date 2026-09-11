@@ -293,8 +293,10 @@ export async function createProcessoPdf(dossie: DossieProcesso, generatedAt = ne
           textoOu(ev.title),
           // O resumo é a manchete; a ação é o que fazer. Quando a IA não rodou,
           // a célula diz isso em vez de ficar vazia — vazio parece "nada a
-          // fazer", e não é a mesma informação.
-          [ev.ia?.resumo, ev.ia?.acao ? `Fazer: ${ev.ia.acao}` : null]
+          // fazer", e não é a mesma informação. `peca` é o sinal de que há
+          // algo concreto a produzir — `oQueFazer` sozinho está sempre
+          // presente desde a fusão ato+prazo, até em mera ciência.
+          [ev.ia?.resumo, ev.ia?.peca && ev.ia.oQueFazer ? `Fazer: ${ev.ia.oQueFazer}` : null]
             .filter(Boolean).map((t) => sanear(t!)).join('\n') || 'Ato não analisado.',
         ])
       : [['—', '—', 'Nenhuma movimentação registrada para este processo.', '—']],

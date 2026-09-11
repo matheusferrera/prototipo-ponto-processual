@@ -1,5 +1,5 @@
 import type { Movimentacao } from '@/types';
-import { assuntoCurto, semCodigo } from '@/lib/pje-text';
+import { assuntoCurto, partesDoTexto, semCodigo } from '@/lib/pje-text';
 
 /**
  * Título de uma movimentação no feed: a parte (cliente) do processo — o que o
@@ -54,9 +54,10 @@ export function temLeituraIa(m: Pick<Movimentacao, 'ia'>): boolean {
  * cliente.
  */
 export function acaoMovimentacao(m: Pick<Movimentacao, 'ia'>): { texto: string; minha: boolean } | null {
-  const acao = m.ia?.acao;
-  if (!acao) return null;
-  return { texto: acao, minha: m.ia?.deQuem === 'destinatario' };
+  // `peca` é o sinal de que há algo concreto a produzir — `oQueFazer` sozinho
+  // está sempre presente desde a fusão ato+prazo, até em ato de mera ciência.
+  if (!m.ia?.peca || !m.ia.oQueFazer) return null;
+  return { texto: m.ia.oQueFazer, minha: m.ia.deQuem === 'destinatario' };
 }
 
 /** O rótulo curto de cada procedência — cabe na calha da linha. */
@@ -198,4 +199,28 @@ const MESES = [
  */
 export function pedeConferencia(m: Pick<Movimentacao, 'ia'>): boolean {
   return m.ia?.confianca === 'baixa';
+}
+
+/**
+ * Até `limite` nomes de `prazo.parte` — o campo já vem "Fulano, Beltrano,
+ * Sicrano" quando o ato intima mais de uma parte (comum em inventário e ação
+ * coletiva: este processo mesmo tem 7). `ocultos` é o resto, para a tela
+ * poder dizer "+4" em vez de fingir que só havia 3.
+ *
+ * O corte em si é `partesDoTexto` (`pje-text.ts`), compartilhado com a linha
+ * da pauta: os dois cortam o MESMO campo bruto do PJe, e duas versões do
+ * divisor dariam contagens diferentes de "+N" para o mesmo ato.
+ *
+ * **Não reordena pelo cliente.** Faria sentido pôr o representado primeiro,
+ * mas nada no contrato de hoje marca QUAL nome do polo é o cliente da conta —
+ * `parte` é só o texto do ato, sem ligação com `Deadline.clienteDe` nem com o
+ * `representantes` da parte. Reordenar por um palpite (ex.: nome que contém
+ * a OAB do usuário) inventaria destaque para o nome errado sempre que o
+ * palpite falhasse, que é o lado caro do erro aqui.
+ */
+export function destinatariosDoAto(
+  m: Pick<Movimentacao, 'prazo'>,
+  limite = 3,
+): { nomes: string[]; ocultos: number } {
+  return partesDoTexto(m.prazo?.parte, limite);
 }

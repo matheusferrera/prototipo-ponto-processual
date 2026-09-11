@@ -22,6 +22,7 @@
 .prazoVencido { --prazo-cor: var(--alert); --prazo-fundo: var(--alert-soft); }
 
 .prazoResumo { min-width: 0; }
+.prazoResumo > p + p { margin-top: var(--space-xs); }
 
 .prazoTopo {
   display: flex;
@@ -61,6 +62,17 @@
   color: var(--ink-2);
 }
 
+/* Até 3 nomes, e o "+N" quando o ato intima mais gente do que cabe numa
+   linha — ver `destinatariosDoAto`. */
+.prazoDestinatarios {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 60ch;
+  overflow-wrap: anywhere;
+}
+
 .prazoQuando {
   padding: var(--space-xs) var(--space-sm);
   font-size: 11px;
@@ -70,41 +82,52 @@
   background: var(--prazo-fundo);
 }
 
-.prazoDetalhes {
+/* "Você precisa" — ver `PrazoDoAto`. Primeiro no card e, no desktop, na
+   coluna da ESQUERDA, com o prazo ao lado (ver o `@media` no fim do arquivo):
+   as duas respondem perguntas diferentes — o que fazer e até quando — e uma
+   embaixo da outra empurrava a leitura do ato para fora da primeira tela.
+   Dentro da caixa o rótulo fica ACIMA do texto — ver `.acao`. A caixa em si
+   (`.acao`) já se estiliza; sem borda/padding própria aqui. Quando
+   `ProvidenciaDoAto` devolve `null` (a IA ainda não leu o ato), o `:empty`
+   abaixo remove a linha inteira em vez de deixar um vão vazio com moldura — e
+   é ele que faz o `:has()` do `@media` desistir das duas colunas, para o prazo
+   não ficar numa metade com a outra vazia. */
+.prazoPrecisa:empty { display: none; }
+
+/* A leitura do ato — por último, e nas DUAS colunas: o bloco é o mais rico
+   dos três (resumo, checklist, documentos) e precisa do card inteiro, não da
+   fatia que sobraria de uma coluna. O texto dentro dele também vai até a
+   borda — ver `.leituraResumo`. */
+.prazoLeitura {
   min-width: 0;
   border-top: 1px solid var(--line-soft);
   padding-top: var(--space-md);
 }
 
-.prazoQualificacao,
-.prazoProcedencia {
+.prazoQualificacao {
   margin: 0;
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.6;
-  color: var(--ink-2);
+  color: var(--ink);
   max-width: 75ch;
   overflow-wrap: anywhere;
 }
 
-.prazoDetalhes > p + p { margin-top: var(--space-xs); }
-.prazoQualificacao { font-weight: 600; color: var(--ink); }
-
-@media (min-width: 1024px) {
-  .prazo { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--space-xl); }
-  .prazoDetalhes {
-    border-top: 0;
-    border-left: 1px solid var(--line-soft);
-    padding-top: 0;
-    padding-left: var(--space-xl);
-  }
-}
-
 /* ── O que fazer ────────────────────────────────────────────────────────── */
+/* Rótulo ACIMA do texto, e o texto até a borda do card. Em `baseline` na
+   mesma linha, "VOCÊ PRECISA" comia a largura da primeira linha da
+   providência e o `max-width: 70ch` do texto o fazia quebrar na metade do
+   card, deixando a direita vazia em todas as linhas seguintes.
+
+   `.acaoMinha` (moldura em `--brick`) é o caso comum desde 10/09/2026: o
+   bloco passou a aparecer em todo ato lido, não só nos que têm peça a
+   produzir — ver `ProvidenciaDoAto`. */
 .acao {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-xs) var(--space-sm);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-xs);
   padding: var(--space-md) var(--space-lg);
   border: 1px solid var(--line);
   background: var(--paper);
@@ -114,7 +137,6 @@
 .acaoOutra { background: var(--paper-2); }
 
 .acaoRotulo {
-  flex: none;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -125,18 +147,28 @@
 .acaoMinha .acaoRotulo { color: var(--brick); }
 
 .acaoTexto {
-  flex: 1 1 16ch;
   min-width: 0;
   font-size: 15px;
   line-height: 1.5;
-  max-width: 70ch;
   color: var(--ink-2);
+  overflow-wrap: anywhere;
 }
 
 .acaoMinha .acaoTexto { color: var(--ink); }
 
+/* A ressalva de AUTORIA — `deQuem` indefinido ou ausente. Em `--ink-2`, não
+   em `--alert`: não é defeito da leitura (isso é `.acaoConferir`), é um campo
+   que o ato não deixou claro. Vermelho aqui competiria com o aviso de
+   confiança baixa, que é o que de fato pede conferência do texto. */
+.acaoRessalva {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+
 .acaoConferir {
-  flex-basis: 100%;
   font-family: var(--mono);
   font-size: 11px;
   text-transform: uppercase;
@@ -187,21 +219,14 @@
   color: var(--ink-3);
 }
 
+/* Sem `max-width`: o bloco já ganha o card inteiro (`.prazoLeitura` cruza as
+   duas colunas), e um cap de 70ch ali dentro devolvia metade dessa largura
+   para o vazio. */
 .leituraResumo {
   margin: var(--space-sm) 0 0;
   font-size: 15px;
   line-height: 1.55;
-  max-width: 70ch;
   color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.leituraFundamento {
-  margin: var(--space-xs) 0 0;
-  font-size: 12px;
-  line-height: 1.6;
-  max-width: 75ch;
-  color: var(--ink-2);
   overflow-wrap: anywhere;
 }
 
@@ -212,6 +237,81 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--alert);
+}
+
+/* ── O que fazer (fundido na leitura desde 10/09/2026) ─────────────────── */
+.leituraOQueFazer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--line-soft);
+}
+
+.leituraChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.leituraPeca {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.leituraTagNeutra,
+.leituraRisco {
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--paper-3);
+}
+
+.leituraRisco[data-risco="preclusao"],
+.leituraRisco[data-risco="perdaDeDireito"],
+.leituraRisco[data-risco="revelia"] { color: var(--alert); background: var(--alert-soft); }
+.leituraRisco[data-risco="multa"] { color: var(--signal-ink); background: var(--signal-soft); }
+
+.leituraChecklist,
+.leituraDocumentosLista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.leituraChecklist li,
+.leituraDocumentosLista li { position: relative; padding-left: 1.1em; overflow-wrap: anywhere; }
+.leituraChecklist li::before,
+.leituraDocumentosLista li::before { content: '–'; position: absolute; left: 0; color: var(--ink-3); }
+
+.leituraDocumentos { display: flex; flex-direction: column; gap: var(--space-2xs); }
+
+.leituraDocumentosRotulo {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.leituraObservacao {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--alert);
+  max-width: 75ch;
+  overflow-wrap: anywhere;
 }
 
 /* ── O texto ────────────────────────────────────────────────────────────── */
@@ -454,6 +554,15 @@
 @media (min-width: 768px) {
   .painel { padding: var(--space-lg) var(--space-2xl); }
 
+  /* Você precisa e o prazo LADO A LADO; a leitura do ato embaixo, cruzando as
+     duas colunas. O `:has()` só liga a grade quando há providência: sem ela,
+     `.prazoPrecisa:empty` sai do fluxo e o prazo ficaria numa metade com a
+     outra vazia. */
+  .prazo:has(.prazoPrecisa:not(:empty)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .prazo:has(.prazoPrecisa:not(:empty)) .prazoLeitura { grid-column: 1 / -1; }
+
   .conteudo {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
@@ -489,9 +598,13 @@
   .painel { padding: var(--space-lg); }
 }
 @container movimento-processo (max-width: 850px) {
+  /* A capa lateral do processo come a largura útil: o par volta a empilhar,
+     porque duas colunas de ~200px cortariam a providência em uma palavra por
+     linha. Mesma especificidade das regras do `@media`, mais abaixo no
+     arquivo — é a ordem que decide. */
+  .prazo:has(.prazoPrecisa:not(:empty)) { grid-template-columns: minmax(0, 1fr); }
+  .prazo:has(.prazoPrecisa:not(:empty)) .prazoLeitura { grid-column: auto; }
   .conteudo { display: flex; flex-direction: column; gap: var(--space-lg); }
   .areaTexto, .areaFicha { width: 100%; }
-  .prazo { grid-template-columns: minmax(0, 1fr); }
-  .prazoDetalhes { border-left: 0; border-top: 1px solid var(--line-soft); padding-left: 0; padding-top: var(--space-md); }
   .atoTexto { max-height: none; overflow: visible; padding: var(--space-lg); }
 }

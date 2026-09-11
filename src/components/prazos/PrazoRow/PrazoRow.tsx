@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { ChevronRight, Clock3 } from 'lucide-react';
 import type { Prazo } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { LeituraIaDoAto, ProvidenciaDoAto, DocumentosDoAto } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
-import { AnalisePrazoPainel } from '../AnalisePrazoPainel/AnalisePrazoPainel';
+import { ProvidenciaDoAto, DocumentosDoAto } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
+import { RISCO_ROTULO } from '@/components/movimentacoes/AtoDetalhe/LeituraIaDoAto';
+import { LeituraDoAto } from '@/components/movimentacoes/AtoDetalhe/LeituraDoAto';
 import { clientePrazo, expedientePrazo, procedenciaPrazo, qualificacaoPrazo, rotuloNatureza } from '@/lib/prazo';
 import { tribunalTagLabel } from '@/lib/tribunals';
 import { dataPrazo, faixaPrazo, quandoPrazo } from '@/lib/prazo-apresentacao';
+import { partesCurtas } from '@/lib/pje-text';
 import { dataWallClock } from '@/lib/wall-clock';
 import styles from './PrazoRow.module.css';
 
@@ -19,19 +21,25 @@ import styles from './PrazoRow.module.css';
 function QuandoEPorQue({ p }: { p: Prazo }) {
   const qualificacao = qualificacaoPrazo(p);
   const estimado = Boolean(p.vencimentoISO) && (p.origemPrazo === 'djen' || p.origemPrazo === 'tribunalPublico');
-  if (qualificacao.length === 0 && !p.fundamento && !p.publicadoEm) return null;
+  if (qualificacao.length === 0 && !p.publicadoEm) return null;
 
   return (
     <div className={styles.quando}>
       {qualificacao.length > 0 && <p className={styles.quandoLinha}>{qualificacao.join(' · ')}</p>}
+      {/* `p.fundamento` (o artigo de lei) não entra aqui, de propósito — é o
+          mesmo texto que `LeituraIaDoAto` também não mostra mais: repetiria
+          o "prazo de N dias" que `qualificacao` já deu, uma linha acima. */}
       <p className={styles.quandoProcedencia}>
-        {p.fundamento ? `${p.fundamento} — ` : ''}{procedenciaPrazo(p)}
+        {procedenciaPrazo(p)}
         {estimado && '. Não considera feriado local nem suspensão por portaria.'}
       </p>
       {p.publicadoEm && (
         <p className={styles.quandoProcedencia}>
           Conta da publicação de {dataWallClock(new Date(p.publicadoEm))}
-          {p.parte ? ` · intimado: ${p.parte}` : ''}
+          {/* Três nomes, não o polo inteiro — aqui cabe um a mais que na
+              linha fechada, porque o card aberto é onde se confere de quem é
+              o prazo. `partesCurtas` diz quantos ficaram de fora. */}
+          {p.parte ? ` · intimado: ${partesCurtas(p.parte, 3)}` : ''}
           {p.cienciaFicta && ' · ciência automática (ficta)'}
         </p>
       )}
@@ -74,6 +82,21 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
           <span className={styles.titulo}>{titulo}</span>
           {parte !== titulo && <span className={styles.parte}>{parte}</span>}
           {p.deQuem === 'parteContraria' && <span className={styles.contexto}>Prazo da parte contrária</span>}
+
+          {/* A PEÇA, na linha fechada. `expedientePrazo` acima é o rótulo do
+              cartório ("Sentença", "Despacho"), que diz o que CHEGOU e não o
+              que fazer — e é justamente isso que se procura ao varrer a pauta
+              decidindo o que atacar hoje. Ela só existe depois da leitura do
+              ato (fusão ato+prazo), e é `null` em mera ciência: a linha volta
+              a ser o que era, sem caixa vazia. */}
+          {p.ato?.ia.peca && (
+            <span className={styles.peca}>
+              {p.ato.ia.peca}
+              {p.ato.ia.risco && p.ato.ia.risco !== 'nenhum' && (
+                <span className={styles.pecaRisco} data-risco={p.ato.ia.risco}>{RISCO_ROTULO[p.ato.ia.risco]}</span>
+              )}
+            </span>
+          )}
         </span>
         <span className={styles.calha}>
           <span className={styles.tags}>
@@ -85,21 +108,34 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
         </span>
       </summary>
       <div className={styles.detalhe}>
-        {/* O que fazer — a providência que o ato cobra, e de quem ela é. */}
-        {p.ato && <ProvidenciaDoAto mov={p.ato} />}
+        {/* Você precisa vem primeiro — a providência é a pergunta que se
+            responde ao abrir o card. Até quando/por quê fica na coluna ao
+            lado no desktop, e a leitura do ato fecha embaixo das duas, em
+            largura total: mesma ordem e mesma grade de `PrazoDoAto`, em
+            `AtoDetalhe.module.css`. */}
+        <div className={styles.painel}>
+          {/* O que fazer — a providência que o ato cobra, e de quem ela é. */}
+          {p.ato && (
+            <div className={styles.painelPrecisa}>
+              <ProvidenciaDoAto mov={p.ato} />
+            </div>
+          )}
 
-        {/* O que aconteceu — a leitura do ato pela IA, com fundamento e confiança. */}
-        {p.ato && <LeituraIaDoAto mov={p.ato} />}
+          <div className={styles.painelQuando}>
+            <QuandoEPorQue p={p} />
+          </div>
 
-        {/* Até quando e por quê — a qualificação do prazo. */}
-        <QuandoEPorQue p={p} />
-
-        {/* O que produzir até lá — peça, checklist, o que falta, o risco. */}
-        <AnalisePrazoPainel
-          prazoId={p.id}
-          analiseInicial={p.analise ?? null}
-          podeAnalisar={p.fechado !== true && Boolean(p.ato)}
-        />
+          {/* O que aconteceu, o que produzir até lá (peça, checklist, o que
+              falta, o risco) e o botão que pede a leitura quando ainda falta —
+              tudo na mesma chamada desde a fusão ato+prazo. Substitui a
+              `LeituraIaDoAto` somente-leitura + o `AnalisePrazoPainel` (rota
+              `/ia/prazos/{id}`, removida) que existiam separados até 10/09/2026. */}
+          {p.ato && (
+            <div className={styles.painelLeitura}>
+              <LeituraDoAto mov={p.ato} />
+            </div>
+          )}
+        </div>
 
         {/* Os documentos — a peça do tribunal e a certidão de publicação. */}
         {p.ato && <DocumentosDoAto mov={p.ato} />}

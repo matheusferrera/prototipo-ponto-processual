@@ -91,9 +91,9 @@ export async function GET(req: NextRequest) {
      numa tela seguinte: o front só tem esta passagem pelo servidor antes de o
      navegador seguir para o destino. Falhar aqui não pode custar o login — o
      painel recebe a conta com "falta a sua OAB" e o campo para informá-la. */
-  const conflitoDeOab = estado.oab && estado.uf
+  const resultadoOab = estado.oab && estado.uf
     ? await monitorarOab(dados.accessToken, estado.oab, estado.uf)
-    : false;
+    : null;
 
   /* Para onde vai quem acabou de entrar:
      — com OAB, ao painel: os processos dela já foram vistos em `/oab` e o
@@ -103,13 +103,17 @@ export async function GET(req: NextRequest) {
        é um redirect), e trocar por conta própria é exatamente o bug que este
        fluxo tinha — entrar pelo Google com um e-mail já cadastrado trocava a
        OAB da conta sem nada na tela. O onboarding faz a pergunta;
+     — com OAB que NÃO foi gravada (o backend recusou ou não respondeu), ao
+       onboarding com a OAB na URL também: mandar ao painel seria prometer um
+       monitoramento que não existe, e foi assim que uma conta chegou ao painel
+       vazio sem nada explicando. O onboarding refaz a busca e tenta de novo;
      — conta recém-criada sem OAB (o botão do /login), ao onboarding, que
        pergunta a OAB uma vez — o painel não teria o que mostrar;
      — o resto volta para onde tentava ir. */
   const destino = estado.oab && estado.uf
-    ? conflitoDeOab
-      ? `/onboarding?${new URLSearchParams({ oab: estado.oab, uf: estado.uf })}`
-      : ROTA_PAINEL
+    ? resultadoOab === 'ok'
+      ? ROTA_PAINEL
+      : `/onboarding?${new URLSearchParams({ oab: estado.oab, uf: estado.uf })}`
     : dados.criado
       ? '/onboarding'
       : destinoSeguro(estado.next, ROTA_PAINEL);
@@ -121,31 +125,49 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Grava a OAB na conta que acabou de entrar. Silencioso de propósito — com uma
- * exceção, que é o retorno.
+ * Grava a OAB na conta que acabou de entrar.
  *
  * O `accessToken` é o da sessão recém-aberta — este handler o tem em mãos antes
  * de gravá-lo no cookie, então a chamada vai direto ao backend em vez de passar
  * pelo proxy `/api/*`, que leria um cookie que ainda não existe.
  *
  * NUNCA manda `confirmarTroca`: este caminho não tem tela, e trocar a OAB de
- * uma conta é decisão que precisa de uma. O `409` volta como `true` para o
- * destino virar a tela que pergunta.
+ * uma conta é decisão que precisa de uma. O `409` vira `conflito`, e o destino
+ * passa a ser a tela que pergunta.
  *
- * @returns `true` quando a conta já monitora OUTRA OAB e nada foi gravado.
+ * **Ia para `POST /scraper/monitorar-oab` até 11/09/2026 — rota que o backend
+ * removeu em 04/09.** O destino certo é `POST /consulta-publica/geral`, o
+ * mesmo que o proxy `/api/consulta-publica/geral` usa.
+ *
+ * **E o retorno era booleano, o que tornava a falha invisível.** `res.status
+ * === 409` lia QUALQUER outra resposta — inclusive o 404 da rota morta — como
+ * "gravou", e o destino virava o painel. O sintoma foi este: conta criada pelo
+ * Google com OAB digitada, nenhuma `OabMonitorada` no banco, nenhum job, painel
+ * vazio — e nada na tela que dissesse o que faltou. Por isso agora são três
+ * estados, e falhar não manda para o painel: manda para o onboarding, que
+ * pergunta de novo.
  */
-async function monitorarOab(accessToken: string, oab: string, uf: string): Promise<boolean> {
+type ResultadoOab = 'ok' | 'conflito' | 'falhou';
+
+async function monitorarOab(accessToken: string, oab: string, uf: string): Promise<ResultadoOab> {
   try {
-    const res = await fetch(`${BACKEND}/scraper/monitorar-oab`, {
+    const res = await fetch(`${BACKEND}/consulta-publica/geral`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ oabNumero: oab, oabUf: uf }),
       cache: 'no-store',
     });
-    return res.status === 409;
-  } catch {
-    // Sem rede para o backend: o login continua valendo e o painel pede a OAB.
-    return false;
+
+    if (res.status === 409) return 'conflito';
+    if (res.ok) return 'ok';
+
+    console.error(`[google/callback] ${BACKEND}/consulta-publica/geral devolveu HTTP ${res.status} ao gravar a OAB ${oab}/${uf}`);
+    return 'falhou';
+  } catch (err) {
+    // Sem rede para o backend: o login continua valendo, e a OAB é perguntada
+    // de novo no onboarding em vez de a conta cair num painel vazio.
+    console.error('[google/callback] sem resposta do backend ao gravar a OAB:', err);
+    return 'falhou';
   }
 }
 

@@ -363,21 +363,6 @@
   text-decoration: none;
 }
 
-.botaoSecundario {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--ui);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-3);
-  background: none;
-  border: none;
-  padding: 4px 0;
-  cursor: pointer;
-  text-decoration: none;
-}
-.botaoSecundario:hover { color: var(--brick); }
 
 @media (min-width: 768px) {
   .wrapper { margin: 24px 32px 32px; padding: 64px 32px; }

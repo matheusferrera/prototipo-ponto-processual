@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Clock3, FileText, FileMinus, Lock, Paperclip } from 'lucide-react';
+import { ChevronRight, Clock3, FileText, Lock } from 'lucide-react';
 import type { Movimentacao } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
+import { DocumentoLink } from '../DocumentoLink/DocumentoLink';
 import { categoriaCurta } from '@/lib/categoria-movimentacao';
 import {
   acaoMovimentacao,
@@ -107,7 +108,6 @@ export function MovimentacaoRow({
   const vencimento = vencimentoDoAto(m);
   const acao = acaoMovimentacao(m);
   const conferir = pedeConferencia(m);
-  const temTeor = m.textoOriginal !== undefined ? Boolean(m.textoOriginal?.trim()) : m.temInteiroTeor;
   // O estado da PEÇA, que é outro fato — ver `Movimentacao.documentoEstado`.
   const doc = m.documentoEstado ?? 'nenhum';
 
@@ -203,38 +203,6 @@ export function MovimentacaoRow({
         </span>
 
         {!compacta && !noProcesso && <span className={styles.cnj}>{m.cnj}</span>}
-        {/* DOIS SINAIS, DOIS ÍCONES — e eles respondem perguntas diferentes.
-            Até 08/09/2026 havia um rótulo só ("Com inteiro teor") que fundia
-            texto com documento anexado: ato do PDPJ com um PDF sem texto
-            extraído dizia "Com inteiro teor" e, ao abrir, "Indisponível".
-
-            Esquerda, o TEXTO: dá para ler o ato agora?
-            Direita, a PEÇA: há arquivo, e vale clicar? */}
-        {temTeor !== undefined && (
-          <span className={styles.sinais}>
-            <span
-              className={`${styles.sinal} ${temTeor ? styles.sinalAtivo : ''}`}
-              title={temTeor ? 'Inteiro teor disponível' : 'Sem inteiro teor'}
-            >
-              {temTeor ? <FileText size={14} aria-hidden="true" /> : <FileMinus size={14} aria-hidden="true" />}
-              <span className="sr-only">{temTeor ? 'Com inteiro teor' : 'Sem inteiro teor'}</span>
-            </span>
-
-            {/* O cadeado é o único que promete abertura futura: bloqueio que o
-                TRIBUNAL declarou (pendente de ciência). `provavelIndisponivel`
-                é medição nossa — o portal já respondeu 404 para essa chave —,
-                e por isso vira clipe apagado, não cadeado. */}
-            <span
-              className={`${styles.sinal} ${doc === 'disponivel' ? styles.sinalAtivo : ''} ${doc === 'provavelIndisponivel' ? styles.sinalIncerto : ''}`}
-              title={DOC_TITULO[doc]}
-            >
-              {doc === 'trancado'
-                ? <Lock size={14} aria-hidden="true" />
-                : <Paperclip size={14} aria-hidden="true" />}
-              <span className="sr-only">{DOC_TITULO[doc]}</span>
-            </span>
-          </span>
-        )}
       </span>
     </>
   );
@@ -253,14 +221,82 @@ export function MovimentacaoRow({
     </Link>
   );
 
-  if (!painel) return linha;
+  /**
+   * A PEÇA — **um ícone só**: o documento, ou o cadeado.
+   *
+   * Aqui havia dois ícones lado a lado, e eles competiam sem se completar: o
+   * da esquerda dizia se havia TEXTO para ler, o da direita se havia ARQUIVO.
+   * Numa lista de cinquenta linhas isso são cem ícones cinzentos, e o que a
+   * pessoa quer saber é uma coisa só — dá para abrir o documento?
+   *
+   * O ícone de teor saiu inteiro. O que sobrou abre de verdade: quando há
+   * peça, ela; senão a certidão de publicação, que 100% dos atos do diário
+   * têm. Sem nenhuma das duas e com bloqueio, é cadeado — sem clique, porque
+   * não há o que abrir.
+   *
+   * > **Peça na frente da certidão quando as duas existem.** São documentos
+   * > diferentes (a peça é o ato; a certidão é a prova de que ele foi
+   * > publicado), e com um ícone só a peça ganha por ser o que se lê. A
+   * > certidão continua inteira na página do ato.
+   *
+   * Fica FORA de `linha` de propósito: a linha inteira é um `<a>` (ou um
+   * `<button>`, quando ela expande), e âncora dentro de âncora é HTML inválido
+   * — o navegador desmonta o aninhamento e o clique cai no elemento errado.
+   *
+   * `DocumentoLink` busca antes de abrir: quando a rota devolve o JSON de erro
+   * (peça que o token do serviço não alcança, chave que já respondeu 404), ele
+   * troca o link pela mensagem em vez de jogar o JSON numa aba.
+   */
+  const abre = doc === 'disponivel' || Boolean(m.temDocumentoDoAto);
+  // `trancado` é bloqueio DECLARADO pelo tribunal; `provavelIndisponivel` é
+  // medição nossa — a chave já foi pedida ao portal e voltou 404. Nenhum dos
+  // dois abre, então os dois viram cadeado; o motivo distingue no `title`.
+  const sigiloso = !abre && !m.temCertidao && (doc === 'trancado' || doc === 'provavelIndisponivel');
+  const urlDoDocumento = abre
+    ? `/api/movimentacoes/${m.id}/documento`
+    : m.temCertidao ? `/api/movimentacoes/${m.id}/certidao` : null;
+
+  /**
+   * A calha da peça é RESERVADA, mesmo vazia.
+   *
+   * Ela nasceu como irmã solta com `margin-top` negativo, e o resultado era o
+   * ícone caindo ABAIXO do filete — num vão só dele, colado na linha seguinte,
+   * que é justamente a linha a que ele não pertence. Como coluna do `.item`, o
+   * ícone divide a linha com o ato e o filete passa por baixo dos dois.
+   *
+   * Reservar a coluna em toda linha é o que mantém a calha da direita (chips,
+   * CNJ) parada: com a coluna aparecendo só onde há peça, cada linha calculava
+   * a própria margem e a lista inteira dançava.
+   */
+  const docs = (
+    <span className={styles.docs}>
+      {urlDoDocumento ? (
+        <DocumentoLink
+          url={urlDoDocumento}
+          className={styles.docLink}
+          title={abre ? 'Abrir o documento do ato' : 'Abrir a certidão de publicação (PDF oficial do CNJ)'}
+        >
+          <FileText size={15} aria-hidden="true" />
+          <span className="sr-only">{abre ? 'Abrir documento' : 'Abrir certidão de publicação'}</span>
+        </DocumentoLink>
+      ) : sigiloso ? (
+        <span className={styles.docTrancado} title={DOC_TITULO[doc]}>
+          <Lock size={15} aria-hidden="true" />
+          <span className="sr-only">{DOC_TITULO[doc]}</span>
+        </span>
+      ) : null}
+    </span>
+  );
 
   return (
-    <>
+    <div className={styles.item}>
       {linha}
-      <section id={idPainel} aria-labelledby={idTitulo}>
-        {painel}
-      </section>
-    </>
+      {docs}
+      {painel && (
+        <section id={idPainel} aria-labelledby={idTitulo}>
+          {painel}
+        </section>
+      )}
+    </div>
   );
 }

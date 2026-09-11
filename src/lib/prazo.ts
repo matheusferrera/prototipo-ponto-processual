@@ -1,5 +1,5 @@
 import type { NaturezaPrazo, Prazo } from '@/types';
-import { assuntoCurto, semCodigo } from '@/lib/pje-text';
+import { assuntoCurto, partesCurtas, semCodigo } from '@/lib/pje-text';
 
 export { assuntoCurto };
 
@@ -40,9 +40,22 @@ export function parteSecundaria(pz: Prazo, titulo: string): string | null {
  * assunto desce para a meta junto com os autos.
  *
  * Ex.: "Município de Sonora | Embargos de Declaração | autos nº … · ICMS CFEM"
+ *
+ * **Dois nomes, no máximo** (`partesCurtas`). `parte` é o texto do ato, e num
+ * polo coletivo ele traz o polo inteiro: numa intimação de polo ativo do TRF1
+ * são 313 nomes, e a linha da pauta os despejava em vinte linhas — o chip de
+ * prazo ficava sozinho lá em cima e o vencimento, que é a razão de existir da
+ * tela, saía do campo de visão. Vale para o PDF da pauta pelo mesmo motivo
+ * (`prazos-pdf.ts` chama esta função): a célula "Cliente" esticava a linha da
+ * tabela até quebrar a página.
+ *
+ * O corte é só do ramo `parte`. Os fallbacks (assunto encurtado, tipo) saem
+ * byte a byte como antes — `assuntoSecundario` compara o assunto com o que
+ * esta função devolveu para decidir se repete, e mexer neles quebraria a
+ * comparação.
  */
 export function clientePrazo(pz: Prazo): string {
-  return pz.parte || assuntoCurto(pz.assunto) || pz.tipo;
+  return partesCurtas(pz.parte) || assuntoCurto(pz.assunto) || pz.tipo;
 }
 
 /** Expediente sem o id interno do documento — o "o que fazer" da linha. */

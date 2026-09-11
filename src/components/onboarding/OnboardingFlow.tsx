@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Check, KeyRound, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,10 @@ import { limparOabNumero, limparOabUf, slugOab } from '@/lib/previa';
 import { ligarMonitoramento, type ConflitoOab } from '@/lib/monitorar-oab';
 import { ConfirmarTrocaOab } from '@/components/oab/ConfirmarTrocaOab';
 import { ROTA_PAINEL } from '@/lib/rotas';
-import { CredentialSheet, type CredentialSheetTarget } from '@/components/credenciais/CredentialSheet/CredentialSheet';
 import { ScannerTribunais } from '@/components/varredura/ScannerTribunais';
 import { EstadoVarredura } from '@/components/varredura/EstadoVarredura';
 import { DicasVarredura } from '@/components/varredura/DicasVarredura';
-import type { SistemaGroup, ScraperSecretView } from '@/lib/credenciais';
+import type { SistemaGroup } from '@/lib/credenciais';
 import styles from './OnboardingFlow.module.css';
 
 interface DjenTribunalPreview {
@@ -34,9 +33,15 @@ interface DjenPreview {
  * sozinha. `oab` é o de quem chega sem ela (criou a conta pelo Google, ou pelo
  * /cadastro sem passar pela consulta): a pergunta acontece uma vez, aqui, e a
  * resposta sai desta tela para `/oab/<numero>-<uf>` em vez de virar uma busca
- * escondida. `credencial` é para quem dispensa a OAB e vai direto ao tribunal.
+ * escondida.
+ *
+ * **Não existe mais um estágio de credencial.** Até 11/09/2026 havia um
+ * (`credencial`), e cada tela desta daqui oferecia um botão para cadastrar o
+ * login do tribunal. A conta nova nasce só com OAB e fontes públicas; conectar
+ * um tribunal virou passo OPCIONAL, em Credenciais, depois de a pessoa já estar
+ * dentro do produto. Ver o docblock do componente.
  */
-type Stage = 'buscando' | 'oab' | 'resultado' | 'erro' | 'credencial';
+type Stage = 'buscando' | 'oab' | 'resultado' | 'erro';
 
 function getNomeTribunalFallback(sigla: string): string {
   const ufMap: Record<string, string> = {
@@ -89,6 +94,21 @@ function getNomeTribunalFallback(sigla: string): string {
  * O outro lugar onde se digita OAB aqui é a correção, escondida atrás de "não é
  * essa OAB?" nos caminhos de erro e de zero resultados. Ali não é pergunta — é
  * a saída de quem errou um dígito e ficaria sem próximo passo.
+ *
+ * **Nenhuma tela daqui pede credencial de tribunal (desde 11/09/2026).** A
+ * conta nova nasce com OAB e fontes públicas, e é só disso que ela precisa para
+ * o painel encher — quem consulta o PDPJ é o produto, com uma credencial de
+ * SERVIÇO, e o DJEN não tem credencial nenhuma. Antes, cada um dos cinco
+ * estados desta tela terminava num botão de "cadastrar credencial", incluindo
+ * um estágio inteiro (`credencial`) e o `CredentialSheet` embutido: pedir a
+ * senha do tribunal no primeiro acesso é o pedido mais caro do produto, feito
+ * antes de a pessoa ter visto qualquer valor. Conectar um tribunal continua
+ * valendo — é o que alcança o processo em segredo de justiça — mas como passo
+ * OPCIONAL, em `/credenciais`, depois de a conta já estar de pé.
+ *
+ * Sair daqui não deixa nada por fazer: a OAB já foi gravada (`ligarMonitoramento`)
+ * e a varredura já está na fila. E entrar na conta de novo reenfileira a mesma
+ * sincronização, pelo login — ver `sincronizarAoEntrar`, no backend.
  */
 export function OnboardingFlow({
   sistemas,
@@ -109,11 +129,13 @@ export function OnboardingFlow({
   /* A conta já monitora outra OAB — quem chegou aqui por um e-mail que já
      existia. Nada foi gravado: a decisão de trocar é de quem está na tela. */
   const [conflito, setConflito] = useState<ConflitoOab | null>(null);
+  /* A gravação da OAB falhou (backend fora, rota que mudou, 500). A tela NÃO
+     pode seguir dizendo "já estamos trazendo seus processos": foi exatamente
+     assim que uma conta chegou ao painel vazio sem nada explicando. */
+  const [erroMonitorar, setErroMonitorar] = useState('');
   const [trocando, setTrocando] = useState(false);
   const [erroTroca, setErroTroca] = useState('');
 
-  const [sheetTarget, setSheetTarget] = useState<CredentialSheetTarget | null>(null);
-  const [saved, setSaved] = useState<ScraperSecretView | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   /**
@@ -157,16 +179,22 @@ export function OnboardingFlow({
       setStage('resultado');
 
       // A prévia só conta — quem grava `Process`/`Deadline` na conta é o job do
-      // DJEN. Sem isto, "pular por agora" levava a um painel vazio. Roda em
+      // DJEN. Sem isto, "ir para o painel" levava a um painel vazio. Roda em
       // segundo plano: falhar aqui não deve derrubar o resultado já na tela, e
-      // o usuário reobtém o monitoramento cadastrando a credencial.
+      // o monitoramento não fica perdido — entrar na conta de novo enfileira a
+      // mesma sincronização (ver `sincronizarAoEntrar`, no backend).
       //
       // A ÚNICA resposta que sobe para a tela é o conflito: a conta já monitora
       // outra OAB. Engolir isso (o `catch(() => {})` de antes) era o que fazia a
       // OAB anterior ser substituída sem que ninguém visse.
       if (djen.totalProcessos > 0) {
+        setErroMonitorar('');
         void ligarMonitoramento({ numero, uf }).then(resultado => {
-          if (resultado.status === 'conflito') setConflito(resultado.conflito);
+          if (resultado.status === 'conflito') return setConflito(resultado.conflito);
+          if (resultado.status === 'erro') return setErroMonitorar(resultado.mensagem);
+          if (resultado.status === 'nao-autenticado') {
+            return setErroMonitorar('Sua sessão expirou. Entre de novo para ligar o monitoramento.');
+          }
         });
       }
     } catch {
@@ -203,38 +231,6 @@ export function OnboardingFlow({
     );
   }
 
-  function abrirCredencial() {
-    setSheetTarget({
-      mode: 'create',
-      presetOabNumero: oabNumero,
-      presetOabUf: oabUf,
-    });
-  }
-
-  function abrirCredencialParaTribunal(sigla: string) {
-    let sistema: string | undefined;
-    const tribunalIds: string[] = [];
-
-    for (const s of sistemas) {
-      for (const g of s.grupos) {
-        const graus = g.graus.filter(grau => grau.id.replace(/G[12]$/, '') === sigla);
-        if (graus.length > 0) {
-          sistema = s.sistema;
-          tribunalIds.push(...graus.map(gr => gr.id));
-        }
-      }
-      if (sistema) break;
-    }
-
-    setSheetTarget({
-      mode: 'create',
-      presetOabNumero: oabNumero,
-      presetOabUf: oabUf,
-      presetSistema: sistema,
-      presetTribunaisIds: tribunalIds.length > 0 ? tribunalIds : undefined,
-    });
-  }
-
   const trocarOab = (
     <TrocarOab
       numero={oabNumero}
@@ -259,26 +255,7 @@ export function OnboardingFlow({
       </div>
 
       <div className={styles.content}>
-        {saved ? (
-          <div className={styles.card}>
-            <div className={`${styles.icon} ${styles.iconDone}`}>
-              <Check size={22} />
-            </div>
-            <div className={styles.title}>Credencial cadastrada</div>
-            <p className={styles.desc}>
-              Vamos buscar seus processos usando &quot;{saved.label}&quot; agora. A primeira sincronização
-              pode levar alguns minutos — você já pode explorar o resto da plataforma enquanto isso.
-            </p>
-            <div className={styles.actions}>
-              <Button type="button" variant="outline" onClick={() => setSheetTarget({ mode: 'create' })}>
-                <KeyRound size={14} /> Cadastrar outro tribunal
-              </Button>
-              <Button type="button" onClick={() => router.push(ROTA_PAINEL)}>
-                Ir para o dashboard →
-              </Button>
-            </div>
-          </div>
-        ) : stage === 'buscando' ? (
+        {stage === 'buscando' ? (
           /* Sem botão e sem campo: a pessoa já respondeu tudo o que precisávamos
              no cadastro. Esta tela só presta contas do que está acontecendo.
 
@@ -353,30 +330,6 @@ export function OnboardingFlow({
                 </Button>
               </div>
             </form>
-            <button type="button" className={styles.trocarLink} onClick={() => setStage('credencial')}>
-              Prefiro conectar o login de um tribunal
-            </button>
-          </div>
-        ) : stage === 'credencial' ? (
-          <div className={styles.card}>
-            <div className={styles.icon}>
-              <KeyRound size={22} />
-            </div>
-            <div className={styles.eyebrow}>Primeiro acesso</div>
-            <div className={styles.title}>Vamos conectar seu primeiro tribunal</div>
-            <p className={styles.desc}>
-              Cadastre o login que você usa no tribunal (PJe, CPE, Projudi…) e o robô assume a
-              ronda: descobre seus processos pela OAB e acompanha cada movimentação e prazo,
-              inclusive nos autos em segredo de justiça.
-            </p>
-            <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
-                Pular por agora
-              </Button>
-              <Button type="button" onClick={abrirCredencial}>
-                <KeyRound size={14} /> Cadastrar credencial
-              </Button>
-            </div>
           </div>
         ) : stage === 'erro' ? (
           <div className={styles.card}>
@@ -385,13 +338,12 @@ export function OnboardingFlow({
             </div>
             <div className={styles.eyebrow}>OAB {oabNumero}/{oabUf}</div>
             <div className={styles.title}>Não conseguimos realizar a consulta pública agora</div>
-            <p className={styles.desc}>{erro || 'Tente novamente em instantes, ou cadastre a credencial do tribunal direto.'}</p>
+            <p className={styles.desc}>
+              {erro || 'Tente novamente em instantes — as bases públicas oscilam, e a sua conta já está de pé.'}
+            </p>
             <div className={styles.actions}>
               <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
-                Pular por agora
-              </Button>
-              <Button type="button" variant="outline" onClick={abrirCredencial}>
-                <KeyRound size={14} /> Cadastrar credencial mesmo assim
+                Ir para o painel
               </Button>
               <Button type="button" disabled={buscando} onClick={() => void buscar(oabNumero, oabUf)}>
                 {buscando ? <Loader2 size={14} className={styles.spin} /> : <Search size={14} />}
@@ -408,15 +360,14 @@ export function OnboardingFlow({
             <div className={styles.eyebrow}>OAB {oabNumero}/{oabUf}</div>
             <div className={styles.title}>Não encontramos publicações dos últimos 6 meses para essa OAB</div>
             <p className={styles.desc}>
-              As consultas públicas nem sempre cobrem tudo — pode ser uma OAB nova ou processos em segredo de justiça.
-              Você ainda pode cadastrar a credencial de um tribunal diretamente para ter acesso completo.
+              As bases públicas nem sempre cobrem tudo — pode ser uma OAB nova, ou processos que
+              correm em segredo de justiça. A conta fica monitorando assim mesmo: a primeira
+              publicação nesta OAB aparece aqui sozinha. Se quiser alcançar os autos sigilosos,
+              dá para conectar o login do tribunal depois, em Credenciais.
             </p>
             <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
-                Pular por agora
-              </Button>
-              <Button type="button" onClick={abrirCredencial}>
-                <KeyRound size={14} /> Cadastrar credencial
+              <Button type="button" onClick={() => router.push(ROTA_PAINEL)}>
+                Ir para o painel →
               </Button>
             </div>
             {trocarOab}
@@ -440,12 +391,21 @@ export function OnboardingFlow({
                 Eles ainda <strong>não</strong> foram trazidos para o seu painel — decida abaixo o
                 que fazer com a OAB que esta conta já acompanha.
               </p>
+            ) : erroMonitorar ? (
+              /* A busca deu certo, a gravação não. Dizer o que NÃO aconteceu é o
+                 ponto: a lista abaixo continua sendo uma prévia pública, e o
+                 painel vai estar vazio até isto passar. */
+              <p className={styles.desc}>
+                Encontramos estes processos, mas <strong>não conseguimos ligar o monitoramento
+                agora</strong> — eles ainda não foram trazidos para o seu painel. {erroMonitorar}
+              </p>
             ) : (
               <p className={styles.desc}>
                 Já estamos trazendo esses processos e prazos para o seu painel — pode levar alguns
-                minutos. Esses são apenas os processos com publicação nos últimos 6 meses em consultas
-                públicas. Para puxar <strong>todos os seus processos</strong>, inclusive os{' '}
-                <strong>sigilosos</strong> e em segredo de justiça, faça o login no tribunal abaixo.
+                minutos, e <strong>não é preciso a senha de tribunal nenhum</strong>. Esses são os
+                processos com publicação nos últimos 6 meses nas bases públicas; autos em segredo
+                de justiça não aparecem por lá. Se você precisa deles, conectar o login do tribunal
+                é um passo opcional, em Credenciais, quando quiser.
               </p>
             )}
 
@@ -471,32 +431,30 @@ export function OnboardingFlow({
                     <span className={styles.resultCount}>
                       {t.processos} {t.processos === 1 ? 'processo' : 'processos'}
                     </span>
-                    <Button type="button" size="sm" variant="outline" onClick={() => abrirCredencialParaTribunal(t.sigla)}>
-                      Conectar
-                    </Button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className={styles.actions}>
-              <Button type="button" variant="ghost" onClick={() => router.push(ROTA_PAINEL)}>
-                Pular por agora
-              </Button>
-              <Button type="button" onClick={abrirCredencial}>
-                <KeyRound size={14} /> Conectar outro tribunal
-              </Button>
-            </div>
+            {/* Com conflito, quem decide é o bloco acima: um "ir para o painel"
+                aqui embaixo competiria com "manter a OAB atual" e "trocar",
+                que são a mesma saída com outro nome — e a errada é destrutiva. */}
+            {!conflito && (
+              <div className={styles.actions}>
+                {erroMonitorar && (
+                  <Button type="button" variant="outline" disabled={buscando} onClick={() => void buscar(oabNumero, oabUf)}>
+                    {buscando ? <Loader2 size={14} className={styles.spin} /> : <Search size={14} />}
+                    {buscando ? 'Tentando…' : 'Tentar de novo'}
+                  </Button>
+                )}
+                <Button type="button" onClick={() => router.push(ROTA_PAINEL)}>
+                  Ir para o painel →
+                </Button>
+              </div>
+            )}
           </div>
         ) : null}
       </div>
-
-      <CredentialSheet
-        target={sheetTarget}
-        onOpenChange={open => { if (!open) setSheetTarget(null); }}
-        sistemas={sistemas}
-        onSaved={secret => { setSaved(secret); setSheetTarget(null); }}
-      />
     </div>
   );
 }

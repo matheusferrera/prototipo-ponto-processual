@@ -3,7 +3,7 @@ import { ArrowUpRight, Clock3, Sparkles } from 'lucide-react';
 import type { AnaliseDoCaso, Prazo, TimelineEvent } from '@/types';
 import { panoramaProcesso, origemDataPrazo } from '@/lib/processo-panorama';
 import { dataPrazo, quandoPrazo, faixaPrazo } from '@/lib/prazo-apresentacao';
-import { RevisarProvidencia } from './ProcessoControls';
+import { RevisarProvidencia, VerAnaliseCompleta } from './ProcessoControls';
 import styles from './ProcessoPanorama.module.css';
 
 const DESTINATARIOS: Record<string, string> = {
@@ -51,9 +51,11 @@ export function ProcessoPanorama({ eventos, prazos, basePath, caso }: {
         </div>
         <p className={styles.casoSintese}>{caso.sintese}</p>
         <p className={styles.casoRodape}>
-          <Link className={styles.link} href={`${basePath}?aba=ia`}>
-            Ver análise completa <ArrowUpRight size={14} aria-hidden="true" />
-          </Link>
+          {/* Trocar a aba não basta: a aba de IA abre ~800px abaixo do painel,
+              fora da tela. O componente cliente leva o clique até a leitura —
+              ver `VerAnaliseCompleta`, que explica por que o hash sozinho não
+              resolve nesta página. */}
+          <VerAnaliseCompleta href={`${basePath}?aba=ia#analises-ia`} />
           {/* `atualizadaEm` existia no tipo e não era renderizado: uma síntese
               anterior à última movimentação está velha de um jeito que o leitor
               não tem como perceber. */}
@@ -87,7 +89,7 @@ export function ProcessoPanorama({ eventos, prazos, basePath, caso }: {
       <div className={styles.task}>
         <div className={styles.heading}><h3><Sparkles size={14} aria-hidden="true" /> Providência sugerida pela IA</h3>{acao && <span className={styles.badge}>A conferir</span>}</div>
         {acao ? <>
-          <p className={styles.description}>{acao.ia?.acao}</p>
+          <p className={styles.description}>{acao.ia?.oQueFazer}</p>
           <p className={styles.small}>{DESTINATARIOS[acao.ia?.deQuem ?? 'indefinido']} · {acao.date} {acao.ano}{acao.ia?.confianca === 'baixa' ? ' · Leitura com baixa confiança' : ''}</p>
           {acao.ia?.fundamento && <details className={styles.basis}><summary>Ver fundamento</summary><p>{acao.ia.fundamento}</p></details>}
           <Link className={styles.link} href={`/movimentacoes/${encodeURIComponent(acao.id)}`}>Conferir ato de origem <ArrowUpRight size={14} aria-hidden="true" /></Link>

@@ -465,7 +465,7 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
                 estreito que eles. A medida de leitura continua sendo do
                 CONTEÚDO, não do painel. */}
             {aba === 'ia' && (
-              <section className={styles.panel} aria-labelledby="ia-title">
+              <section id="analises-ia" className={styles.panel} aria-labelledby="ia-title">
                 <div className={styles.sectionHeader}>
                   <h2 id="ia-title">Análises de IA</h2>
                   <div className={styles.sectionRule} />

@@ -15,6 +15,7 @@ import { CadastrarOab } from '@/components/dashboard/CadastrarOab/CadastrarOab';
 import { PainelSincronizando } from '@/components/varredura/PainelSincronizando';
 import { formatarOab, type UsuarioAtual } from '@/lib/usuario';
 import { rotuloNatureza, tituloPrazo } from '@/lib/prazo';
+import { partesCurtas } from '@/lib/pje-text';
 import { categoriaCurta } from '@/lib/categoria-movimentacao';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { nomeDoCaso, nomeLegivel } from '@/lib/processo-apresentacao';
@@ -158,7 +159,10 @@ export default async function DashboardPage() {
         ...(m.time ? { time: m.time } : {}),
         detail: m.detail,
         resumo: m.ia.resumo,
-        acao: m.ia.acao,
+        // `oQueFazer` está sempre presente quando o ato foi lido (fusão
+        // ato+prazo), mesmo em mera ciência — `peca` é o sinal de que há algo
+        // concreto a produzir, e é o que decide se "A fazer:" aparece no feed.
+        acao: m.ia.peca ? m.ia.oQueFazer : null,
         daParteContraria: m.ia.deQuem === 'parteContraria',
         confiancaBaixa: m.ia.confianca === 'baixa',
         doc: abre ? 'abre' : sigiloso ? 'sigiloso' : 'nenhum',
@@ -266,7 +270,11 @@ export default async function DashboardPage() {
                   const caso = processo ? nomeDoCaso(processo) : null;
                   const titulo = caso
                     ? (caso.passivo ? `${caso.ativo} × ${caso.passivo}` : caso.ativo)
-                    : (pz.parte ? nomeLegivel(pz.parte) : tituloPrazo(pz));
+                    // `partesCurtas` antes do `nomeLegivel`: sem o processo
+                    // na carteira o fallback é `pz.parte` cru, e num polo
+                    // coletivo (313 nomes numa intimação do TRF1) ele viraria
+                    // um parágrafo em Título de Caso no topo do painel.
+                    : (pz.parte ? nomeLegivel(partesCurtas(pz.parte)) : tituloPrazo(pz));
                   return (
                     <Link key={pz.id} href={href} className={styles.prazoItem}>
                       <span className={styles.prazoCabeca}>

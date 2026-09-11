@@ -2,6 +2,28 @@
    Mobile-first: no celular empilha (ato, cliente, calha). >=768px vira duas
    colunas, corpo à esquerda e calha à direita, como `ProcessList`. */
 
+/* O ITEM — o ato e a peça na MESMA linha, com o filete por baixo dos dois.
+   A peça precisa ficar fora da âncora (âncora dentro de âncora é HTML
+   inválido), e como irmã solta ela caía abaixo do filete, num vão colado na
+   linha seguinte. Como grade de duas colunas, ela é irmã no DOM e vizinha na
+   tela — que é o que a estrutura precisava dizer desde o começo.
+
+   O fundo e o filete são do item, não da linha: com eles na linha, a calha do
+   ícone ficava clara ao lado de uma linha tingida no hover. */
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background-color 150ms ease;
+}
+
+.item:hover  { background: var(--paper-2); }
+.item:active { background: var(--paper-3); }
+
+/* O painel do ato ocupa as duas colunas — ele fala do ato inteiro, não da
+   metade esquerda dele. */
+.item > section { grid-column: 1 / -1; }
+
 .row {
   width: 100%;
   border: 0;
@@ -12,8 +34,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--line-soft);
+  /* Direita curta de propósito: quem paga o respiro da borda da tela é a calha
+     da peça, que vem depois. */
+  padding: var(--space-md) var(--space-sm) var(--space-md) var(--space-lg);
   color: inherit;
   text-decoration: none;
   cursor: pointer;
@@ -21,8 +44,6 @@
   transition: background-color 150ms ease;
 }
 
-.row:hover  { background: var(--paper-2); }
-.row:active { background: var(--paper-3); }
 .row:focus-visible {
   outline: 2px solid var(--brick);
   outline-offset: -2px;
@@ -193,12 +214,12 @@
   transition: transform 150ms ease, color 150ms ease;
 }
 
-.row:hover .chevron { color: var(--ink); transform: translateX(2px); }
+.item:hover .chevron { color: var(--ink); transform: translateX(2px); }
 
 /* Linha aberta: o chevron aponta para baixo (é o que diz "isto se fecha") e a
    linha ganha o mesmo fundo do painel, para os dois lerem como um bloco só. */
-.aberta { background: var(--paper-2); }
-.aberta:hover { background: var(--paper-3); }
+.item:has(.aberta) { background: var(--paper-2); }
+.item:has(.aberta):hover { background: var(--paper-3); }
 .aberta .chevron { transform: rotate(90deg); color: var(--ink); }
 .aberta:hover .chevron { transform: rotate(90deg) translateX(2px); }
 .aberta .ato { font-weight: 700; }
@@ -240,7 +261,8 @@
 /* Densidade compacta (painel): uma linha só, sem resumo nem providência. */
 .compacta {
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-sm);
 }
 
 .compacta .ato { font-size: 13px; }
@@ -260,7 +282,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     column-gap: var(--space-2xl);
     align-items: start;
-    padding: var(--space-md) var(--space-2xl);
+    padding-left: var(--space-2xl);
   }
 
   .calha { flex-direction: column; flex-wrap: nowrap; }
@@ -286,42 +308,57 @@
   .acao { max-width: 80ch; }
   .orgao { max-width: 34ch; }
 
-  .compacta { padding: var(--space-sm) var(--space-lg); }
+  .compacta { padding-left: var(--space-lg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .row, .chevron { transition: none; }
-  .row:hover .chevron { transform: none; }
-  .aberta:hover .chevron { transform: rotate(90deg); }
+  .item, .chevron { transition: none; }
+  .item:hover .chevron { transform: none; }
+  .item:has(.aberta):hover .chevron { transform: rotate(90deg); }
 }
 
-/* DOIS SINAIS, lado a lado: à esquerda o TEXTO do ato, à direita a PEÇA.
-   Eram um rótulo escrito ("Com inteiro teor") que fundia os dois; virou ícone
-   porque a pergunta é binária e a linha é densa — o texto por extenso vai no
-   `title` e no leitor de tela, onde não custa largura. */
-.sinais {
+/* ---- A calha da peça: UM ícone, documento ou cadeado ----
+   Coluna 2 do item, RESERVADA mesmo vazia: aparecendo só onde há peça, ela
+   mudava a largura da coluna de texto de linha para linha e a calha da direita
+   (chips, CNJ) dançava na lista. Vazia ela custa 28px e nada mais. */
+.docs {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* `min-width`, não `width`: quando o documento não abre, `DocumentoLink`
+     troca o ícone pela MENSAGEM do backend, e numa caixa de 28px ela sairia
+     uma letra por linha. Com o mínimo, a coluna cresce só nessa linha e só
+     enquanto o aviso está na tela. */
+  min-width: 28px;
+  max-width: 40%;
+  margin-right: var(--space-lg);
+}
+
+.docLink,
+.docTrancado {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
+  justify-content: center;
+  /* 28px de alvo: menor que os 44 de um botão de ação, porque a linha inteira
+     já é clicável e este é o atalho — mas grande o bastante para o dedo. */
+  width: 28px;
+  height: 28px;
+  flex: none;
 }
 
-.sinal {
-  display: inline-flex;
-  align-items: center;
-  /* `--ink-3` reprova como texto (4,32:1), mas aqui é ÍCONE com rótulo no
-     `title` e no `sr-only` — o AA de 4.5 vale para texto, e o alvo do ícone
-     apagado é justamente parecer apagado. */
-  color: var(--ink-3);
-}
+.docLink { color: var(--brick); text-decoration: none; cursor: pointer; }
+.docLink:hover { background: var(--brick-soft); }
+.docLink:focus-visible { outline: 2px solid var(--brick); outline-offset: 1px; }
 
-.sinal svg { flex: none; }
-/* Tem: verde-floresta, o mesmo peso do resto do sistema. */
-.sinalAtivo { color: var(--brick); }
-/* Existe a referência, mas a aquisição já mediu que o arquivo não vem —
-   âmbar, que é ressalva, não erro. Ver `documentoEstado`. */
-.sinalIncerto { color: var(--signal-ink); }
+/* Âmbar é ressalva, não erro: o documento existe no acervo do tribunal e não
+   chega até aqui. `--signal-ink` sobre o creme mede 6,4:1. */
+.docTrancado { color: var(--signal-ink); }
 
-.row.noProcesso { padding: var(--space-md) var(--space-lg); }
+.row.noProcesso { padding-left: var(--space-lg); }
+
+/* A calha acompanha o respiro da linha no desktop. */
+@media (min-width: 768px) { .docs { margin-right: var(--space-2xl); } }
 
 @container movimento-processo (max-width: 680px) {
   .row.noProcesso { display: flex; flex-direction: column; gap: var(--space-sm); }

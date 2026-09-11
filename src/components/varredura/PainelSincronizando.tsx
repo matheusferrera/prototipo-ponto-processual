@@ -1,9 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { KeyRound } from 'lucide-react';
 import { formatarOab, type UsuarioAtual } from '@/lib/usuario';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import type { ScraperSecretView } from '@/lib/credenciais';
@@ -234,19 +232,20 @@ export function PainelSincronizando({ oab }: { oab: NonNullable<UsuarioAtual['oa
 
       <DicasVarredura />
 
-      <div className={styles.acoes}>
-        {achou && (
+      {/* Nesta tela não se pede credencial de tribunal (11/09/2026). O botão que
+          ficava aqui era o PRIMÁRIO enquanto a varredura ainda não tinha achado
+          nada — ou seja, a ação mais destacada da tela era "digite a senha do
+          seu tribunal", oferecida justo a quem acabou de entrar e está esperando
+          a primeira busca terminar. Conectar tribunal é passo opcional e mora em
+          `/credenciais`. Sem nada achado ainda, esta área não tem ação nenhuma:
+          a tela está prestando contas, não pedindo. */}
+      {achou && (
+        <div className={styles.acoes}>
           <button type="button" className={styles.botaoPrimario} onClick={() => router.refresh()}>
             Abrir o dashboard →
           </button>
-        )}
-        <Link
-          href="/credenciais"
-          className={achou ? styles.botaoSecundario : styles.botaoPrimario}
-        >
-          <KeyRound size={14} /> Conectar o login de um tribunal
-        </Link>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

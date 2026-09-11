@@ -15,9 +15,12 @@ export interface UsuarioAtual {
   /** Foto da conta Google, quando o login veio de lá. */
   avatarUrl: string | null;
   /**
-   * A OAB não é campo de usuário no banco: mora nos `ScraperSecret`. `null`
-   * significa que a pessoa nunca informou uma — e sem OAB não há descoberta de
-   * processo, que é o que o painel vazio precisa dizer.
+   * A OAB não é campo de usuário no banco: tem tabela própria (`OabMonitorada`,
+   * desde 07/09/2026 — antes morava dentro do `ScraperSecret`, e o backend ainda
+   * lê o secret como segunda via para a conta que cadastrou senha de tribunal
+   * antes de informar OAB). `null` significa que a pessoa nunca informou uma — e
+   * sem OAB não há descoberta de processo, que é o que o painel vazio precisa
+   * dizer, e é o porteiro do `/onboarding`.
    */
   oab: { numero: string; uf: string } | null;
 }

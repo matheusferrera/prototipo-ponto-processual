@@ -29,19 +29,46 @@ const ETAPAS: Record<string, string> = {
 const INTERVALO_JOB_MS = 1_500;
 /**
  * Intervalo do poll da LEITURA, que é outra ordem de grandeza: cada ato leva
- * ~20 s no teto da Moonshot (`KIMI_RPM` 3, concorrência 1, e a fila é global).
+ * ~20 s (o modelo, mais o teto de `KIMI_RPM` numa fila de concorrência 1).
  * Perguntar mais rápido não faz o modelo ler mais rápido.
  */
 const INTERVALO_LEITURA_MS = 6_000;
 
-/** Teto do job: passou disto, ele não está terminando por nossa causa. */
+/** Teto do job da consulta: passou disto, ele não está terminando por nossa causa. */
 const LIMITE_JOB_MS = 90_000;
+
 /**
- * Teto da leitura. 25 atos é o máximo por rodada do backend, a ~20 s cada — daí
- * os 10 minutos. Depois disso devolvemos o controle: uma aba esquecida aberta
- * não deve ficar batendo no servidor.
+ * Quanto tempo sem NENHUMA leitura nova antes de devolver o controle.
+ *
+ * Substituiu um teto absoluto de 10 minutos, que era a medida errada: um
+ * processo de 48 atos leva ~16 min só para drenar, e a fila `ia` é global — ela
+ * pode estar ocupada com a ronda de outra conta. O que separa "está andando,
+ * devagar" de "não vai andar" é o PROGRESSO, não o relógio: enquanto ato novo
+ * aparece, a espera continua; três minutos calados encerram.
  */
-const LIMITE_LEITURA_MS = 10 * 60_000;
+const PACIENCIA_SEM_PROGRESSO_MS = 3 * 60_000;
+
+/**
+ * A mesma espera, depois que a rodada já leu o que pediu.
+ *
+ * Uma leitura escreve em TODAS as movimentações do mesmo ato (o agrupamento é
+ * pelo hash do teor), então "movimentações lidas ≥ atos enfileirados" é forte
+ * indício de fim, e não prova: um ato de quatro linhas adianta o contador
+ * enquanto outro ainda está na fila. Meio minuto calado depois disso encerra —
+ * sem ele, toda rodada terminaria com três minutos de poll contra uma fila
+ * parada.
+ */
+const GRACA_APOS_ALVO_MS = 30_000;
+
+/**
+ * Rodadas de leitura por clique.
+ *
+ * A rodada existe porque a busca da peça acontece dentro da requisição (até
+ * duas idas ao portal por documento), então o backend a limita e devolve o
+ * resto em `adiadosPorOrcamento`. Oito rodadas cobrem qualquer processo do
+ * acervo; o teto está aqui para uma tela esquecida aberta não pedir para sempre.
+ */
+const MAX_RODADAS = 8;
 
 type Fase = 'ocioso' | 'consultando' | 'lendo' | 'pronto';
 
@@ -60,43 +87,58 @@ type RespostaJob = {
  * resultado: a fila `ia` é serial e resolve depois.
  */
 type RespostaIa = {
-  atos?: { enfileirados?: number; candidatos?: number; semTexto?: number };
+  atos?: {
+    enfileirados?: number;
+    candidatos?: number;
+    semTexto?: number;
+    /** Ficaram de fora pelo teto de atos da rodada. */
+    excedentes?: number;
+    /** Têm documento e ficaram sem teor porque o orçamento de busca acabou. */
+    adiadosPorOrcamento?: number;
+  };
   analises?: { prazosEnfileirados?: number; casosEnfileirados?: number };
   error?: string;
 };
+
+/** A cobertura do processo, como `/api/processos/{id}/leitura` a devolve. */
+type Cobertura = { lidas: number; legiveis: number; total: number };
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function plural(n: number, um: string, muitos: string): string {
+  return `${n} ${n === 1 ? um : muitos}`;
+}
+
 /**
- * Atualiza ESTE processo nas fontes públicas e manda a IA explicar o que veio.
+ * Atualiza ESTE processo nas fontes públicas e manda a IA explicar o que veio —
+ * **até acabar**.
  *
  * São **duas chamadas**, e é isto que o botão orquestra:
  *
  * 1. **A consulta** (`POST /consulta-publica/processo`) — capa e histórico pelo
  *    PDPJ, mais a heurística de prazo do ato. Assíncrona, mas termina em
  *    segundos; o andamento sai por etapa em `/api/jobs/{jobId}`.
- * 2. **A leitura** (`POST /api/ia/processos/{id}`) — os três níveis da
- *    pirâmide: os atos ainda não lidos, os prazos em aberto e a síntese do
- *    caso. Só ENFILEIRA; a fila `ia` é serial e drena a ~20 s por ato.
+ * 2. **A leitura** (`POST /api/ia/processos/{id}`), em RODADAS — os atos ainda
+ *    não lidos e a síntese do caso. Só enfileira; a fila `ia` é serial e drena
+ *    a ~20 s por ato.
  *
- * **A segunda chamada é a correção de 08/09/2026.** Até 07/09 quem lia era o
- * próprio job da consulta (`result.leitura.enfileirados`), e naquele dia a
- * leitura saiu de lá e virou rota própria — `POST /ia/processos/{id}`, que
- * ninguém no front chamava. O botão continuou "funcionando": consultava o PDPJ,
- * lia `result.leitura` (que deixou de existir), achava zero e anunciava
- * **"nada novo para ler neste processo"** em processo nenhum lido. Medido em
- * 08/09/2026 no `5008313-42.2024.4.03.6000`: 137 movimentações, **0** com
- * resumo, e a aba de IA dizendo que a IA não tinha lido nada — o que era
- * verdade, e continuaria sendo a cada clique.
+ * **Por que rodadas (10/09/2026).** Uma chamada não esgota o processo: a busca
+ * da peça acontece dentro dela, então o backend limita quantos documentos vai
+ * atrás por vez e devolve o resto em `adiadosPorOrcamento` (e em `excedentes`,
+ * o teto de atos). Antes o botão parava na primeira: num processo com 48 atos
+ * ele lia 25, dizia "análise concluída" e ficava por isso — metade do processo
+ * analisado, sem nada na tela explicando por quê. Agora ele pede a rodada
+ * seguinte até uma delas não enfileirar mais nada — e para antes disso se a fila
+ * deixar de andar.
  *
- * A fase de leitura conta o que já foi lido (`/api/processos/{id}/leitura`) e o
- * denominador vem da resposta da rota de IA (`atos.enfileirados`). É sempre
- * fato consultado — não há barra de porcentagem aqui porque não há denominador
- * honesto antes de a etapa 1 responder.
+ * **O progresso é a COBERTURA do processo inteiro**, não a contagem da primeira
+ * página: `/api/processos/{id}/leitura` passou a responder pelo dossiê da IA. O
+ * contador antigo olhava as 100 movimentações mais novas enquanto a IA lê por
+ * categoria — e ficava parado em números que nunca alcançavam o alvo.
  *
- * `router.refresh()` a cada ato lido: a página é Server Component, e é ele que
+ * `router.refresh()` a cada avanço: a página é Server Component, e é ele que
  * troca o rótulo do tribunal pelo resumo da IA na timeline, sem recarregar.
  */
 export function AnalisarProcessoButton({ processId, numero, className }: Props) {
@@ -110,6 +152,15 @@ export function AnalisarProcessoButton({ processId, numero, className }: Props) 
      senão ele segue chamando `setState` num componente que já saiu da tela. */
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
+
+  /** A cobertura do processo — três números, contados no servidor. */
+  const contarLidas = useCallback(async (): Promise<Cobertura> => {
+    const resposta = await fetch(`/api/processos/${encodeURIComponent(processId)}/leitura`, {
+      cache: 'no-store',
+    });
+    if (!resposta.ok) throw new Error(`Não foi possível acompanhar a leitura (${resposta.status})`);
+    return (await resposta.json()) as Cobertura;
+  }, [processId]);
 
   /**
    * Espera o job da consulta terminar, narrando a etapa.
@@ -142,32 +193,49 @@ export function AnalisarProcessoButton({ processId, numero, className }: Props) 
     // que a consulta já gravou e o resto na próxima vez.
   }, [router]);
 
-  /** Conta os resumos até chegar ao alvo (ou até o teto de espera). */
-  const acompanharLeitura = useCallback(async (alvo: number) => {
-    const ateQuando = Date.now() + LIMITE_LEITURA_MS;
-    const partida = await contarLidas(processId);
-    // O alvo é relativo ao que já estava lido: um processo relido tem resumo de
-    // rodadas anteriores, e contá-los mostraria "12 de 3".
-    const meta = partida + alvo;
+  /**
+   * Acompanha uma rodada até a fila parar de andar. Devolve quantas
+   * movimentações foram lidas NELA.
+   *
+   * O alvo em atos não serve como condição de parada: uma leitura escreve em
+   * todas as movimentações do mesmo ato (o agrupamento é pelo hash do teor),
+   * então 25 atos podem virar 40 movimentações lidas — comparar os dois números
+   * encerraria a espera cedo, com jobs ainda na fila. Quem diz que acabou é a
+   * própria fila, quando para de produzir.
+   */
+  const acompanharRodada = useCallback(async (rodada: number, enfileirados: number): Promise<number> => {
+    const partida = await contarLidas();
     let ultima = partida;
+    let ultimoAvanco = Date.now();
 
-    while (vivo.current && Date.now() < ateQuando) {
-      setDetalhe(`${ultima - partida} de ${alvo} ${alvo === 1 ? 'ato lido' : 'atos lidos'}`);
-      if (ultima >= meta) return;
+    while (vivo.current) {
+      const lidasNaRodada = ultima.lidas - partida.lidas;
+      setDetalhe(
+        `rodada ${rodada} · ${plural(lidasNaRodada, 'ato lido', 'atos lidos')}` +
+        ` de ~${enfileirados} · ${ultima.lidas} no processo`,
+      );
+
+      const paciencia = lidasNaRodada >= enfileirados ? GRACA_APOS_ALVO_MS : PACIENCIA_SEM_PROGRESSO_MS;
+      if (Date.now() - ultimoAvanco > paciencia) return lidasNaRodada;
 
       await sleep(INTERVALO_LEITURA_MS);
-      if (!vivo.current) return;
+      if (!vivo.current) return lidasNaRodada;
 
-      const agora = await contarLidas(processId);
+      const agora = await contarLidas();
       // Só recarrega quando há o que mostrar — um refresh por volta do poll
       // rebuscaria a página inteira para não mudar nada.
-      if (agora > ultima) router.refresh();
+      if (agora.lidas > ultima.lidas) {
+        ultimoAvanco = Date.now();
+        router.refresh();
+      }
       ultima = agora;
     }
-  }, [processId, router]);
+
+    return ultima.lidas - partida.lidas;
+  }, [contarLidas, router]);
 
   /**
-   * Pede a leitura por IA e devolve quantos ATOS foram para a fila.
+   * Pede uma rodada de leitura e devolve o que o backend enfileirou.
    *
    * Os prazos e a síntese do caso entram na mesma chamada e não têm poll: eles
    * aparecem na aba de IA quando a fila os resolver, e inventar barra para eles
@@ -209,28 +277,53 @@ export function AnalisarProcessoButton({ processId, numero, className }: Props) 
       await acompanharJob(corpo.jobId);
       if (!vivo.current) return;
 
-      // A consulta trouxe o que havia; agora a IA lê. É esta chamada que faltava
-      // — ver o cabeçalho.
+      // A consulta trouxe o que havia; agora a IA lê — quantas rodadas forem
+      // precisas para não sobrar ato legível sem leitura.
       setDetalhe('pedindo a leitura à IA');
-      const ia = await pedirLeitura();
-      if (!vivo.current) return;
+      let lidasNoTotal = 0;
+      let sobrou = 0;
+      let naFila = 0;
+      let rodada = 0;
 
-      const enfileirados = ia.atos?.enfileirados ?? 0;
-      if (enfileirados > 0) {
+      while (rodada < MAX_RODADAS) {
+        const ia = await pedirLeitura();
+        if (!vivo.current) return;
+
+        naFila += (ia.analises?.prazosEnfileirados ?? 0) + (ia.analises?.casosEnfileirados ?? 0);
+        const enfileirados = ia.atos?.enfileirados ?? 0;
+        sobrou = (ia.atos?.excedentes ?? 0) + (ia.atos?.adiadosPorOrcamento ?? 0);
+        if (enfileirados === 0) break;
+
+        rodada += 1;
         setFase('lendo');
-        await acompanharLeitura(enfileirados);
+        const lidasNaRodada = await acompanharRodada(rodada, enfileirados);
+        if (!vivo.current) return;
+        lidasNoTotal += lidasNaRodada;
+
+        // A fila parou sem ler nada desta rodada: insistir só repetiria o
+        // mesmo pedido — o que ficou é o que a próxima visita pega.
+        if (lidasNaRodada === 0) break;
+
+        // **Não se para por `sobrou === 0`**, e a medição é que decidiu. Parecia
+        // a saída óbvia — o backend diz o que adiou —, mas ela perde o ato que
+        // se TORNA legível durante a rodada: buscar a peça grava o teor, e um
+        // ato sem texto no começo tem texto no fim. Medido em 10/09/2026 no
+        // `0700891-02.2023.8.07.0002`: a rodada 1 devolveu `excedentes: 0` e
+        // `adiadosPorOrcamento: 0` — nada pendente, pelo relato dela — e a
+        // rodada seguinte ainda encontrou **5 atos** para ler. Quem encerra o
+        // ciclo é a rodada que não enfileira nada, verificada no topo do laço.
       }
 
       if (!vivo.current) return;
       setFase('pronto');
-      // Sem ATO novo para ler, ainda pode haver prazo e síntese na fila — e
-      // dizer "nada novo" com o caso sendo escrito seria mentira na direção
-      // ruim: a pessoa fecharia a aba antes de a análise aparecer.
-      const naFila = (ia.analises?.prazosEnfileirados ?? 0) + (ia.analises?.casosEnfileirados ?? 0);
+      const cobertura = await contarLidas().catch(() => null);
       setDetalhe(
-        enfileirados > 0 ? null
-        : naFila > 0 ? 'atos já lidos; prazos e síntese na fila'
-        : 'nada novo para ler neste processo',
+        lidasNoTotal > 0
+          ? `${plural(lidasNoTotal, 'ato lido', 'atos lidos')} agora` +
+            (cobertura ? ` · ${cobertura.lidas} de ${cobertura.legiveis} com texto no processo` : '') +
+            (sobrou > 0 ? ' · ainda há atos por ler — clique de novo' : '')
+          : naFila > 0 ? 'atos já lidos; prazos e síntese na fila'
+          : 'nada novo para ler neste processo',
       );
       router.refresh();
     } catch (falha) {
@@ -259,7 +352,7 @@ export function AnalisarProcessoButton({ processId, numero, className }: Props) 
       <button
         type="button"
         className={className}
-        title="Consulta este processo nas fontes públicas e pede à IA que explique as movimentações"
+        title="Consulta este processo nas fontes públicas e pede à IA que leia todas as movimentações possíveis"
         disabled={ocupado}
         aria-busy={ocupado}
         onClick={analisar}
@@ -273,14 +366,4 @@ export function AnalisarProcessoButton({ processId, numero, className }: Props) 
       </button>
     </>
   );
-}
-
-/** Quantas movimentações deste processo já têm resumo da IA. */
-async function contarLidas(processId: string): Promise<number> {
-  const resposta = await fetch(`/api/processos/${encodeURIComponent(processId)}/leitura`, {
-    cache: 'no-store',
-  });
-  if (!resposta.ok) throw new Error(`Não foi possível acompanhar a leitura (${resposta.status})`);
-  const { lidas } = (await resposta.json()) as { lidas: number };
-  return lidas;
 }

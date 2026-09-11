@@ -14,7 +14,22 @@
 .vencimento[data-faixa="atencao"] { color: var(--signal-ink); background: var(--signal-soft); }
 .vencimento[data-faixa="encerrados"], .vencimento[data-faixa="semData"] { color: var(--ink-2); background: var(--paper-3); }
 .titulo { color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; letter-spacing: -.01em; overflow-wrap: anywhere; }
-.parte { color: var(--ink-2); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+/* DUAS LINHAS, como trava de último recurso. `clientePrazo` já corta o polo
+   em dois nomes + "+N partes", então na prática isto nunca acende; existe
+   porque `parte` é texto livre de 85 portais diferentes e um único nome
+   quilométrico (ou um polo separado por ";" em vez de ",") voltaria a empurrar
+   o chip de prazo e o CNJ para fora da tela. */
+.parte {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
 .contexto { color: var(--ink-2); font-size: 12px; }
 .calha { flex-flow: row wrap; align-items: center; gap: var(--space-xs) var(--space-sm); }
 .tags { display: flex; align-items: center; gap: var(--space-sm); }
@@ -32,6 +47,20 @@
 .quando { display: flex; flex-direction: column; gap: var(--space-xs); border: 1px solid var(--line); background: var(--paper); padding: var(--space-md) var(--space-lg); }
 .quandoLinha { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.5; }
 .quandoProcedencia { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); max-width: 75ch; overflow-wrap: anywhere; }
+
+/* O topo do painel: você precisa e até quando LADO A LADO no desktop (ver o
+   `@media`), e a leitura do ato embaixo, cruzando as duas colunas — mesma
+   grade de `.prazo` em `AtoDetalhe.module.css`. As duas primeiras respondem
+   perguntas diferentes (o que fazer, até quando) e uma embaixo da outra
+   empurrava a leitura para fora da primeira tela. `:empty` some com o bloco
+   quando ele não tem conteúdo (prazo sem `ato`, ou ato que a IA não leu)
+   em vez de deixar um vão com moldura vazia — e é ele que faz o `:has()`
+   desistir das duas colunas, para o "até quando" não ficar numa metade com a
+   outra vazia. */
+.painel { display: grid; gap: var(--space-md); min-width: 0; }
+.painelQuando:empty,
+.painelPrecisa:empty { display: none; }
+.painelLeitura { min-width: 0; border-top: 1px solid var(--line-soft); padding-top: var(--space-md); }
 
 /* O que sobra depois dos blocos acima: órgão e assunto, quando não subiram
    para o título da linha. Recibo — rótulo à esquerda, valor à direita. */
@@ -51,8 +80,44 @@
   .detalhe { padding: var(--space-lg) var(--space-2xl); }
   .ficha { flex-direction: row; flex-wrap: wrap; }
   .ficha div { flex: 1 1 260px; }
+
+  .painel:has(.painelPrecisa:not(:empty)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .painel:has(.painelPrecisa:not(:empty)) .painelLeitura { grid-column: 1 / -1; }
 }
 .compacto .linha { display: flex; padding: var(--space-md); }
 .compacto .calha { align-items: flex-start; }
 .compacto .detalhe { padding: var(--space-md); }
+/* No kanban a coluna é estreita: o par volta a empilhar. */
+.compacto .painel:has(.painelPrecisa:not(:empty)) { grid-template-columns: minmax(0, 1fr); }
+.compacto .painel:has(.painelPrecisa:not(:empty)) .painelLeitura { grid-column: auto; }
 @media (prefers-reduced-motion: reduce) { .linha, .seta { transition: none; } }
+
+/* A peça a produzir, na linha FECHADA — o único pedaço da leitura que sobe
+   para o sumário. Ele responde "o que eu faço com isto", que é a pergunta de
+   quem varre a pauta; o resto da análise continua no painel, onde há espaço.
+   Sem leitura não há chip nenhum: nada de moldura vazia esperando conteúdo. */
+.peca {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick);
+}
+
+.pecaRisco {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+/* Só o risco que faz perder direito ganha a cor de alerta — "multa" e
+   "nenhum" em vermelho gastariam o sinal que a preclusão precisa. */
+.pecaRisco[data-risco="preclusao"],
+.pecaRisco[data-risco="perdaDeDireito"],
+.pecaRisco[data-risco="revelia"] { color: var(--alert); }

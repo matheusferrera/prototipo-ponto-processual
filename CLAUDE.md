@@ -149,7 +149,7 @@ Carteira vazia não é um estado só, e tratá-la como um era o que fazia o pain
 | tem OAB, nenhum secret com `lastSuccessAt` | `PainelSincronizando` | nada — está varrendo |
 | tem OAB, já varreu, zero processos | `PainelSemResultado` | conferir a OAB, ou conectar tribunal |
 
-`CadastrarOab` (`components/dashboard/CadastrarOab/`) posta em `/api/scraper/monitorar-oab` — que grava a OAB e enfileira DJEN + consulta pública — e chama `router.refresh()`. Não manda para o `/onboarding` de propósito: aquela tela trata a OAB como resposta já dada e, sem OAB na URL, vai direto pedir o login do tribunal. O login do tribunal fica como saída secundária nas três telas, nunca como pedido principal.
+`CadastrarOab` (`components/dashboard/CadastrarOab/`) posta em `/api/scraper/monitorar-oab` — que grava a OAB e enfileira DJEN + consulta pública — e chama `router.refresh()`. Não manda para o `/onboarding` de propósito: sair do painel para outra tela só para digitar a OAB seria um desvio, e a pergunta é a mesma. O login do tribunal fica como saída secundária nas três telas, nunca como pedido principal — e desde 11/09/2026 `/credenciais` é o ÚNICO lugar do produto que o oferece (ver [O onboarding não pede credencial](#o-onboarding-não-pede-credencial-11092026)).
 
 ### Páginas de detalhe (`/[id]/page.tsx`)
 
@@ -301,6 +301,54 @@ Junto vieram `fontes[]` (**quais** fontes confirmaram o ato: `pdpj + diário` qu
 
 > **O custo declarado:** abrir uma linha re-renderiza a página no servidor, inclusive as 50 linhas. Medido localmente em ~50ms. Se em produção pesar, a saída é envolver só o painel num `<Suspense>` — não foi feito preventivamente.
 
+#### A pauta mostra a PEÇA na linha fechada (10/09/2026)
+
+`expedientePrazo` é o rótulo do cartório — "Sentença", "Despacho" —, e ele diz o que CHEGOU, não o que fazer. Quem varre a pauta decidindo o que atacar hoje procura a segunda coisa, e ela existe desde a fusão ato+prazo: `ia.peca` ("Apelação"), com `ia.risco` ao lado quando ele custa direito. O resto da leitura continua no painel expandido, onde há espaço.
+
+- **Só a peça sobe para o sumário.** Checklist, "falta obter", complexidade e observação são para quem já decidiu abrir a linha; na lista eles competiriam com a data, que é o eixo da tela.
+- **Sem leitura não há chip** — nem moldura vazia. `peca` é `null` em mera ciência, e a linha volta a ser exatamente o que era.
+- **Cor de alerta só em `preclusao`, `perdaDeDireito` e `revelia`.** Pintar "multa" e "nenhum" de vermelho gastaria o sinal que a preclusão precisa.
+
+> **O painel do prazo já mostrava tudo — o que faltava era o DADO.** Medido em 10/09/2026: as leituras gravadas na versão 1 do prompt (25 delas, todas anteriores à fusão) têm `peca`, `checklist` e `risco` **nulos**, então a pauta exibia "o que aconteceu" e nada em "o que fazer", sem nada explicando o vazio. Quem conserta isso é o backend, que passou a tratar leitura de prompt antigo como cache inválido nas rotas sob demanda — ver `SEM_LEITURA_NA_VERSAO_ATUAL` no CLAUDE.md do backend.
+
+#### "Analisar processo" lê o processo INTEIRO, em rodadas (10/09/2026)
+
+O botão existia e parecia não fazer nada. Eram **três defeitos empilhados**, e nenhum deles aparecia como erro na tela:
+
+1. **O contador olhava a janela errada.** `/api/processos/{id}/leitura` contava os resumos dentro de `getProcessoMovements(id, 100)` — as **100 movimentações mais NOVAS** —, enquanto a IA escolhe o que ler por CATEGORIA (decisório antes de trâmite), não por data. Medido num processo de 292 movimentações: 9 lidas, **6** dentro daquela janela. O botão esperava um número que nunca alcançava o alvo, girava dez minutos e terminava anunciando "análise concluída" sem a tela ter mudado. Agora a rota responde pela COBERTURA do dossiê (`GET /ia/processos/{id}`), que conta o processo inteiro — e o payload grande dele fica no servidor: para o navegador continuam indo três números.
+2. **Uma chamada não esgotava o processo.** O backend racionava a leitura com os tetos da ronda (25 atos, 8 documentos), então um processo com 48 atos legíveis lia 25 e devolvia `excedentes: 23` num campo que ninguém lia. O teto virou parâmetro no backend e o botão agora pede **rodadas** até uma delas não enfileirar mais nada — parando antes se a fila deixar de andar.
+3. **Ato que falhava ficava inalcançável por uma semana.** O `jobId` da leitura é fixo por movimentação e o job falho era retido 7 dias — o BullMQ engolia todo enqueue seguinte daquele ato, em silêncio. Corrigido no backend (`removeOnFail: true`).
+
+Decisões do componente que não se leem no código:
+
+- **A espera é por PROGRESSO, não por relógio.** O teto absoluto de 10 minutos era a medida errada: 48 atos levam ~16 min só para drenar, e a fila `ia` é global — pode estar ocupada com a ronda de outra conta. Enquanto ato novo aparece, a espera continua; **três minutos calados** encerram a rodada. Depois que a rodada já leu o que pediu, a paciência cai para **30 s**, senão toda rodada terminaria com três minutos de poll contra uma fila parada.
+- **"Movimentações lidas ≥ atos enfileirados" é indício, não prova.** Uma leitura escreve em todas as movimentações do mesmo ato (o agrupamento é pelo hash do teor), então 25 atos podem virar 40 movimentações lidas — usar isso como condição de parada encerraria a espera com jobs ainda na fila. Quem diz que acabou é a fila, quando para de produzir.
+- **Rodada que não lê nada encerra o ciclo.** Insistir repetiria o mesmo pedido: o ato sem texto continua sendo candidato a cada rodada (o livro-razão de falha de download é de outro caminho), e sem essa saída o botão pediria para sempre.
+- **A parada NÃO é `excedentes + adiadosPorOrcamento === 0`.** Parecia a saída óbvia — o backend diz o que adiou —, mas ela perde o ato que se TORNA legível durante a rodada: buscar a peça grava o teor, e um ato sem texto no começo tem texto no fim. Medido no `0700891-02.2023.8.07.0002`: a rodada 1 devolveu os dois campos zerados e a rodada seguinte ainda encontrou **5 atos** para ler. Quem encerra o ciclo é a rodada que não enfileira nada.
+- **`MAX_RODADAS = 8`** é para a aba esquecida aberta, não para o processo: com os tetos novos, o acervo de teste resolve tudo em uma rodada.
+
+#### O botão de leitura por IA mora DENTRO do collapse (10/09/2026)
+
+A rota que lê UM ato existe desde 07/09/2026 (`POST /ia/movimentacoes/{id}`, era `POST /movements/{id}/analise`) e **nenhuma tela a chamava**: a leitura só acontecia em lote — a ronda do dia, ou o botão "Analisar processo", que lê o processo inteiro. Quem abria uma linha da timeline e via o rótulo cru do cartório não tinha como pedir a leitura daquela linha, apesar de ela ser a análise mais barata das quatro: um ato, uma chamada.
+
+`LeituraDoAto` (client) embrulha `LeituraIaDoAto` (o bloco que mostra) e acrescenta o botão. Aparece nos dois consumidores do mesmo bloco: o painel do feed / da timeline do processo, e a página do ato.
+
+| resposta | o que é | o que a tela faz |
+|---|---|---|
+| **200** | já lido — o backend cacheia | mostra a leitura na hora |
+| **202** | enfileirado | acompanha até o resumo aparecer |
+| **409 `ATO_NAO_LEGIVEL`** | não há texto para ler | explica, em vez de girar |
+
+- **O 202 não traz `jobId`** — e é a diferença desta rota para `/ia/prazos/{id}` e `/ia/processos/{id}`, que trazem. O resultado da leitura do ato mora nas COLUNAS da movimentação, não em `Analise`, então quem responde "já saiu?" é a própria movimentação. Daí `GET /api/movimentacoes/{id}/leitura`, que devolve só o bloco `ia`: `GET /movements/{id}` traz o ato inteiro (3,8 KB de média, 288 KB no maior) e o poll roda de 5 em 5 segundos por até 5 minutos — puxar o detalhe a cada volta seria pagar o texto do ato dezenas de vezes para ler seis campos. Mesmo argumento de `/api/processos/{id}/leitura`.
+- **O botão não aparece onde a IA não lê**, e o predicado é `podeLerComIa` (`lib/leitura-do-ato.ts`), espelho do recorte do backend: origem pública (`djen`, `tribunalPublico`, `pdpj`) e categoria fora de `publicacao`/`tramite`. **`categoria` nula PASSA** — o ato do DJEN é gravado sem categoria e é a única fonte de ato endereçado; tratá-la como "não lê" esconderia o diário inteiro. Sem esse filtro o botão seria oferecido para a maior parte do acervo e devolveria 409 — a mesma classe de defeito das rotas órfãs de 07/09, em que um 404 do Express virava "a IA não leu nada" na tela.
+- **No ato já lido o rótulo é "Ler de novo"**, e ele manda `?forcar=true`. É o caso de o inteiro teor ter chegado depois da primeira leitura — o backend derruba só o `analisadoEm IS NULL`, as outras condições continuam valendo.
+- **`router.refresh()` quando a leitura chega**: o título da linha ACIMA do collapse é o resumo da IA (`resumoMovimentacao`), renderizado no servidor. Sem o refresh, o painel mostraria a leitura e o título continuaria sendo o rótulo do cartório.
+- **Estourar o teto de espera não é erro.** A fila `ia` é global e serial (~20 s por ato, `KIMI_RPM` 3): um ato pedido enquanto a ronda drena espera a vez. Passados 5 minutos o poll para e a leitura aparece na próxima vez que a tela carregar — dizer "falhou" ali seria mentira.
+- **`LeituraIaDoAto` saiu de `AtoDetalhe.tsx` para arquivo próprio** porque quem o renderiza depois da resposta é um client component ao lado; deixá-lo onde estava faria `AtoDetalhe → LeituraDoAto → AtoDetalhe`, ciclo de import atravessando a fronteira client/server. `AtoDetalhe` o reexporta — `PrazoRow` mostra a leitura dentro do collapse do PRAZO, onde o botão é outro.
+- **A página do ato ganhou o bloco que lhe faltava**: sem vencimento, o card do prazo não existe — e com ele sumia também a leitura, que mora lá dentro. O ato de mera ciência (a maioria) chegava à página sem lugar nenhum onde pedir a leitura, embora o painel do feed já a mostrasse.
+
+Medido ao vivo em 10/09/2026, no `Ato ordinatório — 4ª Vara Federal Cível da SJDF` (DJEN, ainda não lido): `202 {enfileirados: 1}` → resumo na tela em ~10 s, `confianca: alta`, e **nenhum `Deadline` criado** — a IA concluiu o mesmo que a heurística nova (`ciencia`): "o prazo de 5 dias é para o arquivamento dos autos, não impondo obrigação específica à parte".
+
 ### O corte é a CATEGORIA, e a faixa de métricas saiu
 
 O topo do feed gastava 108px com "Novas (48h) 12 · Nesta página 20 · Total 6478", e dois desses três números não eram informação — "nesta página" é o tamanho da página e "total" já está na paginação. O lugar valia mais como o corte que a página não oferecia: **decisões · petições · publicações · prazos · trâmite**, que o backend já filtra no banco e para o qual **já existia componente pronto (`CategoriaFilter`), montado em tela nenhuma**.
@@ -420,10 +468,34 @@ não serve.
 > `text/html` é rota que não existe, 401 JSON é rota viva. O `tsc` não vê nada
 > disso, e duas rotas mortas conviveram com typecheck e build limpos.
 >
-> Só o método completo serve: a extração estática das rotas do backend deu falso
-> positivo em `/scraper/monitorar-oab` e `/scraper/preview-djen` (o regex não
-> pegou o jeito como são registradas), e as duas estão vivas. **Sondar antes de
-> afirmar.**
+> Só o método completo serve — e o próprio parágrafo que ficava aqui é a prova:
+> ele afirmava que `/scraper/monitorar-oab` e `/scraper/preview-djen` eram falso
+> positivo da extração estática e **estavam vivas**. Não estavam. Sondadas com
+> token em 11/09/2026, as duas respondem **404 em `text/html`**. **Sondar antes
+> de afirmar** — inclusive para inocentar uma rota.
+>
+> **Sondar sem token não serve para nada neste backend**: os routers montam
+> `authenticate` antes do casamento de rota, então `POST /scraper/rota-que-nao-existe`
+> também responde 401. O par que discrimina é **404 `text/html` (Express, rota
+> inexistente) × qualquer JSON (a aplicação respondeu)** — e só aparece com um
+> token válido na mão.
+
+### As duas rotas mortas que esvaziavam a conta nova (11/09/2026)
+
+Elas mataram o fluxo inteiro de cadastro pelo Google, e o sintoma não apontava para lugar nenhum: **conta criada, OAB digitada, 88 processos na tela de `/oab` — e painel vazio, sem `OabMonitorada`, sem job, sem erro.**
+
+| o front chamava | estava | o certo |
+|---|---|---|
+| `POST /scraper/monitorar-oab` (callback do Google) | 404 desde 04/09 | `POST /consulta-publica/geral` |
+| `GET /scraper/preview-djen` (prévia do onboarding) | 404 desde 04/09 | `GET /consulta-publica/previa` |
+
+**O 404 não bastava para causar o dano — quem causou foi como cada chamador lia a resposta.** É a parte que se repete, e a que vale guardar:
+
+- O callback do Google fazia `return res.status === 409`. Um booleano com três significados possíveis: gravou, conflitou, ou **a rota não existe** — e os dois últimos caíam no mesmo `false`, que o destino lia como "gravou". Agora são três estados (`ok | conflito | falhou`), e só `ok` manda para o painel: falhar manda para o `/onboarding` com a OAB na URL, que refaz a pergunta.
+- O proxy da prévia fazia `res.json()` sobre o `<!DOCTYPE html>` do 404, estourava no parse e caía no `catch`, que diz "Serviço indisponível" — e o onboarding traduzia para **"Falha ao conectar ao servidor"**. Erro de rede para um servidor que respondeu na hora. Os proxies agora conferem o `content-type` antes do parse e logam quando ele não é JSON, como `previa.server.ts` já fazia.
+- O onboarding engolia `ligarMonitoramento` quando o resultado não era conflito. A tela seguia dizendo "já estamos trazendo esses processos para o seu painel" com nada gravado. Agora o erro sobe para a tela, com "tentar de novo".
+
+A lição, em uma linha: **rota morta é barata de achar e cara de esconder** — o caro nunca é o 404, é o chamador que traduz "não existe" para "deu certo".
 
 ## A timeline do processo: dia a dia, com "carregar mais"
 
@@ -507,6 +579,19 @@ Decisões que sustentam isso:
 - **Trocar a OAB de uma conta é uma pergunta, nunca um efeito colateral.** O backend recusa (`409 OAB_JA_MONITORADA`) ligar uma OAB nova sobre uma conta que já monitora outra, e os quatro pontos que gravam OAB tratam esse 409 com a mesma tela — `ConfirmarTrocaOab` (`components/oab/`), alimentada por `ligarMonitoramento` (`lib/monitorar-oab.ts`), o contrato num lugar só. O caso que criou a regra: cadastrar uma OAB nova sobre um **e-mail que já existe** levava ao login da conta antiga e daí a uma troca silenciosa, com os dois acervos misturados no painel. Quem chega logado por `/oab`, pelo onboarding, pelo painel (`CadastrarOab`) ou pelo Google vê as duas OABs nomeadas e escolhe. Trocar **arquiva** o acervo da anterior — não apaga, e ele volta se a OAB voltar.
 - **O callback do Google não tem tela, então não decide.** Ele é o único caminho sem UI (quem está do outro lado é um redirect), e por isso nunca manda `confirmarTroca`: no 409 ele redireciona para `/onboarding?oab=…&uf=…`, que faz a pergunta. Antes ele gravava direto — era o caminho mais silencioso dos quatro.
 - **O painel continua gravando a OAB ali mesmo** (`CadastrarOab` → `POST /scraper/monitorar-oab`). A regra da rota única vale para *antes* da conta existir; depois dela, tirar a pessoa do painel para uma página de vendas seria o desvio, não o caminho.
+
+### O onboarding não pede credencial (11/09/2026)
+
+A conta nova nasce com **OAB e fontes públicas, e nada mais**. O `/onboarding` tinha um estágio inteiro só para isso (`credencial`), o `CredentialSheet` embutido, e cada um dos seus cinco estados terminava num botão de cadastrar o login do tribunal — inclusive a tela de resultado, que oferecia "Conectar" por tribunal encontrado. Saíram todos.
+
+O motivo é de funil, não de arquitetura: **a senha do tribunal é o pedido mais caro do produto** — CPF, senha e o segredo do MFA — e estava sendo feito no primeiro acesso, antes de a pessoa ter visto valor nenhum. Ela não é mais necessária para o produto funcionar: quem consulta o PDPJ é o sistema, com uma credencial de SERVIÇO, e o DJEN não tem credencial nenhuma. O que a credencial ainda alcança — processo em segredo de justiça, que não aparece em base pública — virou **passo opcional em `/credenciais`**, e as telas dizem isso em texto, sem botão.
+
+- **O porteiro da página mudou junto.** `/onboarding` redirecionava ao painel quando `getScraperSecrets()` vinha não-vazio — "tem credencial" como sinônimo de "conta pronta". Com a credencial fora do fluxo, a conta pronta é a que **monitora uma OAB**: o porteiro é `getUsuarioAtual().oab`. Sem essa troca, toda conta nova (zero secrets) voltaria a cair na pergunta que ela já respondeu no cadastro.
+- **`sistemas` continua sendo prop da tela**, agora por um motivo só: traduzir a sigla do DJEN (`TRF1`) no nome do tribunal na lista de resultados.
+- **As saídas deixaram de ser "pular por agora".** Não há mais o que pular: a OAB já foi gravada e a varredura já está na fila quando a tela mostra o resultado. O botão é "Ir para o painel".
+- **A tela de varredura do painel perdeu o botão** (`PainelSincronizando`). Ele era `botaoPrimario` enquanto a busca ainda não tinha achado nada — ou seja, a ação mais destacada oferecida a quem acabou de entrar era "digite a senha do seu tribunal", durante a espera da primeira varredura. Sem nada achado, a área de ações não renderiza: a tela presta contas, não pede. Com processos achados, sobra só "Abrir o dashboard →".
+- **Os estados vazios do painel continuam como estavam** (`PainelSemOab`, `PainelSemResultado`): o login do tribunal ali é um link de texto discreto para `/credenciais`, nunca o pedido principal — que é a OAB, no campo da própria tela.
+- **Entrar de novo re-sincroniza.** Desde a mesma data, `POST /auth/login` e `POST /auth/google` enfileiram no backend a consulta geral da OAB monitorada (janela de 30 min para não repetir). É o que garante que sair do onboarding pelo caminho mais curto não deixe a conta parada até o próximo cron.
 
 ## Dados e autenticação
 

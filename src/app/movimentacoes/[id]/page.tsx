@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { dataWallClock } from '@/lib/wall-clock';
+import { vencimentoDoAto } from '@/lib/movimentacao';
 import { notFound } from 'next/navigation';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { Seal } from '@/components/ui/Seal/Seal';
@@ -15,6 +16,7 @@ import {
   ProvidenciaDoAto,
   TeorDoAto,
 } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
+import { LeituraDoAto } from '@/components/movimentacoes/AtoDetalhe/LeituraDoAto';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -172,9 +174,18 @@ export default async function MovimentacaoDetailPage({ params }: Props) {
                 eles vêm intercalados com o hero e a coluna do processo; lá vêm
                 sozinhos, porque a linha logo acima já diz de que ato se trata.
                 Duplicar o bloco do prazo seria garantir que a próxima correção
-                de regra entre em um dos dois só. */}
+                de regra entre em um dos dois só.
+
+                Com vencimento, a providência ("você precisa") já mora dentro
+                do card do prazo (10/09/2026) — mostrá-la nos dois seria
+                repetir a mesma frase duas vezes na mesma tela. */}
             <PrazoDoAto mov={mov} />
-            <ProvidenciaDoAto mov={mov} />
+            {/* Sem vencimento, o card do prazo não existe — e com ele sumia
+                também a leitura da IA, que mora lá dentro. Era o ato de mera
+                ciência (a maioria) chegando a esta página sem nenhum lugar
+                onde pedir a leitura, embora o painel do feed já a mostrasse. */}
+            {!vencimentoDoAto(mov) && <ProvidenciaDoAto mov={mov} />}
+            {!vencimentoDoAto(mov) && <LeituraDoAto mov={mov} />}
             <TeorDoAto mov={mov} />
           </div>
 

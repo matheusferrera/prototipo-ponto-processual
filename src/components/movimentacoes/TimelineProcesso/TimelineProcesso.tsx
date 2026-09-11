@@ -159,7 +159,11 @@ function AtoLinha({ e, aberto, onAbrir }: {
     // `quiet` fixo: a linha do tempo não marca novidade — ver `MovimentacaoRow`.
     time: e.time, state: 'quiet', origem: e.origem ?? 'scraper', fontes: e.fontes ?? [],
     categoria: e.categoria ?? null,
-    ia: e.ia ?? { resumo: null, acao: null, fundamento: null, confianca: null, deQuem: null, analisadoEm: null },
+    ia: e.ia ?? {
+      resumo: null, fundamento: null, confianca: null, deQuem: null, analisadoEm: null,
+      oQueFazer: null, peca: null, checklist: [], documentosNecessarios: [],
+      risco: null, complexidade: null, precisaDosAutos: false, observacao: null,
+    },
     prazo: detalhe?.prazo ?? e.prazo ?? null,
     // Texto extraído OU documento anexado — mesma regra de `temAlgoParaLer`
     // (`api.server.ts`). Antes de carregar o detalhe, `e.temInteiroTeor` já
@@ -172,6 +176,13 @@ function AtoLinha({ e, aberto, onAbrir }: {
       ? Boolean(detalhe.textoOriginal?.trim())
       : e.temInteiroTeor,
     documentoEstado: detalhe?.documentoEstado ?? e.documentoEstado,
+    // Os dois SINAIS DE PEÇA que a linha usa para decidir entre o ícone de
+    // documento e o cadeado. Sem eles a timeline do processo era a única lista
+    // que nunca oferecia a certidão de publicação — e, pior, mostrava cadeado
+    // em ato cuja certidão o CNJ serve para 100% do diário, porque `sigiloso`
+    // depende justamente de `!temCertidao`.
+    temCertidao: detalhe?.temCertidao ?? e.temCertidao,
+    temDocumentoDoAto: e.temDocumentoDoAto,
   };
 
   const painel = !aberto ? undefined : detalhe ? <AtoDetalhe mov={detalhe} /> : (

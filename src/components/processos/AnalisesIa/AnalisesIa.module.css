@@ -18,9 +18,15 @@
    `.panel`/`.sectionHeader` da página, como nas abas de Prazos e Documentos —
    ver o comentário no topo do componente. O teto que existia aqui (880px, mais
    `padding: … 0`) tirava a aba do `--processo-gutter` e a deixava mais estreita
-   que as irmãs; a medida de leitura é aplicada ao TEXTO (`.destaque`,
-   `.paragrafo`, `.valor`, `.linhaTitulo`), que é onde ela significa alguma
-   coisa. */
+   que as irmãs.
+
+   NENHUM TEXTO TEM TETO DE MEDIDA, e isso é decisão, não esquecimento. Havia
+   um — 70ch em `.destaque`, `.paragrafo`, `.valor` e `.linhaTitulo` —, e
+   medido nesta tela a 1489px ele parava a linha em 555px dentro de uma div de
+   1179px: mais da metade do painel ficava vazia à direita de cada parágrafo,
+   com a régua da seção atravessando a largura inteira logo acima. Medida de
+   leitura é boa tipografia e má resposta aqui: quem abre a aba de IA quer a
+   leitura inteira na tela, não uma coluna estreita num painel largo. */
 .wrap {
   display: flex;
   flex-direction: column;
@@ -61,7 +67,6 @@
 /* A prosa que sobrevive: síntese do caso. */
 .destaque {
   margin: 0;
-  max-width: 70ch;
   color: var(--ink);
   font-size: 15px;
   line-height: 1.6;
@@ -71,7 +76,6 @@
 
 .paragrafo {
   margin: 0;
-  max-width: 70ch;
   color: var(--ink);
   font-size: 13px;
   line-height: 1.6;
@@ -105,7 +109,6 @@
 
 .valor {
   margin: 0;
-  max-width: 70ch;
   color: var(--ink);
   font-size: 13px;
   line-height: 1.6;
@@ -157,13 +160,13 @@
 }
 
 /* Não cresce: crescer empurraria os chips para o fim da linha. Encolhe e quebra
-   quando a descrição da movimentação é longa, que é o caso comum. O teto de
-   medida é o mesmo do resto — sem ele, num painel fluido, a descrição de uma
-   movimentação do PJe viraria uma linha única de tela cheia. */
+   quando a descrição da movimentação é longa, que é o caso comum. Sem teto de
+   medida, como o resto do texto desta aba — a descrição do PJe usa a linha
+   inteira e os chips acompanham, quebrando para a linha de baixo quando não
+   couberem. */
 .linhaTitulo {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 70ch;
   color: var(--ink);
   font-size: 13px;
   font-weight: 600;
@@ -171,8 +174,8 @@
   overflow-wrap: anywhere;
 }
 
-/* O link do ato herda a medida e o peso do título: ele É o título da linha, não
-   um "ver mais" pendurado no fim. Sublinha no hover, como todo link da página. */
+/* O link do ato herda o peso do título: ele É o título da linha, não um "ver
+   mais" pendurado no fim. Sublinha no hover, como todo link da página. */
 .linhaLink {
   composes: linhaTitulo;
   color: var(--brick);
@@ -278,7 +281,7 @@
 .fundamento { color: var(--ink-2); font-size: 12px; }
 .fundamento summary { min-height: 36px; align-content: center; cursor: pointer; }
 .fundamento summary:focus-visible { outline: 2px solid var(--brick); outline-offset: 3px; }
-.fundamento p { max-width: 70ch; margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.fundamento p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
 
 .divergencia { color: var(--alert); }
 
@@ -328,7 +331,6 @@
    — que é o oposto do que um aviso existe para fazer. */
 .aviso {
   margin: 0;
-  max-width: 75ch;
   color: var(--ink-3);
   font-size: 12px;
   line-height: 1.6;
@@ -338,7 +340,6 @@
 
 .vazio {
   margin: 0;
-  max-width: 65ch;
   color: var(--ink-2);
   font-size: 13px;
   line-height: 1.6;

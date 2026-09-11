@@ -1,3 +1,6 @@
+/* Quem rola é o `.pageShell`, não a janela — e é por isso que o `#analises-ia`
+   do painel precisa de JavaScript para ser alcançado: o App Router não leva o
+   hash até um scrollport aninhado. Ver `VerAnaliseCompleta`. */
 .pageShell { --processo-gutter:16px; flex:1; min-height:0; min-width:0; overflow:auto; background:var(--paper); }
 .breadcrumb { display:none; align-items:center; gap:12px; padding:12px var(--processo-gutter); border-bottom:1px solid var(--line); }
 .backLink { display:inline-flex; align-items:center; gap:7px; min-height:36px; color:var(--ink-2); font-size:12px; text-decoration:none; }
@@ -35,7 +38,10 @@
 .tab:focus-visible { outline:2px solid var(--brick); outline-offset:-2px; }
 .tabActive { border-bottom-color:var(--brick); color:var(--brick); }
 .tabCount { color:inherit; font-family:var(--mono); font-size:11px; font-variant-numeric:tabular-nums; font-weight:500; }
-.panel,.timeline { padding:24px var(--processo-gutter) calc(32px + env(safe-area-inset-bottom)); }
+/* `scroll-margin-top` para o alvo de `#analises-ia` não encostar na borda do
+   scrollport: sem ele o título "Análises de IA" para colado no topo e a barra
+   de abas some da tela, tirando a referência de onde a pessoa está. */
+.panel,.timeline { padding:24px var(--processo-gutter) calc(32px + env(safe-area-inset-bottom)); scroll-margin-top:16px; }
 .capa { margin:0 var(--processo-gutter) 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); scroll-margin-top:80px; }
 .capaSummary { padding:12px 0; min-height:48px; color:var(--ink); cursor:pointer; font-size:13px; font-weight:700; }
 .capaSummary span { display:block; margin-top:4px; color:var(--ink-2); font-weight:400; font-size:12px; }

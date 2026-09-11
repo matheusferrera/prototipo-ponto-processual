@@ -24,3 +24,42 @@ export function assuntoCurto(assunto: string): string {
   const folha = assunto.split(' / ').at(-1) ?? assunto;
   return semCodigo(folha) || semCodigo(assunto) || assunto;
 }
+
+/**
+ * As partes de `parte`, em lista — o campo vem "Fulano, Beltrano, Sicrano"
+ * quando o ato intima mais de uma, e num POLO COLETIVO isso chega a centenas
+ * de nomes: uma execução de servidores do TRF1 trouxe 313, e a linha da pauta
+ * gastava vinte linhas listando-os, com o chip de prazo e o CNJ empurrados
+ * para fora do campo de visão de quem varre a pauta.
+ *
+ * `ocultos` é o resto, para a tela poder dizer "+311" em vez de fingir que só
+ * havia dois nomes. Quem quer a lista inteira abre os autos: nenhuma tela
+ * nossa é o lugar de reproduzir um polo de 313 pessoas.
+ */
+export function partesDoTexto(
+  bruto: string | null | undefined,
+  limite: number,
+): { nomes: string[]; ocultos: number } {
+  if (!bruto) return { nomes: [], ocultos: 0 };
+  const nomes = bruto.split(',').map(nome => nome.trim()).filter(Boolean);
+  return { nomes: nomes.slice(0, limite), ocultos: Math.max(0, nomes.length - limite) };
+}
+
+/**
+ * O mesmo corte, já em UMA LINHA — "Fulano, Beltrano +311 partes".
+ *
+ * O "+N" vem com a palavra, diferente do `+N` pelado que a ficha do ato usa:
+ * ali o número está no fim de uma lista de nomes e não há o que confundir; na
+ * linha da pauta ele fica solto ao lado de um chip de dias e de um CNJ, onde
+ * "+311" sozinho pode ser lido como qualquer outra contagem.
+ *
+ * Não reordena para pôr o cliente da conta primeiro — ver `destinatariosDoAto`
+ * em `movimentacao.ts`: nada no contrato de hoje marca QUAL nome do polo é o
+ * cliente, e destacar o nome errado é o lado caro do erro aqui.
+ */
+export function partesCurtas(bruto: string | null | undefined, limite = 2): string {
+  const { nomes, ocultos } = partesDoTexto(bruto, limite);
+  if (nomes.length === 0) return '';
+  if (ocultos === 0) return nomes.join(', ');
+  return `${nomes.join(', ')} +${ocultos} ${ocultos === 1 ? 'parte' : 'partes'}`;
+}

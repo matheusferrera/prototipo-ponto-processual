@@ -15,7 +15,14 @@ test('mantém vencidos e expedientes sem data quando não há prazo futuro', () 
   assert.equal(panoramaProcesso([], [prazo('encerrado', 0, { fechado: true })]).prazo, null);
 });
 test('sugestão com prazo encerrado não reaparece como providência', () => {
-  const atos = [{ id: '1', ia: { acao: 'Antiga' }, prazo: { fechado: true } }, { id: '2', ia: { acao: 'Encerrada no expediente' } }, { id: '3', ia: { acao: 'Conferir' } }];
+  // `peca` é o gate desde a fusão ato+prazo — `oQueFazer` sozinho está sempre
+  // presente, até em mera ciência, e usá-lo faria toda linha lida virar
+  // providência. O fixture usava `ia.acao`, o campo de antes da fusão.
+  const atos = [
+    { id: '1', ia: { peca: 'Apelação', oQueFazer: 'Antiga' }, prazo: { fechado: true } },
+    { id: '2', ia: { peca: 'Contrarrazões', oQueFazer: 'Encerrada no expediente' } },
+    { id: '3', ia: { peca: 'Embargos', oQueFazer: 'Conferir' } },
+  ];
   const resumo = panoramaProcesso(atos, [prazo('p', 0, { movementId: '2', fechado: true })]);
   assert.equal(resumo.ultimo.id, '1');
   assert.equal(resumo.acao.id, '3');

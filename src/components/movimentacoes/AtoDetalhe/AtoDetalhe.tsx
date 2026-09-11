@@ -1,12 +1,19 @@
 import Link from 'next/link';
-import { Clock3, Lock, Sparkles } from 'lucide-react';
+import { Clock3, Lock } from 'lucide-react';
 import type { MovimentacaoDetail } from '@/lib/api.server';
 import { grauLabel } from '@/lib/grau';
-import { pedeConferencia, vencimentoDoAto } from '@/lib/movimentacao';
+import { destinatariosDoAto, pedeConferencia, vencimentoDoAto } from '@/lib/movimentacao';
 import { blocosDoAto } from '@/lib/ato-texto';
 import { dataWallClock } from '@/lib/wall-clock';
 import { DocumentoLink } from '../DocumentoLink/DocumentoLink';
+import { CONFIANCA, LeituraIaDoAto } from './LeituraIaDoAto';
+import { LeituraDoAto } from './LeituraDoAto';
 import styles from './AtoDetalhe.module.css';
+
+/* Reexportado porque `PrazoRow` mostra a leitura do ato dentro do collapse do
+   PRAZO, onde não há o que pedir — o botão de lá é o do prazo. Quem quer o
+   bloco COM o botão usa `LeituraDoAto`. */
+export { LeituraIaDoAto };
 
 /**
  * O ato por inteiro — os blocos que a página `/movimentacoes/[id]` e a linha
@@ -52,24 +59,13 @@ const DE_QUEM: Record<string, string> = {
 };
 
 /**
- * Como a data foi obtida, em uma frase — e a diferença entre o vencimento que
- * o tribunal publicou e o que nós calculamos.
+ * Até quando — a data e, embaixo dela, a qualificação curta e os
+ * destinatários. O grid tem duas linhas: `prazoPrecisa` (esquerda) e
+ * `prazoResumo` (direita) formam a primeira, lado a lado; `prazoLeitura`
+ * ocupa a segunda em largura total — a leitura é o bloco mais rico (resumo,
+ * checklist, documentos) e ganha o espaço das duas colunas em vez de ficar
+ * espremida numa só.
  */
-function procedenciaDoPrazo(mov: MovimentacaoDetail): string {
-  const p = mov.prazo;
-  const oficial = p?.origem === 'painel' || p?.origem === 'grid';
-  if (oficial) return 'prazo publicado pelo tribunal';
-  switch (p?.metodoPrazo) {
-    case 'textoExplicito':   return 'os dias vieram escritos no ato';
-    case 'prazoLegal':       return 'prazo legal do recurso, calculado por nós';
-    case 'padraoCpc218':     return 'padrão de 5 dias do art. 218, § 3º, do CPC';
-    case 'cienciaPublicacao':return 'mera ciência — a data é a da publicação';
-    case 'analiseIa':        return 'derivado da leitura do ato';
-    default:                 return 'calculado por nós';
-  }
-}
-
-/** Até quando — denso, porque a linha logo acima já deu a data curta. */
 export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
   const vencimento = vencimentoDoAto(mov);
   if (!vencimento) return null;
@@ -83,10 +79,9 @@ export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
     : vencimento.emDias <= 14 ? styles.prazoUrgente
     : styles.prazoCalmo;
 
-  /* A segunda linha do bloco: os campos que o backend manda e que até
-     06/09/2026 morriam no mapeador do front — natureza, canal, dobra e de quem
-     é o prazo. São eles que dizem se a contagem começou na publicação ou na
-     expedição, e se há dobra. */
+  /* Os campos que o backend manda e que até 06/09/2026 morriam no mapeador do
+     front — natureza, canal, dobra e de quem é o prazo. São eles que dizem se
+     a contagem começou na publicação ou na expedição, e se há dobra. */
   const qualificacao = [
     vencimento.dias && `prazo de ${vencimento.dias}`,
     p?.natureza && NATUREZA[p.natureza],
@@ -96,10 +91,19 @@ export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
     p?.deQuem && DE_QUEM[p.deQuem],
   ].filter(Boolean) as string[];
 
-  const fundamento = p?.fundamento || mov.ia.fundamento;
+  const { nomes: destinatarios, ocultos } = destinatariosDoAto(mov);
 
   return (
     <section className={`${styles.prazo} ${tom}`}>
+      {/* "Você precisa" vem primeiro — é a providência, a pergunta que se
+          responde ao abrir o card. Data e qualificação do prazo (o "porquê")
+          ficam na coluna AO LADO no desktop, e a leitura do ato fecha o card
+          embaixo das duas, em largura total. No celular a grade tem uma
+          coluna e as três voltam a empilhar nesta mesma ordem. */}
+      <div className={styles.prazoPrecisa}>
+        <ProvidenciaDoAto mov={mov} />
+      </div>
+
       <div className={styles.prazoResumo}>
         <div className={styles.prazoTopo}>
           <span className={styles.prazoRotulo}>
@@ -114,24 +118,20 @@ export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
           </span>
           {vencimento.extenso}
         </p>
-      </div>
 
-      <div className={styles.prazoDetalhes}>
         {qualificacao.length > 0 && (
           <p className={styles.prazoQualificacao}>{qualificacao.join(' · ')}</p>
         )}
 
-        <p className={styles.prazoProcedencia}>
-          {fundamento ? `${fundamento} — ` : ''}{procedenciaDoPrazo(mov)}
-          {vencimento.estimado && '. Não considera feriado local nem suspensão por portaria.'}
-        </p>
-
-        {p?.publicadoEm && (
-          <p className={styles.prazoProcedencia}>
-            Conta da publicação de {dataWallClock(new Date(p.publicadoEm))}
-            {p.parte ? ` · intimado: ${p.parte}` : ''}
+        {destinatarios.length > 0 && (
+          <p className={styles.prazoDestinatarios}>
+            {destinatarios.join(', ')}{ocultos > 0 && ` +${ocultos}`}
           </p>
         )}
+      </div>
+
+      <div className={styles.prazoLeitura}>
+        <LeituraDoAto mov={mov} />
       </div>
     </section>
   );
@@ -139,82 +139,50 @@ export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
 
 /* ── O que fazer ────────────────────────────────────────────────────────── */
 
+/**
+ * A providência, em destaque — em TODO ato que a IA leu.
+ *
+ * O gate é `oQueFazer`, e mudou duas vezes. Era `mov.ia.acao` (`null` = mera
+ * ciência); virou `mov.ia.peca` na fusão ato+prazo, quando `oQueFazer` passou
+ * a vir sempre — o medo era a maioria (mera ciência) ganhar um "você precisa"
+ * que não precisa de nada. O medo era errado na direção contrária: em mera
+ * ciência `oQueFazer` descreve o que CONFERIR ("não havendo pendências os
+ * autos serão arquivados após 5 dias"), e esconder isso deixava a página do
+ * ato sem nenhuma resposta para "e eu, faço o quê?" justamente nos 46% de
+ * atos que não abrem prazo. Agora `oQueFazer` é o gate: `null` só quando a IA
+ * ainda não leu, e aí o bloco não existe — `:empty` some com a linha do grid.
+ *
+ * A linha FECHADA do feed continua com o gate antigo (`acaoMovimentacao`, em
+ * `movimentacao.ts`, exige `peca`): cinquenta linhas de pauta com um parágrafo
+ * de providência em cada é o ruído que este bloco existe para evitar. Aqui a
+ * pessoa já abriu o ato — ela pediu para saber.
+ *
+ * ### "De quem" indefinido conta como MINHA
+ *
+ * `deQuem` chega `null` ou `'indefinido'` com frequência, e o `else` de um
+ * booleano jogava esses casos em "providência de outra parte" — uma AFIRMAÇÃO
+ * que ninguém mediu, na direção que dá folga. É o inverso do erro que
+ * `acaoMovimentacao` documenta (a citação da União lida como prazo do
+ * cliente): ali o risco é cobrar o que não é seu, aqui é dispensar o que é.
+ * Só `parteContraria` e `terceiro` — os dois que o modelo afirma — saem como
+ * de outra parte; o resto sai como sua, com a ressalva de que falta confirmar.
+ */
 export function ProvidenciaDoAto({ mov }: { mov: Pick<MovimentacaoDetail, 'ia'> }) {
-  if (!mov.ia.acao) return null;
-  const minha = mov.ia.deQuem === 'destinatario';
+  if (!mov.ia.oQueFazer) return null;
+  const deQuem = mov.ia.deQuem;
+  const deOutro = deQuem === 'parteContraria' || deQuem === 'terceiro';
 
   return (
-    <section className={`${styles.acao} ${minha ? styles.acaoMinha : styles.acaoOutra}`}>
+    <section className={`${styles.acao} ${deOutro ? styles.acaoOutra : styles.acaoMinha}`}>
       <span className={styles.acaoRotulo}>
-        {minha ? 'você precisa' : 'providência de outra parte'}
+        {deOutro ? 'providência de outra parte' : 'você precisa'}
       </span>
-      <span className={styles.acaoTexto}>{mov.ia.acao}</span>
+      <span className={styles.acaoTexto}>{mov.ia.oQueFazer}</span>
+      {!deOutro && deQuem !== 'destinatario' && (
+        <span className={styles.acaoRessalva}>de quem é a providência: a confirmar no ato</span>
+      )}
       {pedeConferencia(mov) && (
         <span className={styles.acaoConferir}>leitura de confiança baixa — confira o texto</span>
-      )}
-    </section>
-  );
-}
-
-const CONFIANCA: Record<string, string> = {
-  alta: 'confiança alta',
-  media: 'confiança média',
-  baixa: 'confiança baixa',
-};
-
-/* ── A leitura da IA ────────────────────────────────────────────────────── */
-
-/**
- * O que a IA leu no ato — ao lado do teor, e não dentro dele.
- *
- * O par é deliberado: `TeorDoAto` é o que o tribunal escreveu, este é o que
- * entendemos disso. Até 07/09/2026 a leitura não existia como bloco — ela vinha
- * espalhada em três lugares condicionais: `ia.acao` só aparece com providência,
- * `ia.fundamento` só aparece pendurado no bloco de prazo, e `confianca` e
- * `analisadoEm` viravam uma linha discreta na ficha. Num ato de mera ciência —
- * sem prazo e sem ação, que é a maioria — a análise ficava INVISÍVEL, mesmo
- * tendo rodado.
- *
- * `analisadoEm` é o gate, e não `resumo`: é ele que distingue "a IA não leu" de
- * "a IA leu e concluiu que não há nada a fazer". Sem análise o bloco não existe
- * — nunca uma caixa vazia dizendo que não há leitura.
- */
-export function LeituraIaDoAto({ mov }: { mov: Pick<MovimentacaoDetail, 'ia'> }) {
-  const ia = mov.ia;
-  if (!ia.analisadoEm && !ia.resumo) return null;
-
-  /* O rodapé do bloco: quando foi lido e com que confiança. `confianca: baixa`
-     não vai aqui — ela vira o aviso destacado abaixo, porque pedir conferência
-     em letra miúda ao lado da data é escondê-la. */
-  const carimbo = [
-    ia.analisadoEm && `lido em ${dataWallClock(new Date(ia.analisadoEm))}`,
-    ia.confianca && ia.confianca !== 'baixa' && CONFIANCA[ia.confianca],
-  ].filter(Boolean) as string[];
-
-  return (
-    <section className={styles.leitura} aria-label="Leitura do ato pela IA">
-      <div className={styles.leituraCabecalho}>
-        <span className={styles.leituraRotulo}>
-          <Sparkles size={13} aria-hidden="true" />
-          Leitura do ato
-        </span>
-        {carimbo.length > 0 && <span className={styles.leituraCarimbo}>{carimbo.join(' · ')}</span>}
-      </div>
-
-      {/* O resumo REPETE o título da linha logo acima, e aqui isso é correto:
-          na linha ele é a manchete, sem dizer que é leitura de máquina. É este
-          bloco que o qualifica — e sem ele o advogado não tem como saber que o
-          título não é o rótulo do tribunal. */}
-      {ia.resumo && <p className={styles.leituraResumo}>{ia.resumo}</p>}
-
-      {/* O fundamento só aparecia dentro do bloco de prazo. Ato lido que não
-          abriu prazo perdia a única frase que explica o porquê da conclusão. */}
-      {ia.fundamento && <p className={styles.leituraFundamento}>{ia.fundamento}</p>}
-
-      {pedeConferencia(mov) && (
-        <p className={styles.leituraConferir}>
-          leitura de confiança baixa — confira o texto do ato antes de decidir
-        </p>
       )}
     </section>
   );
@@ -432,14 +400,19 @@ export function DocumentosDoAto({ mov }: { mov: Pick<MovimentacaoDetail, 'id' | 
 /** O painel se adapta ao conteúdo recebido, independentemente da fonte. */
 export function AtoDetalhe({ mov }: { mov: MovimentacaoDetail }) {
   const cnj = mov.processData?.numero;
+  // Com vencimento, a providência E a leitura do ato já moram dentro do card
+  // do prazo (ver `PrazoDoAto`) — mostrá-las de novo aqui duplicaria as duas.
+  // Sem vencimento (`Deadline.dataLimite` nulo, ou o ato nunca abriu prazo),
+  // este é o único lugar onde elas aparecem.
+  const temVencimento = Boolean(vencimentoDoAto(mov));
 
   return (
     <div className={styles.painel}>
       <PrazoDoAto mov={mov} />
-      <ProvidenciaDoAto mov={mov} />
+      {!temVencimento && <ProvidenciaDoAto mov={mov} />}
       <div className={styles.conteudo}>
         <div className={styles.areaTexto}>
-          <LeituraIaDoAto mov={mov} />
+          {!temVencimento && <LeituraDoAto mov={mov} />}
           <TeorDoAto mov={mov} abrirAte={CHARS_ATO_ABERTO_PAINEL} />
         </div>
         <div className={styles.areaFicha}>

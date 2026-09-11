@@ -1,0 +1,36 @@
+/* O botão fica ABAIXO do bloco de leitura, não dentro dele: o bloco é o que a
+   IA escreveu, e enfiar um controle nosso lá dentro misturaria as duas vozes —
+   a mesma razão da barra à esquerda em `.leitura`. */
+
+.bloco {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.pedido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+/* Discreto de propósito: no ato JÁ LIDO ele é uma segunda chance, não a ação
+   principal do painel. */
+.botao { border-color: var(--line); color: var(--ink-2); }
+.botao:hover { background: var(--paper-2); }
+
+.erro { color: var(--alert); font-size: 12px; }
+
+/* `--ink-2` e não `--ink-3`: medido, `--ink-3` dá 3,8–4,3:1 de contraste e o
+   mínimo é 4,5 (ver o CLAUDE.md do front). */
+.aviso,
+.andamento {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.spinner { animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }

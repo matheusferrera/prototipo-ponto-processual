@@ -16,7 +16,9 @@ export function panoramaProcesso(eventos: TimelineEvent[], prazos: Prazo[]) {
     vencidos: vencidos.length,
     semData: semData.length,
     // Ação associada a um prazo já encerrado não é uma pendência atual.
-    acao: eventos.find(e => e.ia?.acao?.trim() && !e.prazo?.fechado && !encerrados.has(e.id)) ?? null,
+    // `peca` é o sinal de que há algo concreto a produzir — `oQueFazer`
+    // sozinho está sempre presente desde a fusão ato+prazo, até em ciência.
+    acao: eventos.find(e => e.ia?.peca && !e.prazo?.fechado && !encerrados.has(e.id)) ?? null,
   };
 }
 

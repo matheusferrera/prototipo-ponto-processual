@@ -31,12 +31,22 @@ export type OrigemMovimentacao = 'scraper' | 'tribunalPublico' | 'datajud' | 'dj
  */
 export type CategoriaMovimentacao = 'decisorio' | 'atoDeParte' | 'publicacao' | 'prazo' | 'tramite';
 
-/** A leitura do ato pela IA. Só a origem `djen` traz o inteiro teor, logo só ela é analisada. */
+/** O que perder o prazo custa. */
+export type RiscoPrazo = 'preclusao' | 'perdaDeDireito' | 'revelia' | 'multa' | 'nenhum';
+
+/**
+ * A leitura do ato pela IA. Só a origem `djen` traz o inteiro teor, logo só ela é analisada.
+ *
+ * **Fundida com "o que produzir até a data" desde `<data>`** — antes essa
+ * metade só existia depois de um `Deadline` ser analisado à parte
+ * (`POST /deadlines/{id}/analise`, hoje removida). Agora `peca`,
+ * `checklist`, `documentosNecessarios`, `risco`, `complexidade` e
+ * `precisaDosAutos` chegam sempre junto, mesmo em mera ciência (`peca: null`,
+ * checklist de conferência).
+ */
 export interface LeituraIa {
   /** O que o juízo decidiu, em linguagem humana. */
   resumo: string | null;
-  /** O que o destinatário precisa fazer. `null` = nada a fazer. */
-  acao: string | null;
   /**
    * De onde saiu o número de dias — o dispositivo legal, ou o próprio ato.
    *
@@ -55,6 +65,20 @@ export interface LeituraIa {
   confianca: string | null;
   deQuem: 'destinatario' | 'parteContraria' | 'terceiro' | 'indefinido' | null;
   analisadoEm: string | null;
+  /** A providência que o ato cobra e seu efeito, 2-3 frases. `null` = ainda não lido. */
+  oQueFazer: string | null;
+  /** Nome técnico da peça a produzir — "contrarrazões de apelação". `null` quando é só ciência. */
+  peca: string | null;
+  /** Ações verificáveis — "conferir a data de juntada do AR". */
+  checklist: string[];
+  /** O que falta obter ou juntar para a peça existir. */
+  documentosNecessarios: string[];
+  risco: RiscoPrazo | null;
+  complexidade: 'baixa' | 'media' | 'alta' | null;
+  /** Dá para redigir só com o ato, ou é indispensável abrir o processo? */
+  precisaDosAutos: boolean;
+  /** Quando o ato diverge do que foi informado (dias, de quem). Nunca muda a data. */
+  observacao: string | null;
 }
 
 /**
@@ -325,6 +349,12 @@ export interface TimelineEvent {
    * que por outra via.
    */
   temCertidao?: boolean;
+  /**
+   * Ver `Movimentacao.temDocumentoDoAto` — o mesmo sinal, na timeline do
+   * processo. Sem ele, a linha do tempo é a única lista do produto que não
+   * consegue oferecer o PDF do ato quando o tribunal o serve pelo link do DJEN.
+   */
+  temDocumentoDoAto?: boolean;
   /** Ver `Movimentacao.temInteiroTeor` — o mesmo sinal, na timeline do processo. */
   temInteiroTeor?: boolean;
   /** Ver `Movimentacao.documentoEstado` — o mesmo sinal, na timeline do processo. */
@@ -348,45 +378,19 @@ export type NaturezaPrazo = 'ciencia' | 'manifestacao';
 export interface AtoDoPrazo {
   id: string;
   ia: LeituraIa;
+  /**
+   * Origem e categoria do ato — necessárias para `podeLerComIa` decidir se o
+   * botão "Ler este ato com IA" (`LeituraDoAto`) aparece na pauta de prazos.
+   * Ausentes só em resposta de um backend anterior a `<data>`.
+   */
+  origem?: OrigemMovimentacao | null;
+  categoria?: CategoriaMovimentacao | null;
   /** As peças anexadas ao ato — já com `url` resolvida (proxy ou link do tribunal). */
   documentos: DocumentoMovimentacao[];
   /** Há certidão de publicação — o PDF oficial do CNJ, sem chave exposta. */
   temCertidao: boolean;
   /** O link do PJe, só quando ele NÃO é o documento (`ConsultaDocumento`, com hCaptcha). */
   link: string | null;
-}
-
-/** O que perder o prazo custa. */
-export type RiscoPrazo = 'preclusao' | 'perdaDeDireito' | 'revelia' | 'multa' | 'nenhum';
-
-/**
- * A leitura do PRAZO pela IA — o que o advogado PRODUZ até a data, não a data
- * em si (isso já foi decidido sobre o ato, com o calendário forense — ver
- * `Prazo.fundamento`/`metodoPrazo`). Pedida sob demanda em
- * `POST /deadlines/{id}/analise`; pode já vir em cache na própria listagem.
- */
-export interface AnalisePrazoResultado {
-  /** Nome técnico da peça a produzir — "contrarrazões de apelação". `null` quando é só ciência. */
-  peca: string | null;
-  /** A providência e o efeito prático dela, 2-3 frases. */
-  oQueFazer: string;
-  /** Ações verificáveis — "conferir a data de juntada do AR". */
-  checklist: string[];
-  /** Dá para redigir só com o ato, ou é indispensável abrir o processo? */
-  precisaDosAutos: boolean;
-  /** O que falta obter ou juntar para a peça existir. */
-  documentosNecessarios: string[];
-  risco: RiscoPrazo;
-  complexidade: 'baixa' | 'media' | 'alta';
-  /** Quando o ato diverge do que foi informado (dias, de quem). Nunca muda a data. */
-  observacao: string | null;
-  confianca: 'alta' | 'media' | 'baixa';
-}
-
-export interface AnalisePrazo {
-  atualizadaEm: string;
-  modelo: string;
-  resultado: AnalisePrazoResultado;
 }
 
 export interface Prazo {
@@ -442,10 +446,12 @@ export interface Prazo {
   cienciaEm?: string | null;
   /** `true` quando a ciência é a ficta do art. 5º, § 3º — "o sistema registrou", não "você abriu". */
   cienciaFicta?: boolean | null;
-  /** O ato que abriu este prazo, embutido — ver `AtoDoPrazo`. `null` sem ato gravado. */
+  /**
+   * O ato que abriu este prazo, embutido — ver `AtoDoPrazo`. `null` sem ato
+   * gravado. "O que produzir até a data" mora em `ato.ia` desde a fusão
+   * ato+prazo — não existe mais uma análise própria do `Deadline`.
+   */
   ato?: AtoDoPrazo | null;
-  /** A leitura do prazo pela IA, quando já em cache. `null`/ausente: ainda não pedida. */
-  analise?: AnalisePrazo | null;
   state: StatusType;
 }
 

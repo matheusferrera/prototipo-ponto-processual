@@ -38,7 +38,8 @@ import styles from './AnalisesIa.module.css';
  *
  * `fase`, `risco`, `complexidade`, `confianca`, `deQuem` e `precisaDosAutos`
  * são enums; `dataLimite` e `ocorridoEm` são datas; `pendencias`,
- * `pontosDeAtencao`, `checklist` e `documentosNecessarios` são listas. Servir
+ * `pontosDeAtencao`, `checklist`, `documentosNecessarios`, `proximasAcoes` e
+ * `legislacaoAplicavel` são listas. Servir
  * isso como frase ("confiança média · complexidade baixa") obriga o advogado a
  * ler para descobrir o que dava para ver. A prosa legítima é pouca e fica em
  * destaque: a síntese do caso, o `oQueFazer` do prazo e o `resumoIa` do ato.
@@ -243,8 +244,23 @@ function BlocoCaso({ caso }: { caso: AnaliseEnvelope }) {
         {lista(r, 'pontosDeAtencao').length > 0 && (
           <Campo rotulo="Atenção"><Itens de={lista(r, 'pontosDeAtencao')} /></Campo>
         )}
+        {/* Peça + data + o que falta, por prazo em aberto com peça identificada
+            — cruzado na síntese a partir da leitura fundida de cada ato, sem
+            chamada extra (`ia/tipos/processo.ts`, 10/09/2026). Repete parte do
+            que `BlocoPrazos` já mostra prazo a prazo; fica aqui também porque
+            "onde o caso está" é a primeira coisa que se lê, e quem só bate o
+            olho na síntese não quer perder de vista o que precisa fazer. */}
+        {lista(r, 'proximasAcoes').length > 0 && (
+          <Campo rotulo="Próximas ações"><Itens de={lista(r, 'proximasAcoes')} /></Campo>
+        )}
         {texto(r, 'proximoPassoProvavel') && (
           <Campo rotulo="Próximo passo">{texto(r, 'proximoPassoProvavel')}</Campo>
+        )}
+        {/* Artigo de lei, nunca jurisprudência — a mesma régua de `fundamento`
+            na movimentação: sem busca numa base real de acórdãos, citar
+            decisão específica não tem como ser conferido. */}
+        {lista(r, 'legislacaoAplicavel').length > 0 && (
+          <Campo rotulo="Legislação aplicável"><Itens de={lista(r, 'legislacaoAplicavel')} /></Campo>
         )}
       </dl>
     </section>
@@ -380,11 +396,11 @@ function BlocoAtos({ atos }: { atos: DossieDeIa['atos'] }) {
 
               {a.resumoIa && <p className={styles.paragrafo}>{a.resumoIa}</p>}
 
-              {a.acaoIa && (
-                <dl className={styles.dados}>
-                  <Campo rotulo="Providência">{a.acaoIa}</Campo>
-                </dl>
-              )}
+              {/* A providência ("o que fazer") não repete aqui — desde a fusão
+                  ato+prazo ela é sempre não-nula, e mostrá-la em toda linha
+                  desta lista densa seria prosa demais (ver o cabeçalho deste
+                  arquivo). Quem quer o detalhe abre a movimentação: o link
+                  acima leva à página do ato, que tem o bloco completo. */}
 
               {/* O fundamento é a citação de artigo que sustenta a leitura: quem
                   vai conferir quer, quem está lendo a linha do tempo não. Mesmo

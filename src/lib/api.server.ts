@@ -17,8 +17,6 @@ import type {
   LeituraIa,
   PrazoDoAto,
   AtoDoPrazo,
-  AnalisePrazo,
-  AnalisePrazoResultado,
 } from '@/types';
 import { normalizeTribunalOptions, type TribunalOption } from '@/lib/tribunals';
 import { semCodigo } from '@/lib/pje-text';
@@ -539,11 +537,18 @@ type BackendMovement = {
    * uma tela vazia.
    */
   documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
-  /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
+  /**
+   * Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler.
+   * Fundida com "o que produzir até a data" desde `<data>` — ver `LeituraIa`.
+   */
   ia?: {
-    resumo: string | null; acao: string | null;
+    resumo: string | null;
     fundamento?: string | null; confianca?: string | null;
     deQuem: LeituraIa['deQuem']; analisadoEm: string | null;
+    oQueFazer?: string | null; peca?: string | null;
+    checklist?: string[] | null; documentosNecessarios?: string[] | null;
+    risco?: LeituraIa['risco']; complexidade?: LeituraIa['complexidade'];
+    precisaDosAutos?: boolean | null; observacao?: string | null;
   } | null;
   /** O prazo que este ato abriu. `null` quando não abriu — a maioria não abre. */
   prazo?: {
@@ -589,11 +594,18 @@ type BackendMovement = {
 function toLeituraIa(m: BackendMovement): LeituraIa {
   return {
     resumo: m.ia?.resumo?.trim() || null,
-    acao: m.ia?.acao?.trim() || null,
     fundamento: m.ia?.fundamento?.trim() || null,
     confianca: m.ia?.confianca?.trim() || null,
     deQuem: m.ia?.deQuem ?? null,
     analisadoEm: m.ia?.analisadoEm ?? null,
+    oQueFazer: m.ia?.oQueFazer?.trim() || null,
+    peca: m.ia?.peca?.trim() || null,
+    checklist: m.ia?.checklist?.filter(Boolean) ?? [],
+    documentosNecessarios: m.ia?.documentosNecessarios?.filter(Boolean) ?? [],
+    risco: m.ia?.risco ?? null,
+    complexidade: m.ia?.complexidade ?? null,
+    precisaDosAutos: m.ia?.precisaDosAutos === true,
+    observacao: m.ia?.observacao?.trim() || null,
   };
 }
 
@@ -728,6 +740,7 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
     rawDate: m.ocorridoEm,
     documentos: toDocumentos(m),
     temCertidao: Boolean(m.temCertidao),
+    temDocumentoDoAto: Boolean(m.temDocumentoDoAto),
     // Ver `temAlgoParaLer`: texto extraído OU documento anexado. Sem isto o
     // campo ficava `undefined` em toda linha da timeline do processo, e o selo
     // "Com/Sem inteiro teor" simplesmente não aparecia antes de abrir o ato —
@@ -1052,6 +1065,15 @@ export type MovimentacaoDetail = {
   /** Ver `Movimentacao.documentoEstado` — o mesmo sinal, no detalhe do ato. */
   documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
   origem: OrigemMovimentacao;
+  /**
+   * A que serve o ato — o mesmo eixo da listagem (`Movimentacao.categoria`).
+   *
+   * Está no DETALHE desde 10/09/2026 porque o botão de leitura por IA precisa
+   * dele: `publicacao` e `tramite` são o que a IA recusa (409), e sem o campo o
+   * painel ofereceria o botão para a maior parte do acervo. `null` é valor
+   * legítimo — o ato do DJEN é gravado sem categoria e É lido.
+   */
+  categoria: CategoriaMovimentacao | null;
   /** Leitura do ato pela IA — só a origem `djen` traz o inteiro teor para ler. */
   ia: LeituraIa;
   /** O prazo que este ato abriu, em aberto. `null` quando não abriu ou já fechou. */
@@ -1144,6 +1166,7 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
     documentos: toDocumentos(m),
     documentoEstado: m.documentoEstado ?? 'nenhum',
     origem: m.origem ?? 'scraper',
+    categoria: m.categoria ?? null,
     nMovimento: m.nMovimento ?? null,
     // Duas fontes independentes que trouxeram o MESMO ato valem mais que uma —
     // é o que a ficha do ato mostra como "confirmado por".
@@ -1170,24 +1193,22 @@ type BackendDeadlineDocumento = {
  */
 type BackendDeadlineMovimentacao = {
   id: string;
+  /** Necessários para `podeLerComIa` — ver `AtoDoPrazo.origem`/`categoria`. */
+  origem?: OrigemMovimentacao | null;
+  categoria?: CategoriaMovimentacao | null;
   ia?: {
-    resumo: string | null; acao: string | null;
+    resumo: string | null;
     fundamento?: string | null; confianca?: string | null;
     deQuem: LeituraIa['deQuem']; analisadoEm: string | null;
+    oQueFazer?: string | null; peca?: string | null;
+    checklist?: string[] | null; documentosNecessarios?: string[] | null;
+    risco?: LeituraIa['risco']; complexidade?: LeituraIa['complexidade'];
+    precisaDosAutos?: boolean | null; observacao?: string | null;
   } | null;
   documentos?: BackendDeadlineDocumento[] | null;
   temCertidao?: boolean;
   temDocumentoDoAto?: boolean;
   linkTribunal?: string | null;
-} | null;
-
-/** A leitura do PRAZO pela IA, como `AnaliseView` a devolve — ver `toAnaliseView` no backend. */
-type BackendAnaliseView<T = unknown> = {
-  tipo: string;
-  versao: number;
-  atualizadaEm: string;
-  modelo: string;
-  resultado: T;
 } | null;
 
 type BackendDeadline = {
@@ -1219,8 +1240,6 @@ type BackendDeadline = {
   cienciaFicta?: boolean | null;
   /** O ato, embutido — ver `BackendDeadlineMovimentacao`. `null` sem ato gravado. */
   movimentacao?: BackendDeadlineMovimentacao;
-  /** A leitura do PRAZO pela IA, quando em cache — nunca custa uma requisição a mais. */
-  analise?: BackendAnaliseView;
   process?: {
     numero: string;
     tribunal: string;
@@ -1256,13 +1275,22 @@ function toAtoDoPrazo(mov: BackendDeadlineMovimentacao): AtoDoPrazo | null {
 
   return {
     id: mov.id,
+    origem: mov.origem ?? null,
+    categoria: mov.categoria ?? null,
     ia: {
       resumo: mov.ia?.resumo?.trim() || null,
-      acao: mov.ia?.acao?.trim() || null,
       fundamento: mov.ia?.fundamento?.trim() || null,
       confianca: mov.ia?.confianca?.trim() || null,
       deQuem: mov.ia?.deQuem ?? null,
       analisadoEm: mov.ia?.analisadoEm ?? null,
+      oQueFazer: mov.ia?.oQueFazer?.trim() || null,
+      peca: mov.ia?.peca?.trim() || null,
+      checklist: mov.ia?.checklist?.filter(Boolean) ?? [],
+      documentosNecessarios: mov.ia?.documentosNecessarios?.filter(Boolean) ?? [],
+      risco: mov.ia?.risco ?? null,
+      complexidade: mov.ia?.complexidade ?? null,
+      precisaDosAutos: mov.ia?.precisaDosAutos === true,
+      observacao: mov.ia?.observacao?.trim() || null,
     },
     documentos,
     temCertidao: Boolean(mov.temCertidao),
@@ -1270,12 +1298,6 @@ function toAtoDoPrazo(mov: BackendDeadlineMovimentacao): AtoDoPrazo | null {
     // quando é, `toDocumentos` já o incluiu acima via `temDocumentoDoAto`.
     link: (mov.documentos ?? []).find(d => d.urlDocumento)?.urlDocumento ?? mov.linkTribunal ?? null,
   };
-}
-
-/** A leitura do prazo pela IA, como a tela a consome — `null` fora de cache. */
-function toAnalisePrazo(a: BackendAnaliseView<AnalisePrazoResultado>): AnalisePrazo | null {
-  if (!a) return null;
-  return { atualizadaEm: a.atualizadaEm, modelo: a.modelo, resultado: a.resultado };
 }
 
 const toISODate = (d: Date) =>
@@ -1329,7 +1351,6 @@ function toPrazo(d: BackendDeadline): Prazo {
     cienciaEm: d.cienciaEm ?? null,
     cienciaFicta: d.cienciaFicta ?? null,
     ato: toAtoDoPrazo(d.movimentacao ?? null),
-    analise: toAnalisePrazo((d.analise ?? null) as BackendAnaliseView<AnalisePrazoResultado>),
     state,
   };
 }
@@ -1739,7 +1760,6 @@ export interface DossieDeIa {
     descricao: string;
     categoria: string | null;
     resumoIa: string | null;
-    acaoIa: string | null;
     fundamentoIa: string | null;
     confiancaIa: string | null;
     deQuemIa: string | null;
