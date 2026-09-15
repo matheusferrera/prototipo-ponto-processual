@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Clock3, Loader2, Smartphone } from 'lucide-react';
+import { Clock3, FileText, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
@@ -19,6 +19,36 @@ interface Canal {
   resumoAtivo: boolean;
 }
 type Preferencias = Pick<Canal, 'prazoAtivo' | 'resumoAtivo'>;
+
+/**
+ * Os dois avisos, na ordem em que saem.
+ *
+ * `resumoAtivo` governa o template `diario_djen` e `prazoAtivo` o
+ * `movimentacao_processo` — os dois únicos aprovados na conta da Meta. Os
+ * nomes das colunas são herdados (`prazoAtivo` nasceu para um alerta de prazo
+ * que não existe mais), e mantê-los é mais barato que uma migration por
+ * cosmética.
+ *
+ * A cadência não é chute: a ronda roda em `MONITOR_CONSULTA_CRON`
+ * (`0 8,14,20`), e o resumo é reservado por `(usuário, dia)` — sai uma vez, na
+ * primeira passada que achar publicação. O teto de 5 é `TETO_AVISOS_POR_DIA`,
+ * e ele é visível para quem recebe: quem tem 20 publicações num dia recebe 5
+ * mensagens e o resto no PDF. Esconder isso faria parecer falha.
+ */
+const AVISOS = [
+  [
+    'resumoAtivo',
+    'Publicações do dia',
+    'Uma mensagem com quantas publicações saíram, a mais urgente detalhada, e um PDF com todas as outras — prazo e análise de cada uma.',
+    'Uma vez por dia, na primeira varredura que encontrar publicação',
+  ],
+  [
+    'prazoAtivo',
+    'Movimentação por processo',
+    'Uma mensagem por movimentação, com o que aconteceu e o prazo que ela abriu. Sai depois do resumo.',
+    'Até 5 por dia · o excedente vai no PDF do resumo',
+  ],
+] as const;
 
 function mascara(bruto: string): string {
   const d = bruto.replace(/\D/g, '').slice(0, 11);
@@ -46,7 +76,8 @@ export function WhatsappPageContent() {
   const [editando, setEditando] = useState(false);
   const [aceito, setAceito] = useState(false);
   const [preferencias, setPreferencias] = useState<Preferencias>({ prazoAtivo: true, resumoAtivo: true });
-  const [previa, setPrevia] = useState<keyof Preferencias>('prazoAtivo');
+  // Abre no resumo do dia, que é o primeiro da lista e o primeiro a sair.
+  const [previa, setPrevia] = useState<keyof Preferencias>('resumoAtivo');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -137,11 +168,19 @@ export function WhatsappPageContent() {
           <p className={styles.note}>Este número recebe os avisos da sua carteira de processos.</p>
         </>}
         <h2 className={styles.section}>O que receber</h2>
-        {([['prazoAtivo', 'Alerta de novo prazo', 'Um aviso quando for identificado um novo prazo nos seus processos.', 'Quando um novo prazo for detectado'], ['resumoAtivo', 'Resumo das movimentações', 'As movimentações do dia reunidas em uma mensagem.', 'Todos os dias às 19h · horário de Brasília']] as const).map(([key, title, desc, cadence]) => <div key={key} className={styles.notice}>
+        {/* A ORDEM aqui é a ordem do envio: o resumo do dia sai primeiro e as
+            movimentações vêm depois dele. Inverter na tela faria a pessoa
+            esperar as bolhas antes do relatório.
+
+            As chaves seguem sendo `resumoAtivo`/`prazoAtivo` — são colunas de
+            `CanalWhatsapp`, e renomeá-las quebraria o contrato do backend por
+            ganho cosmético. O que mudou foi o que elas governam. */}
+        {AVISOS.map(([key, title, desc, cadence]) => <div key={key} className={styles.notice}>
           <div><label className={styles.noticeTitle} htmlFor={key}>{title}</label><p>{desc}</p><span className={styles.cadence}><Clock3 size={14} aria-hidden="true" />{cadence}</span></div>
           <Switch id={key} checked={preferencias[key]} disabled={salvando} onCheckedChange={v => { setPreferencias(p => ({ ...p, [key]: v })); setPrevia(key); setOk(null); }} />
         </div>)}
-        <details className={styles.details}><summary>Quando não há novidades</summary><p>Dias sem movimentação não geram resumo. Desativar um aviso não interrompe o acompanhamento dos processos no painel.</p></details>
+        <details className={styles.details}><summary>Quando não há novidades</summary><p>Dia sem publicação não gera mensagem nenhuma — nem o resumo, nem as movimentações. Desativar um aviso não interrompe o acompanhamento dos processos no painel.</p></details>
+        <details className={styles.details}><summary>Por que só 5 movimentações por dia</summary><p>Uma carteira grande pode ter dezenas de publicações num único dia, e receber dezenas de mensagens em sequência é o que faz qualquer pessoa silenciar o número. As 5 saem por ordem de urgência — prazo mais próximo primeiro — e <strong>nenhuma se perde</strong>: todas as publicações do dia estão no PDF que acompanha o resumo, com o prazo e a análise de cada uma.</p></details>
         {precisaNumero && <label className={styles.consent}><Checkbox checked={aceito} disabled={salvando} onCheckedChange={v => setAceito(v === true)} aria-label="Autorizo receber avisos no WhatsApp" /><span>Autorizo o Ponto Processual a enviar avisos sobre meus processos neste WhatsApp. Posso cancelar por aqui ou responder <strong>PARE</strong> na conversa.</span></label>}
         {erro && <p className={styles.error} role="alert">{erro}</p>}
         <div className={styles.save}><p role="status">{ok || (alterado ? 'Alterações não salvas' : 'Preferências salvas')}</p><Button type="submit" disabled={salvando || (!alterado && !erro)}>{salvando && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}{!cadastrado ? 'Ativar avisos' : 'Salvar preferências'}</Button></div>
@@ -149,11 +188,43 @@ export function WhatsappPageContent() {
       </form>
       <aside className={styles.preview} aria-label="Exemplo de mensagem no WhatsApp">
         <div className={styles.previewHead}><h2>Como chega no WhatsApp</h2><span>Exemplo</span></div>
-        <div className={styles.previewTabs} role="group" aria-label="Tipo de mensagem"><button type="button" aria-pressed={previa === 'prazoAtivo'} onClick={() => setPrevia('prazoAtivo')}>Alerta de prazo</button><button type="button" aria-pressed={previa === 'resumoAtivo'} onClick={() => setPrevia('resumoAtivo')}>Resumo diário</button></div>
+        <div className={styles.previewTabs} role="group" aria-label="Tipo de mensagem"><button type="button" aria-pressed={previa === 'resumoAtivo'} onClick={() => setPrevia('resumoAtivo')}>Publicações do dia</button><button type="button" aria-pressed={previa === 'prazoAtivo'} onClick={() => setPrevia('prazoAtivo')}>Movimentação</button></div>
         <div className={styles.conversation}><div className={styles.chatHead}><strong>Ponto Processual</strong><span>Avisos sobre seus processos</span></div><div className={styles.chatBody}>
-          {!preferencias[previa] ? <p className={styles.off}>Este tipo de aviso está desativado.<br />Ative a opção para ver o exemplo.</p> : <div className={styles.bubble}>{previa === 'prazoAtivo' ? <><strong>Novo prazo identificado</strong><p>Intimação para manifestação</p><p className={styles.sample}>Processo de exemplo<br />0712345-00.2026.8.07.0001</p><p><strong>Vencimento: 15/09/2026</strong><br />Data estimada · confira o ato no painel.</p><span className={styles.chatAction}>Ver o prazo no Ponto</span><span className={styles.time}>14:32</span></> : <><strong>Seu resumo de hoje</strong><p>3 movimentações em 2 processos.</p><p><strong>Intimação</strong><br />Processo de exemplo · TJDFT</p><p><strong>Juntada de petição</strong><br />Processo de exemplo · TRF1</p><span className={styles.chatAction}>Ver o resumo completo</span><span className={styles.time}>19:00</span></>}</div>}
+          {!preferencias[previa]
+            ? <p className={styles.off}>Este tipo de aviso está desativado.<br />Ative a opção para ver o exemplo.</p>
+            : previa === 'resumoAtivo'
+              /* `diario_djen`. O cabeçalho é um DOCUMENTO obrigatório — a
+                 mensagem não sai sem o PDF —, por isso o anexo aparece como
+                 parte da bolha, e não como enfeite. */
+              ? <div className={styles.bubble}>
+                  <span className={styles.chatAnexo}><FileText size={15} aria-hidden="true" />publicacoes-2026-09-15.pdf</span>
+                  <p>Olá, Dr. Matheus. Seu monitoramento processual registrou <strong>2 novas publicações</strong> no Diário Oficial em 15/09/2026.</p>
+                  <p><strong>--- Atenção ---</strong></p>
+                  <p className={styles.sample}>➡️ Agência de Fomento do Estado do RJ × Daniel Nunes Nascimento (0003777-06.2018.8.19.0083)</p>
+                  <p>▪️ O juiz determinou a remessa dos autos ao juiz natural da causa, sem prazo ou providência exigida das partes.</p>
+                  <p>O relatório em anexo traz as demais publicações do dia, com o prazo e a análise de cada uma.</p>
+                  <span className={styles.rodape}>Ao acompanhar iremos notificar a cada nova movimentação</span>
+                  <span className={styles.chatAction}>Acompanhar movimentaçoes</span>
+                  <span className={styles.time}>08:12</span>
+                </div>
+              /* `movimentacao_processo`. Dois botões de resposta rápida, e o
+                 segundo é o `Parar de acompanhar` — que hoje não tem quem o
+                 receba, mas renderiza porque está no template aprovado. */
+              : <div className={styles.bubble}>
+                  <strong>Nova movimentação no processo 0003777-06.2018.8.19.0083</strong>
+                  <p>Olá, Dr. Matheus. O processo que você acompanha registrou uma nova movimentação em 15/09/2026.</p>
+                  <p><strong>--- Movimentação ---</strong></p>
+                  <p className={styles.sample}>➡️ Agência de Fomento do Estado do RJ × Daniel Nunes Nascimento</p>
+                  <p>▪️ Despacho determinando a retirada dos bens móveis do imóvel, cujo prazo anterior decorreu in albis.</p>
+                  <p><strong>Prazo:</strong> ≈ faltam 15 dias, até 30/09/2026</p>
+                  <p>Você recebe este aviso porque ativou o acompanhamento deste processo.</p>
+                  <span className={styles.rodape}>Acompanhamento ativo neste processo</span>
+                  <span className={styles.chatAction}>Entender todo o contexto</span>
+                  <span className={styles.chatAction}>Parar de acompanhar</span>
+                  <span className={styles.time}>08:13</span>
+                </div>}
         </div></div>
-        <p className={styles.previewNote}>{canal && !canal.ativo ? 'Os envios estão interrompidos. Esta é uma prévia dos avisos.' : 'Exemplo ilustrativo. O conteúdo varia conforme as informações disponíveis em cada processo.'}</p>
+        <p className={styles.previewNote}>{canal && !canal.ativo ? 'Os envios estão interrompidos. Esta é uma prévia dos avisos.' : 'Exemplo ilustrativo — o texto é o dos modelos aprovados. O símbolo ≈ marca a data que calculamos, e não a que o tribunal declarou.'}</p>
       </aside>
     </div>
   </div>;

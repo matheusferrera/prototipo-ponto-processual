@@ -19,12 +19,34 @@ const SENHA_MIN = 8;
    A OAB saiu desta lista: ela não é mais campo deste formulário. Quem digita
    uma OAB antes de ter conta passa por `/oab/<numero>-<uf>`, a única rota que
    resolve OAB — de lá ela volta na URL e chega aqui já respondida. */
-const CAMPOS = ['nome', 'email', 'senha'] as const;
+const CAMPOS = ['telefone', 'nome', 'email', 'senha'] as const;
+
+/**
+ * Celular brasileiro com DDD, já sem máscara. É a MESMA regra do backend
+ * (`shared/avisos/telefone.ts`), menos o `55` — que o usuário não digita e nós
+ * prefixamos no envio. Divergir aqui deixaria a pessoa com um número que o
+ * formulário aceita e a API recusa.
+ */
+const CELULAR_RE = /^\d{2}9?\d{8}$/;
+
+/** `61991698451` → `(61) 99169-8451`. Digitação fica legível, envio vai limpo. */
+function mascararCelular(bruto: string): string {
+  const d = bruto.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
 type CampoId = (typeof CAMPOS)[number];
 type Valores = Record<CampoId, string>;
 
 function erroDoCampo(id: CampoId, v: Valores): string {
   switch (id) {
+    case 'telefone': {
+      const d = v.telefone.replace(/\D/g, '');
+      if (!d) return 'Informe o celular que vai receber os avisos.';
+      return CELULAR_RE.test(d) ? '' : 'Informe um celular com DDD, por exemplo (61) 99169-8451.';
+    }
     case 'nome':
       return v.nome.trim() ? '' : 'Informe seu nome completo.';
     case 'email':
@@ -68,6 +90,7 @@ interface CadastroFormProps {
  */
 export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: CadastroFormProps) {
   const router = useRouter();
+  const [telefone, setTelefone] = useState('');
   const [nome, setNome] = useState(nomeSugerido ?? '');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -84,8 +107,9 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
   const [contaGoogle, setContaGoogle] = useState(false);
   const [aviso] = useState<AvisoGoogle | null>(() => avisoGoogle(erroGoogle));
 
-  const valores: Valores = { nome, email, senha };
+  const valores: Valores = { telefone, nome, email, senha };
   const erros = {
+    telefone: erroDoCampo('telefone', valores),
     nome: erroDoCampo('nome', valores),
     email: erroDoCampo('email', valores),
     senha: erroDoCampo('senha', valores),
@@ -123,7 +147,14 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: nome, email, password: senha }),
+        body: JSON.stringify({
+          name: nome,
+          email,
+          password: senha,
+          // O `55` é nosso, não do usuário: o backend valida E.164 completo e
+          // recusaria `(61) 99169-8451`.
+          telefone: `55${telefone.replace(/\D/g, '')}`,
+        }),
       });
       const data = await res.json();
 
@@ -204,6 +235,33 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
       )}
 
       <form onSubmit={handleSubmit} noValidate className={styles.form}>
+        {/* O celular vem PRIMEIRO, e é deliberado: ele é o que o produto faz.
+            Pedir nome e senha antes, e o canal depois, inverte a ordem da
+            promessa — a pessoa veio para ser avisada no WhatsApp.
+
+            A frase logo abaixo não é rodapé legal: é ela que torna o opt-in
+            gravado no `optInEm` uma prova de consentimento numa auditoria da
+            Meta. O backend liga os avisos por padrão CONFIANDO que esta frase
+            está aqui; tirá-la transforma o aceite em invenção do servidor, e
+            conta com opt-in fabricado a Meta suspende, não adverte. */}
+        <AuthField
+          id="telefone"
+          label="Celular com WhatsApp"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel-national"
+          value={telefone}
+          onChange={v => setTelefone(mascararCelular(v))}
+          onBlur={() => setTocado(t => ({ ...t, telefone: true }))}
+          placeholder="(61) 99169-8451"
+          disabled={loading}
+          error={tocado.telefone ? erros.telefone : ''}
+        />
+        <p className={styles.dicaCampo}>
+          É neste número que chegam os avisos de publicação e prazo. Você pode
+          desligar quando quiser, em Configurações.
+        </p>
+
         <AuthField
           id="nome"
           label="Nome completo"

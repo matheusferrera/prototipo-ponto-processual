@@ -1873,3 +1873,26 @@ export async function getUsuarioAtual(): Promise<UsuarioAtual> {
   return await backendGet('/users/me') as UsuarioAtual;
 }
 
+/** O canal de WhatsApp, como `GET /users/me/whatsapp` o devolve. */
+export interface CanalWhatsapp {
+  /** Mascarado pelo backend — o número completo nunca sai numa resposta. */
+  telefone: string;
+  ativo: boolean;
+  optInEm: string | null;
+  optOutEm: string | null;
+  pausadoAte: string | null;
+  prazoAtivo: boolean;
+  resumoAtivo: boolean;
+}
+
+/**
+ * O canal do usuário, ou `null` quando ele ainda não cadastrou telefone.
+ *
+ * **`204`, não `404`** — é o que a rota responde para "ainda não cadastrou", e
+ * por isso ele entra em `vaziosEm`. Com o default (`[404]`), um usuário sem
+ * canal derrubaria o painel com `Backend error 204`.
+ */
+export async function getCanalWhatsapp(): Promise<CanalWhatsapp | null> {
+  return backendGetOrNull<CanalWhatsapp>('/users/me/whatsapp', [204, 404]);
+}
+

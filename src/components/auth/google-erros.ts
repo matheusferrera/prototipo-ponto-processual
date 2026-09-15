@@ -32,6 +32,18 @@ const MENSAGENS: Record<string, AvisoGoogle> = {
   google_offline: {
     texto: 'Não conseguimos falar com o Google agora. Tente novamente em instantes.',
   },
+  /**
+   * A NOSSA API não respondeu — nada a ver com o Google.
+   *
+   * Existe desde 11/09/2026 porque o caso caía em `google_offline`, e a frase
+   * mandava procurar problema no lugar errado: numa janela de 4 minutos com a
+   * API parada para manutenção, a tela dizia "não conseguimos falar com o
+   * Google" enquanto o Google estava perfeitamente de pé. Quem lê a mensagem é
+   * quem vai decidir se tenta de novo ou se abre um chamado.
+   */
+  api_offline: {
+    texto: 'Nosso servidor não respondeu agora. Tente de novo em instantes — sua conta do Google está bem.',
+  },
   google_falhou: {
     texto: 'Não foi possível entrar com o Google. Tente de novo ou use e-mail e senha.',
   },

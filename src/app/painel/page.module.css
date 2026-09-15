@@ -299,3 +299,61 @@
   .heatCell { height: 32px; }
 }
 
+
+/* ── Aviso de canal ausente ───────────────────────────────────────────────────
+   Faixa acima do conteúdo, no vocabulário do painel: borda de 1px, raio zero,
+   quadrado da marca à esquerda. Usa `signal` (âmbar) e não `alert` (vermelho)
+   de propósito — não há nada errado, há algo faltando; vermelho aqui gastaria
+   a cor que o prazo vencido precisa. */
+.avisoCanal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-lg);
+  border: 1px solid #e6c368;
+  background: var(--signal-soft);
+}
+
+.avisoCanalMarca {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: var(--signal-ink);
+}
+
+.avisoCanalTexto { min-width: 0; }
+
+.avisoCanalTexto strong {
+  display: block;
+  font-size: var(--text-body);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--signal-ink);
+}
+
+.avisoCanalTexto p {
+  margin: 2px 0 0;
+  font-size: var(--text-small);
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.avisoCanalAcao {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--signal-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.avisoCanalAcao:hover { text-decoration: underline; }
+
+/* No celular a ação desce: a calha de 16px não comporta texto + link na mesma
+   linha sem truncar um dos dois. */
+@media (max-width: 640px) {
+  .avisoCanal { flex-wrap: wrap; }
+  .avisoCanalAcao { margin-left: 14px; }
+}

@@ -73,7 +73,9 @@ export async function GET(req: NextRequest) {
       cache: 'no-store',
     });
   } catch {
-    return volta(req, estado.origem, 'google_offline', estado);
+    // A API não respondeu — o Google não tem nada com isso, e a tela não pode
+    // dizer que tem. Ver `api_offline` em `google-erros.ts`.
+    return volta(req, estado.origem, 'api_offline', estado);
   }
 
   const dados = (await resposta.json().catch(() => ({}))) as {

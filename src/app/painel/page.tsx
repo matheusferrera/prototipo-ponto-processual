@@ -7,6 +7,7 @@ import {
   getProcessos,
   getMovimentacoes,
   getPrazos,
+  getCanalWhatsapp,
   getScraperSecrets,
   getUsuarioAtual,
   getAtividadeDiaria,
@@ -97,6 +98,7 @@ export default async function DashboardPage() {
     atividade,
     secrets,
     usuario,
+    canalWhatsapp,
   ] = await Promise.all([
     getProcessos(1, AMOSTRA_CARTEIRA),
     getMovimentacoes(1, 50),
@@ -104,11 +106,22 @@ export default async function DashboardPage() {
     getAtividadeDiaria(HEATMAP_DIAS),
     getScraperSecrets(),
     getUsuarioAtual(),
+    getCanalWhatsapp(),
   ]);
 
 
   const semProcessos = totalProcessos === 0;
   const semOab = !usuario.oab;
+
+  // **Sem canal de WhatsApp o produto não entrega o que promete.** A conta
+  // existe, a varredura roda, os prazos são calculados — e nada chega. É o
+  // caso de quem entrou pelo Google (aquele caminho não tem formulário nosso)
+  // ou de quem cadastrou o número sem aceitar receber.
+  //
+  // `optInEm` nulo com telefone gravado é estado legítimo, não meia-instalação:
+  // o schema o descreve como "número cadastrado mas SEM consentimento — nunca
+  // recebe nada". Para o painel, os dois casos pedem a mesma ação.
+  const semWhatsapp = !canalWhatsapp?.optInEm || Boolean(canalWhatsapp.optOutEm);
   const jaVarreu = secrets.some(s => s.isActive && s.lastSuccessAt);
 
   const allMovs = movimentacoes.flatMap(g => g.items);
@@ -231,6 +244,8 @@ export default async function DashboardPage() {
 
       <div className={styles.scroll}>
         <div className={styles.content}>
+          {semWhatsapp && <AvisoSemWhatsapp temNumero={Boolean(canalWhatsapp?.telefone)} />}
+
           {semProcessos ? (
             semOab ? <PainelSemOab />
             : !jaVarreu ? <PainelSincronizando oab={usuario.oab!} />
@@ -467,6 +482,47 @@ function CarteiraLinha({ rotulo, valor, destaque }: { rotulo: string; valor: str
  * Painel vazio, causa 1: a conta não tem OAB. A OAB é o pedido barato que faz a
  * carteira aparecer; o login do tribunal fica como saída secundária.
  */
+/**
+ * O aviso de que os avisos não vão chegar.
+ *
+ * Fica ACIMA de tudo e vale também nos estados vazios: quem ainda não tem
+ * processo também precisa do canal ligado antes de o primeiro aparecer — e é
+ * justamente nesse momento que o produto tem uma chance de ser útil sem que a
+ * pessoa precise voltar sozinha.
+ *
+ * Não é dispensável de propósito. Um "x" aqui esconderia a única razão de o
+ * produto existir, e a pessoa descobriria a falta no dia em que o prazo passou.
+ * O que fecha o aviso é resolver: ligado o canal, ele some.
+ *
+ * Duas mensagens, porque são dois problemas com a mesma ação:
+ *  - **sem número**: veio pelo Google, que não tem formulário nosso;
+ *  - **com número, sem aceite**: o schema chama isso de "número cadastrado mas
+ *    SEM consentimento — nunca recebe nada", e ele nunca deve virar envio por
+ *    conta própria.
+ */
+function AvisoSemWhatsapp({ temNumero }: { temNumero: boolean }) {
+  return (
+    <div className={styles.avisoCanal} role="status">
+      <span className={styles.avisoCanalMarca} aria-hidden="true" />
+      <div className={styles.avisoCanalTexto}>
+        <strong>
+          {temNumero
+            ? 'Falta autorizar os avisos no WhatsApp'
+            : 'Falta o seu WhatsApp'}
+        </strong>
+        <p>
+          {temNumero
+            ? 'Seu número está guardado, mas ainda não autorizou o envio — nada é disparado sem isso.'
+            : 'É por ele que a publicação e o prazo chegam no mesmo dia. Sem o número, o monitoramento roda e nada te avisa.'}
+        </p>
+      </div>
+      <Link href="/whatsapp" className={styles.avisoCanalAcao}>
+        {temNumero ? 'Autorizar' : 'Informar número'} →
+      </Link>
+    </div>
+  );
+}
+
 function PainelSemOab() {
   return (
     <div className={styles.empty}>
