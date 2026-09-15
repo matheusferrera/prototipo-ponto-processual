@@ -55,7 +55,29 @@ export function parteSecundaria(pz: Prazo, titulo: string): string | null {
  * comparação.
  */
 export function clientePrazo(pz: Prazo): string {
-  return partesCurtas(pz.parte) || assuntoCurto(pz.assunto) || pz.tipo;
+  // O CLIENTE vem primeiro, e a diferença não é cosmética. `pz.parte` é quem o
+  // ATO nomeia: num prazo de polo passivo, isso é a parte CONTRÁRIA — a pauta
+  // e o PDF vinham anunciando o nome de quem processa o cliente na coluna
+  // "Cliente". O backend passou a derivar de que lado a OAB da conta está
+  // (`meu-polo.ts`), e é essa a resposta certa para esta pergunta.
+  //
+  // A cadeia de fallback sobrevive inteira para quando `meuPolo` é
+  // `indefinido` — ~30% do acervo, onde o tribunal não publicou os
+  // representantes. Ali `pz.parte` continua sendo o melhor palpite disponível,
+  // e quem diz que é palpite é `clienteEhPresumido`.
+  const meu = pz.cliente?.length ? partesCurtas(pz.cliente.join(', ')) : '';
+  return meu || partesCurtas(pz.parte) || assuntoCurto(pz.assunto) || pz.tipo;
+}
+
+/**
+ * O nome em `clientePrazo` é o cliente CONFIRMADO, ou o melhor palpite?
+ *
+ * `true` quer dizer "não sabemos de que lado você está neste processo, e este
+ * nome saiu do texto do ato". A tela precisa poder dizer isso: um palpite
+ * apresentado como certeza é exatamente o erro que a derivação veio corrigir.
+ */
+export function clienteEhPresumido(pz: Prazo): boolean {
+  return !pz.cliente?.length;
 }
 
 /** Expediente sem o id interno do documento — o "o que fazer" da linha. */

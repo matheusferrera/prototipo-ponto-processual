@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type {
+  MeuPolo,
   AnaliseDoCaso,
   Processo,
   ProcessoParte,
@@ -91,6 +92,10 @@ type BackendProcess = {
   autuadoEm: string | null;
   poloAtivo: BackendParte[] | null;
   poloPassivo: BackendParte[] | null;
+  /* Derivados da OAB da conta — ver `meu-polo.ts` no backend. */
+  meuPolo?: MeuPolo;
+  cliente?: string[];
+  parteContraria?: string[];
   valorCausa: string | number | null;
   movementsCount?: number;
   openDeadlinesCount?: number;
@@ -310,6 +315,9 @@ function toProcesso(p: BackendProcess): Processo {
     whatsEnabled: p.monitored,
     poloAtivo,
     poloPassivo,
+    meuPolo: p.meuPolo ?? 'indefinido',
+    cliente: p.cliente ?? [],
+    parteContraria: p.parteContraria ?? [],
     valorCausa: normalizeValorCausa(p.valorCausa),
     autuadoEm: normalizeDate(p.autuadoEm),
     lastMovAt,
@@ -1248,6 +1256,13 @@ type BackendDeadline = {
     orgaoJulgador: string | null;
     assunto?: string | null;
     poloAtivo: BackendParte[] | null;
+    poloPassivo?: BackendParte[] | null;
+    /* Derivados da OAB da conta — ver `meu-polo.ts` no backend. Opcionais
+       porque uma API mais antiga não os manda, e aí a tela cai em
+       `indefinido`, que é o degradado seguro. */
+    meuPolo?: MeuPolo;
+    cliente?: string[];
+    parteContraria?: string[];
   } | null;
 };
 
@@ -1332,6 +1347,12 @@ function toPrazo(d: BackendDeadline): Prazo {
     cnj: d.process?.numero ?? '—',
     orgaoJulgador: d.process?.orgaoJulgador?.trim() || '—',
     parte,
+    /* QUEM É MEU CLIENTE — não confundir com `parte`, que é quem o ATO
+       nomeia. Num prazo de polo passivo os dois são pessoas opostas, e era
+       `parte` que a coluna "Cliente" da pauta mostrava. */
+    meuPolo: d.process?.meuPolo ?? 'indefinido',
+    cliente: d.process?.cliente ?? [],
+    parteContraria: d.process?.parteContraria ?? [],
     assunto: d.process?.assunto?.trim() || '',
     tipo: semCodigo(d.tipoDocumento),
     natureza: d.natureza ?? null,

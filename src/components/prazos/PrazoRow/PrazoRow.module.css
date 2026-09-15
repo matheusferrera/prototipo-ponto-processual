@@ -121,3 +121,18 @@
 .pecaRisco[data-risco="preclusao"],
 .pecaRisco[data-risco="perdaDeDireito"],
 .pecaRisco[data-risco="revelia"] { color: var(--alert); }
+
+/* "a confirmar" ao lado do nome da parte: o cruzamento com a OAB não decidiu
+   de que lado estamos, então este nome é o que o ATO cita — pode ser a parte
+   contrária. Contorno sem preenchimento, como o chip neutro do relatório: ele
+   qualifica o texto ao lado, não compete com ele. */
+.parteAConfirmar {
+  margin-left: var(--space-sm);
+  padding: 0 var(--space-xs);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

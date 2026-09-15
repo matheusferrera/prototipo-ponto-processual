@@ -7,6 +7,7 @@ import { PrazosView } from '@/components/prazos/PrazosView/PrazosView';
 import { ActivePrazoFilters } from '@/components/prazos/PrazoFilters/ActivePrazoFilters';
 import { PrazoSummaryBar } from '@/components/prazos/PrazoSummaryBar/PrazoSummaryBar';
 import { ExportPrazosPdfButton } from '@/components/prazos/ExportPrazosPdfButton/ExportPrazosPdfButton';
+import { ExportPrazosIcsButton } from '@/components/prazos/ExportPrazosIcsButton/ExportPrazosIcsButton';
 import {
   PrazoFilterControls,
   PRAZO_PANEL_HOST_ID,
@@ -52,7 +53,7 @@ export default async function PrazosPage({
           filters={filters}
           tribunals={tribunals}
           variant="mobile"
-          trailing={<ExportPrazosPdfButton prazos={prazos} compact />}
+          trailing={<><ExportPrazosIcsButton prazos={prazos} compact /><ExportPrazosPdfButton prazos={prazos} compact /></>}
         />
       )}
     >
@@ -60,7 +61,7 @@ export default async function PrazosPage({
         <PrazoFilterControls
           filters={filters}
           tribunals={tribunals}
-          trailing={<ExportPrazosPdfButton prazos={prazos} compact />}
+          trailing={<><ExportPrazosIcsButton prazos={prazos} compact /><ExportPrazosPdfButton prazos={prazos} compact /></>}
         />
       </PageHeader>
 

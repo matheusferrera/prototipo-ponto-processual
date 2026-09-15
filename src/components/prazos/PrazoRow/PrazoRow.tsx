@@ -5,7 +5,7 @@ import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { ProvidenciaDoAto, DocumentosDoAto } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
 import { RISCO_ROTULO } from '@/components/movimentacoes/AtoDetalhe/LeituraIaDoAto';
 import { LeituraDoAto } from '@/components/movimentacoes/AtoDetalhe/LeituraDoAto';
-import { clientePrazo, expedientePrazo, procedenciaPrazo, qualificacaoPrazo, rotuloNatureza } from '@/lib/prazo';
+import { clienteEhPresumido, clientePrazo, expedientePrazo, procedenciaPrazo, qualificacaoPrazo, rotuloNatureza } from '@/lib/prazo';
 import { tribunalTagLabel } from '@/lib/tribunals';
 import { dataPrazo, faixaPrazo, quandoPrazo } from '@/lib/prazo-apresentacao';
 import { partesCurtas } from '@/lib/pje-text';
@@ -53,6 +53,10 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
   const natureza = rotuloNatureza(p);
   const titulo = expedientePrazo(p);
   const parte = clientePrazo(p);
+  // O nome saiu do cruzamento com a minha OAB, ou é o que o ATO nomeia?
+  // Sem essa distinção os dois têm a mesma cara — e num prazo de polo passivo
+  // o segundo é a parte CONTRÁRIA.
+  const partePresumida = clienteEhPresumido(p);
   const estimado = Boolean(p.vencimentoISO) && (p.origemPrazo === 'djen' || p.origemPrazo === 'tribunalPublico');
 
   // O que sobra depois de leitura, providência, qualificação e documentos já
@@ -80,7 +84,19 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
             )}
           </span>
           <span className={styles.titulo}>{titulo}</span>
-          {parte !== titulo && <span className={styles.parte}>{parte}</span>}
+          {parte !== titulo && (
+            <span className={styles.parte}>
+              {parte}
+              {partePresumida && (
+                <span
+                  className={styles.parteAConfirmar}
+                  title="O tribunal não publicou os representantes deste processo, então não dá para afirmar de que lado você está. Este é o nome que o ato cita."
+                >
+                  a confirmar
+                </span>
+              )}
+            </span>
+          )}
           {p.deQuem === 'parteContraria' && <span className={styles.contexto}>Prazo da parte contrária</span>}
 
           {/* A PEÇA, na linha fechada. `expedientePrazo` acima é o rótulo do

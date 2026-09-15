@@ -1,5 +1,5 @@
 import type { Prazo } from '@/types';
-import { assuntoSecundario, clientePrazo, expedientePrazo, rotuloNatureza } from '@/lib/prazo';
+import { assuntoSecundario, clienteEhPresumido, clientePrazo, expedientePrazo, rotuloNatureza } from '@/lib/prazo';
 
 const PAPER = [250, 248, 243] as const;
 const INK = [26, 36, 30] as const;
@@ -78,11 +78,15 @@ export async function createPrazosPdf(prazos: Prazo[], generatedAt = new Date())
     ]],
     body: prazos.map((prazo) => {
       const cliente = clientePrazo(prazo);
+      // Mesma distinção da tela: nome derivado da minha OAB × nome que o ato
+      // cita. Numa planilha impressa não há hover para explicar, então a
+      // ressalva vai escrita na própria célula.
+      const clienteCelula = clienteEhPresumido(prazo) ? `${cliente}\n(a confirmar)` : cliente;
       return [
         prazo.vencimento ?? 'Sem prazo definido',
         prazo.diasRestantes === null ? '-' : String(prazo.diasRestantes),
         textOrFallback(prazo.grau ? `${prazo.tribunal}-${prazo.grau}` : prazo.tribunal),
-        textOrFallback(cliente),
+        textOrFallback(clienteCelula),
         textOrFallback(expedientePrazo(prazo)),
         textOrFallback(rotuloNatureza(prazo)),
         textOrFallback(assuntoSecundario(prazo, cliente)),

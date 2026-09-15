@@ -252,6 +252,12 @@ export interface Processo {
   cnj: string;
   orgaoJulgador: string;
   parte: string;
+  /** De que lado eu estou. Ver `MeuPolo` — `indefinido` nunca vira "ativo". */
+  meuPolo?: MeuPolo;
+  /** As partes que citam a minha OAB — o cliente. */
+  cliente?: string[];
+  /** As partes do outro lado. */
+  parteContraria?: string[];
   materia: string;
   assunto?: string;
   classeJudicial?: string;
@@ -393,6 +399,16 @@ export interface AtoDoPrazo {
   link: string | null;
 }
 
+/**
+ * De que lado do processo o advogado está.
+ *
+ * Derivado no backend cruzando a OAB da conta com os representantes de cada
+ * parte (`shared/processos/meu-polo.ts`) — não é cadastro. `indefinido` é
+ * resposta legítima e frequente: em ~30% do acervo medido o tribunal não
+ * publicou os representantes. **A tela nunca pode tratá-lo como "ativo".**
+ */
+export type MeuPolo = 'ativo' | 'passivo' | 'indefinido';
+
 export interface Prazo {
   id: string;
   tribunal: string;
@@ -404,6 +420,17 @@ export interface Prazo {
   orgaoJulgador: string;
   /** Parte do expediente (fallback: polo ativo do processo). Vazio quando o PJe não informou. */
   parte: string;
+  /**
+   * De que lado eu estou neste processo. Ver `MeuPolo`.
+   *
+   * É o que separa `parte` (quem o ATO nomeia — num prazo de polo passivo, a
+   * parte contrária) de `cliente` (quem eu represento).
+   */
+  meuPolo?: MeuPolo;
+  /** As partes que citam a minha OAB. Vazio quando `meuPolo` é `indefinido`. */
+  cliente?: string[];
+  /** As partes do outro lado. Vazio quando `meuPolo` é `indefinido`. */
+  parteContraria?: string[];
   /** Assunto do processo. Vazio quando o PJe não informou — nunca cai para o nome da parte. */
   assunto: string;
   tipo: string;
