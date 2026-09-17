@@ -1,0 +1,58 @@
+/* O seletor de vista — ver o docblock do componente. */
+
+.seletor {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--paper);
+  /* Rola em vez de quebrar: no celular a 320px os dois rótulos com contador
+     não cabem, e quebrar em duas linhas gastaria 88px acima da primeira
+     movimentação. Mesmo tratamento do seletor de anos do calendário. */
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* 44px de alvo — este é o controle mais alto da tela e o primeiro que o
+     polegar encontra. */
+  min-height: 44px;
+  padding: 0 var(--space-lg);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  /* O filete transparente reserva o espaço do indicador: sem ele, a aba ativa
+     ficaria 2px mais alta e o seletor inteiro pularia a cada troca. */
+  border-bottom: 2px solid transparent;
+}
+
+.aba:hover { background: var(--paper-2); color: var(--ink); }
+.aba:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.aba[data-ativa] {
+  font-weight: 800;
+  color: var(--brick-deep);
+  border-bottom-color: var(--brick);
+}
+
+.conta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--paper-3);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.aba[data-ativa] .conta { background: var(--brick); color: #fff; }
+.conta[data-novo] { background: var(--brick-soft); color: var(--brick-deep); }
+.aba[data-ativa] .conta[data-novo] { background: var(--brick); color: #fff; }

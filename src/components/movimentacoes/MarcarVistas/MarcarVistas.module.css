@@ -1,0 +1,33 @@
+.botao {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brick);
+  cursor: pointer;
+}
+
+.botao:hover { color: var(--brick-deep); background: var(--brick-soft); }
+.botao:disabled { cursor: progress; opacity: .7; }
+.botao:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.erro {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--alert);
+}
+
+.girando { animation: girar 0.9s linear infinite; }
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; }
+}

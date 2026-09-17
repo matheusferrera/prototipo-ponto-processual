@@ -3,7 +3,7 @@
 
 .wrap {
   margin-top: 36px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
 }
 
@@ -26,7 +26,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-transform: uppercase;
   margin-bottom: 12px;
 }
@@ -93,7 +93,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-transform: uppercase;
 }
 

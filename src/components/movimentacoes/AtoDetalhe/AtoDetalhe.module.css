@@ -10,7 +10,7 @@
   display: grid;
   gap: var(--space-md);
   padding: var(--space-lg);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
   min-width: 0;
 }
@@ -129,7 +129,7 @@
   align-items: stretch;
   gap: var(--space-xs);
   padding: var(--space-md) var(--space-lg);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
 }
 
@@ -182,7 +182,7 @@
    distingue é a barra à esquerda, que é o único lugar do painel onde algo diz
    "isto foi máquina que escreveu". */
 .leitura {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-left: 2px solid var(--brick);
   background: var(--paper);
   padding: var(--space-md) var(--space-lg);
@@ -216,7 +216,7 @@
   font-family: var(--mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 /* Sem `max-width`: o bloco já ganha o card inteiro (`.prazoLeitura` cruza as
@@ -319,7 +319,7 @@
    são Server Components, e abrir/fechar um bloco de texto é o que o elemento
    faz sem JavaScript. */
 .ato {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
 }
 
@@ -607,4 +607,124 @@
   .conteudo { display: flex; flex-direction: column; gap: var(--space-lg); }
   .areaTexto, .areaFicha { width: 100%; }
   .atoTexto { max-height: none; overflow: visible; padding: var(--space-lg); }
+}
+
+/* ── A CONTA DO VENCIMENTO, ABERTA ───────────────────────────────────────
+   Ver o docblock de `CadeiaDoPrazo`. É a mesma cadeia que o CNJ imprime no
+   rodapé da certidão de publicação, e ela existe para a data-limite deixar de
+   ser um número que se aceita. */
+
+.cadeia {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line-strong);
+}
+
+.cadeiaRotulo {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.cadeiaLista {
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Grid de três colunas: o trilho, a etapa, a data. A data é `auto` e alinhada
+   à direita para as quatro ficarem numa coluna só — é assim que o olho confere
+   a progressão sem ler os rótulos. */
+.cadeiaPasso {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  column-gap: var(--space-sm);
+  align-items: start;
+  padding-bottom: var(--space-sm);
+}
+
+/* O trilho vertical liga os marcos. Sem ele os quatro passos leem como uma
+   lista de datas soltas, que é exatamente o que eles não são. */
+.cadeiaMarca {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  background: var(--line-strong);
+}
+
+.cadeiaPasso:not(:last-child) .cadeiaMarca::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 1px;
+  /* Cobre o resto da linha até o marco seguinte, seja qual for a altura do
+     texto — `bottom` negativo em vez de altura fixa. */
+  bottom: -100%;
+  background: var(--line);
+}
+
+.cadeiaPasso[data-fim] .cadeiaMarca {
+  width: 9px;
+  height: 9px;
+  margin-left: -1px;
+  background: var(--ink-2);
+}
+
+.cadeiaTexto { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.cadeiaEtapa {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+.cadeiaPasso[data-fim] .cadeiaEtapa { font-weight: 700; color: var(--ink); }
+
+/* A REGRA é o que transforma a lista em explicação: "04/09" não diz nada;
+   "1º dia útil seguinte — Lei 11.419, art. 4º, § 3º" diz de onde a data saiu e
+   onde conferir. */
+.cadeiaRegra {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  opacity: .85;
+}
+
+.cadeiaData {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+.cadeiaPasso[data-fim] .cadeiaData { font-weight: 700; }
+
+.cadeiaFundamento {
+  margin: var(--space-xs) 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* A RESSALVA. `--signal-ink` e não `--signal`: medido, o segundo dá 2,86:1
+   como texto sobre `--signal-soft` e reprova o AA — e esta é a frase que
+   impede uma estimativa de passar por vencimento oficial. */
+.cadeiaRessalva {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--signal-soft);
+  border-left: 3px solid var(--signal);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--signal-ink);
+}
+
+@media (min-width: 768px) {
+  .cadeiaEtapa { font-size: 13px; }
+  .cadeiaData { font-size: 13px; }
 }

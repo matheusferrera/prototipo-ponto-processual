@@ -1,0 +1,55 @@
+/* § PEÇAS QUE ABREM — ver o docblock do componente. */
+
+.calha { min-width: 0; }
+
+.lista { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--line-soft);
+  min-width: 0;
+}
+
+.link, .trancada {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.link { color: var(--ink); }
+.link svg { flex: none; color: var(--brick); }
+.link:hover .nome { color: var(--brick-deep); text-decoration: underline; }
+.link:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.trancada { color: var(--ink-2); }
+.trancada svg { flex: none; color: var(--signal-ink); }
+
+.nome { min-width: 0; overflow-wrap: anywhere; }
+.motivo { font-size: 11px; }
+
+.data {
+  flex: none;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nota, .vazio {
+  margin: 10px 0 0;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 62ch;
+}
+
+.vazio { margin: 0; font-size: 13px; line-height: 1.65; }

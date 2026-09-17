@@ -10,6 +10,13 @@
  * bem mais escuro do que a intuição pede: sobre fundo creme, verde claro some. */
 
 .calendario {
+  /* Container query, não media query: no desktop este mapa mora na calha da
+     direita (≈372px) e no celular ocupa a tela inteira. Quem decide se a faixa
+     de anos cabe ao lado do título é a largura DELE, não a da janela — com
+     `@media` a calha recebia a regra de desktop e espremia os 37 anos do
+     processo mais antigo da base num terço da largura disponível. */
+  container: calendario-processo / inline-size;
+
   --nivel-0: var(--paper-2);
   --nivel-1: #91bba1;
   --nivel-2: #6aa383;
@@ -106,7 +113,7 @@
   display: flex;
   align-items: center;
   height: 12px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-family: var(--ui);
   font-size: 9px;
   line-height: 1;
@@ -122,7 +129,7 @@
 
 .mes {
   width: 12px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-family: var(--ui);
   font-size: 9px;
   line-height: 1;
@@ -207,7 +214,7 @@ a.casa:focus-visible {
   line-height: 1.3;
 }
 
-@media (min-width: 768px) {
+@container calendario-processo (min-width: 480px) {
   .titulo { font-size: 15px; }
   /* Aqui há largura para o seletor voltar ao canto direito, ao lado do título. */
   .anos { margin-left: auto; max-width: 60%; }

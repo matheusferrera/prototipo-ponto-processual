@@ -34,3 +34,15 @@
 
 .spinner { animation: girar 0.8s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
+
+/* A frase do ato ainda não lido — ver o comentário em `LeituraDoAto`.
+   `--ink-2` (8,99:1) e não `--ink-3`: é texto corrido, não rótulo. */
+.semLeitura {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+
+.semLeitura strong { color: var(--ink); font-weight: 650; }

@@ -28,7 +28,16 @@ import type { CategoriaMovimentacao, OrigemMovimentacao } from '@/types';
  * testes deste projeto rodam sem bundler.
  */
 const ORIGENS_QUE_A_IA_LE = new Set<OrigemMovimentacao>(['djen', 'tribunalPublico', 'pdpj']);
-const CATEGORIAS_QUE_A_IA_NAO_LE = new Set<CategoriaMovimentacao>(['publicacao', 'tramite']);
+/**
+ * **Exportado só para o teste que impede a divergência.** A mesma lista existe
+ * em `fio-do-prazo.ts` (que decide o que colapsar no feed) e no backend, em
+ * `shared/processos/categorias.ts`. As três cópias são impostas pelo harness —
+ * os testes rodam em `node --test` sem bundler, e um módulo testável não pode
+ * importar outro por caminho relativo sem extensão. `tests/fio-do-prazo.test.mjs`
+ * compara as duas do front e fica vermelho quando uma categoria nova entra em
+ * um lado só.
+ */
+export const CATEGORIAS_QUE_A_IA_NAO_LE = new Set<CategoriaMovimentacao>(['publicacao', 'tramite']);
 
 export function podeLerComIa(m: {
   origem?: OrigemMovimentacao | null;

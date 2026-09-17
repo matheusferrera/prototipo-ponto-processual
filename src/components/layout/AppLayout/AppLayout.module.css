@@ -45,7 +45,7 @@
   flex-wrap: wrap;
   column-gap: 12px;
   row-gap: 10px;
-  padding: 8px 16px;
+  padding: 10px 16px;
   min-height: 52px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
@@ -64,39 +64,26 @@
   display: none;
 }
 
+/* Título e breadcrumb TRUNCAM; os controles à direita não encolhem. Antes era
+   o contrário: em /prazos, com cinco controles, o flex distribuía o aperto e
+   a lupa ficava com 18px de largura (medido em 16/09/2026). */
 .mobileTitle {
   font-weight: 700;
   font-size: 19px;
   letter-spacing: -0.02em;
   color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mobileBreadcrumb {
   margin-top: 2px;
   font-size: 11px;
-  color: var(--ink-3);
-}
-
-.burgerBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin-left: -10px;
-  flex-shrink: 0;
-}
-
-.burgerLine {
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: var(--ink);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand {

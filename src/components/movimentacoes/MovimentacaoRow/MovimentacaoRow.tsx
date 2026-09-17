@@ -1,15 +1,14 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Clock3, FileText, Lock } from 'lucide-react';
+import { Clock3, FileText, Lock } from 'lucide-react';
 import type { Movimentacao } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
 import { DocumentoLink } from '../DocumentoLink/DocumentoLink';
+import { FaixaDoPrazo } from '../FaixaDoPrazo/FaixaDoPrazo';
+import { faixaDoPrazo } from '@/lib/fio-do-prazo';
 import { categoriaCurta } from '@/lib/categoria-movimentacao';
 import {
-  acaoMovimentacao,
   clienteMovimentacao,
-  pedeConferencia,
-  origemDaLinha,
   resumoMovimentacao,
   vencimentoDoAto,
 } from '@/lib/movimentacao';
@@ -87,6 +86,11 @@ export interface MovimentacaoRowProps {
    * ver o comentário do componente.
    */
   selo?: boolean;
+  /**
+   * No FIO, o prazo é o cabeçalho da tela — repetir "contestação" em cada uma
+   * das linhas seria escrever a mesma palavra cinco vezes na mesma tela.
+   */
+  semNomeDoPrazo?: boolean;
 }
 
 /** O que cada estado da peça quer dizer — o texto que o leitor de tela ouve. */
@@ -99,24 +103,37 @@ const DOC_TITULO: Record<string, string> = {
 
 export function MovimentacaoRow({
   m, densidade = 'confortavel', comHora = false, href, painel, noProcesso = false, onToggle, selo = false,
+  semNomeDoPrazo = false,
 }: MovimentacaoRowProps) {
   const compacta = densidade === 'compacta';
   const cliente = clienteMovimentacao(m);
   const resumo = resumoMovimentacao(m);
-  const origem = origemDaLinha(m);
   const categoria = categoriaCurta(m.categoria);
   const vencimento = vencimentoDoAto(m);
-  const acao = acaoMovimentacao(m);
-  const conferir = pedeConferencia(m);
   // O estado da PEÇA, que é outro fato — ver `Movimentacao.documentoEstado`.
   const doc = m.documentoEstado ?? 'nenhum';
 
-  // Só a providência do DESTINATÁRIO sobrevive à varredura. A da parte
-  // contrária não é tarefa de ninguém aqui e era o bloco mais alto da linha —
-  // ela continua no detalhe. Omitir não reintroduz o erro do TRF1 (mostrar a
-  // ação sem dizer de quem era): o que não aparece não pode ser lido como
-  // prazo do cliente.
-  const minhaAcao = acao?.minha ? acao : null;
+  /**
+   * O CHIP É A SEGUNDA VIA DA FAIXA, não o par dela.
+   *
+   * No ato que abre prazo os dois diziam o mesmo: "Prazo 7 out · vence em 22
+   * dias" no topo e "Abriu este prazo … faltam 22 dias" embaixo. A faixa é a
+   * que sobrevive — ela nomeia a peça, desenha a régua e agora traz a data.
+   *
+   * **Mas o chip não pôde simplesmente sair**, e a razão é de dado: a faixa
+   * nasce de `prazoEmCurso`, que o backend monta com `deadline.fechado: false`
+   * (`prazosEmCursoPorProcesso`). Prazo ENCERRADO — cumprido, ou expirado e
+   * recolhido por `fecharPrazosDjenExpirados` — não produz faixa nenhuma,
+   * enquanto `m.prazo` continua lá. Sem esta guarda, o ato que cobrou algo e
+   * teve o prazo fechado perderia a única marca de que cobrou, que é o que
+   * `vencimentoDoAto` já anota: esconder faz o ato parecer que nunca pediu
+   * nada. Mesma história na densidade `compacta`, que não desenha faixa.
+   *
+   * Medido no feed (50 linhas, todas as categorias): 4 com chip, 6 com faixa,
+   * 4 com as duas e **zero só com chip** — a guarda quase nunca acende, e é
+   * exatamente por isso que ela é barata.
+   */
+  const temFaixa = !compacta && Boolean(faixaDoPrazo({ prazoEmCurso: m.prazoEmCurso, categoria: m.categoria }));
 
   const aberta = Boolean(painel);
   const idPainel = `ato-${m.id}`;
@@ -132,7 +149,7 @@ export function MovimentacaoRow({
       )}
 
       <span className={styles.corpo}>
-        {vencimento && (
+        {vencimento && !temFaixa && (
           <span
             className={`${styles.prazo} ${
               // Encerrado nunca pinta de urgência: a cor é o que chama a
@@ -171,38 +188,56 @@ export function MovimentacaoRow({
             {m.orgaoJulgador && m.orgaoJulgador !== '—' && (
               <span className={styles.orgao} title={m.orgaoJulgador}>{m.orgaoJulgador}</span>
             )}
+            {/* NÚMERO E TRIBUNAL FECHAM A LINHA — ver `.linha2` no CSS. Os dois
+                moravam na calha da direita e eram eles que fixavam a largura
+                dela (24 dígitos em mono), estreitando o resumo do ato em toda
+                linha da lista. */}
+            {!compacta && <span className={styles.cnj}>{m.cnj}</span>}
+            <span className={styles.trib}><TribTag label={m.tribunal} /></span>
           </span>
         )}
 
-        {/* A providência do destinatário acompanha o resumo, sem moldura. */}
-        {!compacta && minhaAcao && (
-          <span className={styles.acao}>
-            <span className="sr-only">Você precisa: </span>
-            {minhaAcao.texto}
-            {conferir && <span className={styles.conferir}>confira o texto do ato</span>}
-          </span>
+        {/* ── O ELO COM O PRAZO QUE CORRE ────────────────────────────────
+            Que prazo esta movimentação toca, e quanto dele já passou. É a
+            única coisa na linha que responde "no decorrer do prazo" — ver
+            `FaixaDoPrazo`. Só aparece em processo com prazo aberto: 11 dos 180
+            medidos.
+
+            **Fora da linha COMPACTA de propósito.** Aquela linha tem 48px e
+            uma linha de texto; a faixa dobraria a altura do painel e da pauta,
+            que são justamente as telas onde o prazo já é o eixo e o chip já o
+            diz.
+
+            **E ela é o ÚLTIMO bloco do corpo desde 15/09/2026.** Embaixo dela
+            vinha a providência do destinatário (`acaoMovimentacao`), um
+            parágrafo livre de três ou quatro linhas que explicava o prazo pela
+            terceira vez na mesma linha: o chip já dá a data, a faixa já nomeia
+            a peça e o que falta. Era o bloco mais alto da lista, e repetia. A
+            providência continua inteira onde ela é a pergunta da tela —
+            `ProvidenciaDoAto`, na página do ato, no painel expandido e na
+            pauta de prazos. */}
+        {!compacta && (
+          <FaixaDoPrazo prazoEmCurso={m.prazoEmCurso} categoria={m.categoria} semNome={semNomeDoPrazo} />
         )}
       </span>
 
       <span className={styles.calha}>
 
         <span className={styles.ident}>
-          {/* DE ONDE VEIO — em toda linha, aberta ou fechada. A lista mistura o
-              ato do diário, a linha do cartório no portal e o que o painel
-              autenticado trouxe; sem isto, nada distingue os três. */}
-          {origem && (
-            <span className={styles.origem} title={origem.titulo}>
-              <span className="sr-only">Origem: </span>
-              {origem.curto}
-            </span>
-          )}
+          {/* O TIPO DO ATO, e só ele — uma etiqueta, com a peça do lado. Decisão,
+              cartório, petição é o que classifica a linha, e é o mesmo eixo da
+              faixa de filtros do topo da página. Identificação (número,
+              tribunal) desceu para a linha da parte; a procedência
+              (diário × portal) saiu da lista e continua na ficha do ato, em
+              "Origem" e "Confirmado por".
+
+              O chevron saiu daqui em 15/09/2026: ele aparecia em TODA linha,
+              aberta ou fechada, e era a única coisa que a calha tinha a dizer
+              nas 29 de 50 linhas sem tipo. Quem diz que a linha está aberta
+              continua dizendo — o fundo tingido do item e o peso do título. */}
           {categoria && <span className={styles.categoria}>{categoria}</span>}
           {selo && m.state === 'signal' && <span className={styles.selo}>Nova</span>}
-          {!noProcesso && <TribTag label={m.tribunal} />}
-          <ChevronRight className={styles.chevron} aria-hidden="true" />
         </span>
-
-        {!compacta && !noProcesso && <span className={styles.cnj}>{m.cnj}</span>}
       </span>
     </>
   );
@@ -289,7 +324,10 @@ export function MovimentacaoRow({
   );
 
   return (
-    <div className={styles.item}>
+    /* AINDA NÃO VISTA — o marcador que liga esta linha ao divisor do topo.
+       Atributo de dado e não classe: o estado vem do servidor e é lido pelo
+       CSS, sem custar uma segunda árvore de estilos. */
+    <div className={styles.item} data-nao-vista={m.naoVista ? '' : undefined}>
       {linha}
       {docs}
       {painel && (

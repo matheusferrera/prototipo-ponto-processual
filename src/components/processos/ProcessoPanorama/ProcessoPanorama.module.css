@@ -1,4 +1,4 @@
-.panorama{display:grid;grid-template-columns:minmax(0,1fr);margin:0 var(--processo-gutter,16px) 20px;border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+.panorama{display:grid;grid-template-columns:minmax(0,1fr);margin:0 var(--processo-gutter,16px) 20px;border: 1px solid var(--line-strong);border-radius:6px;background:var(--paper);overflow:hidden}
 .section{min-width:0;padding:20px}.section+.section{border-top:1px solid var(--line)}
 .heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}.heading h2{margin:0;color:var(--ink);font-size:16px;font-weight:750}.heading h3{display:flex;align-items:center;gap:7px}.heading svg{flex-shrink:0;color:var(--ink-2)}
 .section h3{margin:0;font-size:14px;font-weight:700;line-height:1.5;overflow-wrap:anywhere}

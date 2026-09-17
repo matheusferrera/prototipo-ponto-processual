@@ -13,7 +13,17 @@ import type { CategoriaMovimentacao, OrigemMovimentacao } from '@/types';
  * também não é suportado pelo backend, então os dois exigem buscar um conjunto
  * amplo e aplicar aqui, como o "contém" de Prazos.
  */
-export const MOVIMENTACAO_FILTER_KEYS = ['q', 'tribunal', 'tipo', 'categoria', 'origem', 'sort'] as const;
+/**
+ * Linhas por página da lista de todas.
+ *
+ * Eram 20, o que num acervo real dá 324 páginas; com a linha em ~60px, 50 cabem
+ * em menos rolagem do que as 20 de antes ocupavam a 140px. Mora aqui porque a
+ * página e a rota do "carregar dias anteriores" precisam do MESMO número — com
+ * dois, a página 2 repetiria ou pularia linhas.
+ */
+export const MOVIMENTACOES_POR_PAGINA = 50;
+
+export const MOVIMENTACAO_FILTER_KEYS = ['q', 'tribunal', 'tipo', 'categoria', 'origem', 'quem', 'sort'] as const;
 
 export type MovimentacaoFilterKey = (typeof MOVIMENTACAO_FILTER_KEYS)[number];
 export type MovimentacaoSort = '' | 'antigas' | 'tribunal';
@@ -59,6 +69,22 @@ export function origemMovimentacaoLabel(origem: MovimentacaoOrigem): string {
   return origem ? ORIGEM_POR_VALOR.get(origem)?.label ?? '' : '';
 }
 
+/**
+ * De quem é a providência — o filtro que a tela de 17/09/2026 acrescentou.
+ *
+ * `comigo` INCLUI o que ainda não se sabe de quem é: a leitura por IA cobre uma
+ * fração pequena dos atos, e um filtro "comigo" que escondesse os não lidos
+ * esconderia justamente o que pode ser seu — o erro na direção cara. `outra`
+ * só traz o que foi AFIRMADO como da parte contrária ou de terceiro.
+ */
+export const QUEM_MOVIMENTACAO = [
+  { value: 'comigo', label: 'Comigo' },
+  { value: 'outra', label: 'Outra parte' },
+  { value: '', label: 'Qualquer' },
+] as const;
+
+export type MovimentacaoQuem = (typeof QUEM_MOVIMENTACAO)[number]['value'];
+
 export type MovimentacaoFilterState = {
   q: string;
   tribunal: string[];
@@ -76,6 +102,7 @@ export type MovimentacaoFilterState = {
    * marcar as duas é o mesmo que não filtrar, que é o padrão.
    */
   origem: MovimentacaoOrigem;
+  quem: MovimentacaoQuem;
   sort: MovimentacaoSort;
 };
 
@@ -87,6 +114,7 @@ export const DEFAULT_MOVIMENTACAO_FILTERS: MovimentacaoFilterState = {
   tipo: [],
   categoria: [],
   origem: '',
+  quem: '',
   sort: '',
 };
 
@@ -95,6 +123,7 @@ const ALLOWED_SORT = new Set<MovimentacaoSort>(['', 'antigas', 'tribunal']);
 const ALLOWED_TIPO = new Set<string>(TIPOS_MOVIMENTACAO);
 const ALLOWED_CATEGORIA = new Set<string>(CATEGORIA_VALUES);
 const ALLOWED_ORIGEM = new Set<string>(ORIGENS_MOVIMENTACAO.map(origem => origem.value));
+const ALLOWED_QUEM = new Set<string>(['comigo', 'outra']);
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
@@ -114,6 +143,7 @@ export function parseMovimentacaoFilters(
 ): MovimentacaoFilterState {
   const sortValue = cleanText(searchParams.sort) as MovimentacaoSort;
   const origemValue = cleanText(searchParams.origem) as MovimentacaoOrigem;
+  const quemValue = cleanText(searchParams.quem) as MovimentacaoQuem;
 
   return {
     q: cleanText(searchParams.q),
@@ -121,6 +151,7 @@ export function parseMovimentacaoFilters(
     tipo: cleanCsv(searchParams.tipo, ALLOWED_TIPO),
     categoria: cleanCsv(searchParams.categoria, ALLOWED_CATEGORIA) as CategoriaMovimentacao[],
     origem: ALLOWED_ORIGEM.has(origemValue) ? origemValue : '',
+    quem: ALLOWED_QUEM.has(quemValue) ? quemValue : '',
     sort: ALLOWED_SORT.has(sortValue) ? sortValue : '',
   };
 }
@@ -136,6 +167,7 @@ export function serializeMovimentacaoFilters(filters: MovimentacaoFilterState, p
   set('tipo', filters.tipo.join(','));
   set('categoria', filters.categoria.join(','));
   set('origem', filters.origem);
+  set('quem', filters.quem);
   if (filters.sort) params.set('sort', filters.sort);
   if (page && page > 1) params.set('page', String(Math.trunc(page)));
   return params;
@@ -152,11 +184,78 @@ export function movimentacaoFiltersToApi(filters: MovimentacaoFilterState): Movi
     tipo: filters.tipo.length ? filters.tipo : undefined,
     categoria: filters.categoria.length ? filters.categoria : undefined,
     origem: filters.origem || undefined,
+    quem: filters.quem || undefined,
     sort: filters.sort || undefined,
   };
 }
 
 export function countActiveMovimentacaoFilters(filters: MovimentacaoFilterState): number {
   return filters.tribunal.length + filters.tipo.length + filters.categoria.length
-    + Number(Boolean(filters.origem));
+    + Number(Boolean(filters.origem)) + Number(Boolean(filters.quem));
+}
+
+/**
+ * As categorias como INTERRUPTORES LIGADOS — a leitura da tela nova.
+ *
+ * Na URL, lista vazia quer dizer "todas" (e é o padrão). Na tela, as cinco
+ * aparecem ligadas e a pessoa desliga o que não quer ver; por isso a lista
+ * vazia é lida como "todas ligadas", e ligar a última que faltava volta a
+ * lista para vazia — senão "todas marcadas" e "nenhum filtro" seriam duas URLs
+ * para a mesma tela.
+ */
+export function categoriaLigada(ativas: readonly CategoriaMovimentacao[], categoria: CategoriaMovimentacao): boolean {
+  return ativas.length === 0 || ativas.includes(categoria);
+}
+
+export function alternarCategoria(
+  ativas: readonly CategoriaMovimentacao[],
+  categoria: CategoriaMovimentacao,
+): CategoriaMovimentacao[] {
+  const ligadas = ativas.length === 0 ? [...CATEGORIA_VALUES] as CategoriaMovimentacao[] : [...ativas];
+  const proximas = ligadas.includes(categoria)
+    ? ligadas.filter(item => item !== categoria)
+    : [...ligadas, categoria];
+  // Todas ligadas é o padrão — e desligar a última não pode virar "todas".
+  if (proximas.length === CATEGORIA_VALUES.length) return [];
+  return CATEGORIA_VALUES.filter(item => proximas.includes(item)) as CategoriaMovimentacao[];
+}
+
+const CATEGORIA_NA_FRASE: Record<string, string> = {
+  decisorio: 'decisões',
+  atoDeParte: 'petições',
+  publicacao: 'publicações',
+  prazo: 'prazos',
+};
+
+/**
+ * O recorte da lista numa frase — "Decisões, petições, publicações e prazos ·
+ * cartório recolhido".
+ *
+ * É o que a lista de todas mostra no celular no lugar da faixa de pílulas: a
+ * faixa gastava 88px antes da primeira movimentação, e a frase diz o mesmo
+ * numa linha, com "Mudar" ao lado abrindo a folha de filtros.
+ */
+export function resumoDosFiltros(filtros: MovimentacaoFilterState): string {
+  const ligadas = Object.keys(CATEGORIA_NA_FRASE)
+    .filter(chave => categoriaLigada(filtros.categoria, chave as CategoriaMovimentacao))
+    .map(chave => CATEGORIA_NA_FRASE[chave]!);
+  const cartorio = categoriaLigada(filtros.categoria, 'tramite');
+
+  const partes = [
+    ligadas.length ? juntar(ligadas) : 'Só cartório',
+    ligadas.length ? (cartorio ? 'cartório recolhido' : 'sem cartório') : null,
+    filtros.quem === 'comigo' ? 'só o que é com você' : filtros.quem === 'outra' ? 'só da outra parte' : null,
+    filtros.tribunal.length ? filtros.tribunal.join(', ') : null,
+    filtros.origem ? origemMovimentacaoLabel(filtros.origem) : null,
+    filtros.q ? `busca: “${filtros.q}”` : null,
+    filtros.sort === 'antigas' ? 'mais antigas primeiro' : filtros.sort === 'tribunal' ? 'por tribunal' : null,
+  ].filter(Boolean) as string[];
+
+  const frase = partes.join(' · ');
+  return frase.charAt(0).toUpperCase() + frase.slice(1);
+}
+
+function juntar(itens: readonly string[]): string {
+  if (itens.length <= 1) return itens.join('');
+  return `${itens.slice(0, -1).join(', ')} e ${itens.at(-1)}`;
 }

@@ -8,6 +8,9 @@ import { GoogleButton } from '@/components/auth/GoogleButton';
 import { avisoGoogle } from '@/components/auth/google-erros';
 import styles from '@/components/auth/AuthForm.module.css';
 
+/** O endereço que recebe quem não consegue entrar. Um lugar só. */
+const EMAIL_SUPORTE = 'suporte@pontoprocessual.com.br';
+
 interface LoginFormProps {
   /** `/cadastro` manda `?email=` quando a conta já existe — a pessoa não redigita. */
   emailInicial: string;
@@ -126,11 +129,16 @@ export function LoginForm({ emailInicial, next, erroGoogle, googleAtivo }: Login
           disabled={loading}
           error={!!error && !senha.trim()}
           toggle={{ visible: showSenha, onToggle: () => setShowSenha(v => !v) }}
-          labelRight={
-            <button type="button" onClick={() => {}} className={styles.labelLink}>
-              Esqueceu a senha?
-            </button>
-          }
+          /* NÃO HÁ `labelRight` AQUI, e a ausência é deliberada.
+             Até 15/09/2026 havia um "Esqueceu a senha?" com
+             `onClick={() => {}}` — um controle que parecia recuperação de
+             conta e não fazia nada. Numa tela de login, é o pior lugar
+             possível para um botão inerte: quem clica está trancado do lado
+             de fora, e o silêncio o deixa lá.
+
+             O caminho de recuperação ainda não existe no backend (não há
+             rota de reset). Enquanto não existir, o rodapé oferece o contato
+             que RESOLVE — ver `AjudaParaEntrar`. */
         />
 
         {contaGoogle && (
@@ -160,13 +168,37 @@ export function LoginForm({ emailInicial, next, erroGoogle, googleAtivo }: Login
             Criar conta
           </Link>
         </div>
-        <div className={styles.footerLine}>
-          Problemas de acesso?{' '}
-          <button type="button" className={styles.footerSupport}>
-            Fale com o suporte
-          </button>
-        </div>
+        <AjudaParaEntrar email={email} />
       </div>
     </>
+  );
+}
+
+/**
+ * A saída de quem não consegue entrar.
+ *
+ * Substitui DOIS controles que não faziam nada: um "Esqueceu a senha?" com
+ * `onClick={() => {}}` e um "Fale com o suporte" sem handler. Botão inerte é
+ * pior que ausência — ele consome a tentativa da pessoa e devolve silêncio, e
+ * aqui a pessoa já está do lado de fora.
+ *
+ * É um `mailto:`, não um botão, por três razões: ele FUNCIONA sem backend
+ * nenhum (não há rota de reset de senha ainda), o endereço fica visível para
+ * quem prefere copiar, e o assunto já vai preenchido com o e-mail digitado —
+ * que é a primeira coisa que o suporte perguntaria.
+ */
+function AjudaParaEntrar({ email }: { email: string }) {
+  const assunto = encodeURIComponent('Não consigo entrar no Ponto Processual');
+  const corpo = encodeURIComponent(
+    email.trim() ? `Minha conta: ${email.trim()}\n\nO que acontece quando tento entrar:\n` : '',
+  );
+
+  return (
+    <div className={styles.footerLine}>
+      Não consegue entrar?{' '}
+      <a href={`mailto:${EMAIL_SUPORTE}?subject=${assunto}&body=${corpo}`} className={styles.btnLink}>
+        {EMAIL_SUPORTE}
+      </a>
+    </div>
   );
 }

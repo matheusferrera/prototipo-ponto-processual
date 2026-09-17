@@ -33,7 +33,7 @@
   flex-shrink: 0;
 }
 
-.paginationInfo { font-size: 11px; color: var(--ink-3); }
+.paginationInfo { font-size: 11px; color: var(--ink-2); }
 .spacer         { flex: 1; }
 
 /* alvo de toque ≥44px no celular; volta ao tamanho normal no desktop */
@@ -43,7 +43,7 @@
   transition: background-color 150ms ease;
 }
 
-.paginationPage { font-size: 11px; color: var(--ink-3); margin: 0 12px; }
+.paginationPage { font-size: 11px; color: var(--ink-2); margin: 0 12px; }
 
 /* ---- Empty state ---- */
 .empty {

@@ -87,6 +87,33 @@ export interface LeituraIa {
  * `null` na movimentação é a resposta comum e correta: mera ciência, pauta e
  * ata não abrem prazo, e eram 46% dos atos numa medição real.
  */
+/**
+ * A CONTA DO VENCIMENTO, aberta — os quatro marcos que a produzem.
+ *
+ * É a mesma cadeia que o CNJ imprime no rodapé de toda certidão de publicação:
+ * disponibilização → publicação (1º dia útil seguinte, Lei 11.419 art. 4º § 3º)
+ * → início da contagem (o dia útil seguinte, § 4º e CPC 224) → vencimento.
+ *
+ * **Só vem no detalhe** (`GET /movements/{id}`), e `null`/ausente é comum e
+ * correto. O backend recusa explicar em quatro casos, todos deliberados:
+ * origem `painel`/`grid` (o vencimento é do TRIBUNAL, não há conta nossa a
+ * abrir), sem disponibilização, sem dias declarados, e quando o recálculo não
+ * reproduz a data gravada. Neste último a tela mostra a data sozinha — uma
+ * cadeia terminando num dia com o chip mostrando outro seria a tela se
+ * desmentindo no campo em que errar custa o prazo.
+ *
+ * Datas em `dd/mm/yyyy`, como o backend as calcula.
+ */
+export interface CadeiaDoPrazo {
+  disponibilizadoEm: string;
+  publicadoEm: string;
+  inicioEm: string;
+  /** Igual a `dataLimite` — é o que a guarda do backend garante. */
+  venceEm: string;
+  contagem: 'uteis' | 'corridos';
+  dias: number;
+}
+
 export interface PrazoDoAto {
   id: string;
   /** ISO. Vazio quando o texto não declarou os dias — prazo sem data é estado válido. */
@@ -117,9 +144,77 @@ export interface PrazoDoAto {
   publicadoEm?: string | null;
   /** A parte intimada, como o ato a nomeia. */
   parte?: string | null;
+  /** A ciência foi registrada pelo sistema, não pelo intimado. */
+  cienciaFicta?: boolean | null;
+  /** O lembrete marcado neste prazo — o mesmo de `Prazo.lembrarEm`. */
+  lembrarEm?: string | null;
+  /** A conta do vencimento, aberta — ver `CadeiaDoPrazo`. Só no detalhe. */
+  cadeia?: CadeiaDoPrazo | null;
+}
+
+/**
+ * O prazo do PROCESSO que já estava correndo quando este ato aconteceu.
+ *
+ * **Não confundir com `PrazoDoAto`**, que é o prazo que este ato ABRIU. Os dois
+ * convivem na mesma linha e respondem perguntas opostas:
+ *
+ * | | pergunta | quando é `null` |
+ * |---|---|---|
+ * | `prazo` | este ato abriu prazo? | 46% dos atos (ciência, pauta, ata) |
+ * | `prazoEmCurso` | este ato caiu dentro de um prazo meu? | 169 dos 180 processos medidos |
+ *
+ * É a ligação que faltava para acompanhar a movimentação **no decorrer do
+ * prazo**: sem ela, achar no feed o que toca um prazo aberto é varrer 370
+ * páginas (18.485 movimentações) atrás dos eventos de 11 processos.
+ */
+export interface PrazoEmCurso {
+  id: string;
+  /** O rótulo do cartório — "Despacho", "Intimação". */
+  tipoDocumento: string;
+  /** A peça que a IA nomeou ("Contestação"). `null` quando o prazo não foi lido. */
+  peca: string | null;
+  natureza: 'ciencia' | 'manifestacao' | null;
+  metodoPrazo: PrazoDoAto['metodoPrazo'];
+  /** ISO. `null` enquanto o tribunal não calculou. */
+  dataLimite: string | null;
+  /** Dias DECLARADOS no ato — pode ser em dias úteis. Não é `totalDias`. */
+  dias: number | null;
+  /** ISO — onde o fio começa: a disponibilização no diário, ou o próprio ato. */
+  inicioEm: string;
+  /**
+   * A janela em dias de CALENDÁRIO entre `inicioEm` e `dataLimite`.
+   *
+   * Um prazo de 15 dias úteis dá 21 aqui. É esta a janela que a barra desenha —
+   * e é por isso que a tela nunca escreve "dia 13 de 15" a partir dela: o
+   * numerador e o denominador seriam de contagens diferentes. `null` sem
+   * `dataLimite`: a faixa mostra o nome do prazo e não desenha barra.
+   */
+  totalDias: number | null;
+  decorridos: number | null;
+  /** Dias até vencer. **Negativo quando já venceu** — o prazo aberto e vencido. */
+  restam: number | null;
+  /** Esta linha É o ato que abriu o prazo — o primeiro do fio. */
+  abriuEsteAto: boolean;
+  /**
+   * Movimentações do processo dentro da janela, **sem o ato que a abriu**.
+   *
+   * Só vem em `GET /movements/{id}`: `null` significa "não foi contado" (a
+   * listagem não conta), que é diferente de `0` — "nada aconteceu desde que o
+   * prazo abriu", o caso de 5 dos 11 prazos abertos medidos.
+   */
+  novas?: number | null;
 }
 
 export interface Movimentacao {
+  /**
+   * Ainda não vista por esta conta — derivado no backend contra a marca
+   * d'água `User.movimentacoesVistasAte`.
+   *
+   * **Não é o mesmo que `state: 'signal'`**, que fala de publicação recente:
+   * um ato de 2024 que chega hoje pelo backfill é NOVIDADE para quem
+   * acompanha, e não é recente.
+   */
+  naoVista?: boolean;
   id: string;
   tribunal: string;
   cnj: string;
@@ -149,6 +244,12 @@ export interface Movimentacao {
   ia: LeituraIa;
   /** O prazo que este ato abriu. `null` na maioria — a maioria dos atos não abre. */
   prazo: PrazoDoAto | null;
+  /**
+   * O prazo do processo que JÁ CORRIA quando este ato aconteceu — ver
+   * `PrazoEmCurso`. `null` é o caso comum. Ausente em backend anterior a
+   * 15/09/2026, e aí a linha volta a ser exatamente o que era.
+   */
+  prazoEmCurso?: PrazoEmCurso | null;
   /**
    * O ato ÍNTEGRO, em texto plano. **Só vem no detalhe** — a listagem o omite
    * no banco, porque a média é de 3,8 KB e o maior medido tem 288 KB.
@@ -192,9 +293,20 @@ export interface Movimentacao {
    * autenticada — a chave nunca chega ao browser.
    */
   temDocumentoDoAto?: boolean;
+  /**
+   * `hoje` · `ontem` · `15 set` — o dia do ato em uma palavra, para a linha
+   * que NÃO está debaixo de um cabeçalho de dia (a aba Novas agrupa por
+   * processo). Montado no servidor, em wall-clock de Brasília.
+   */
+  quandoCurto?: string;
 }
 
 export interface MovimentacaoGroup {
+  /**
+   * `AAAA-MM-DD` — a chave do dia. É ela que deixa o "carregar dias
+   * anteriores" emendar a página 2 no mesmo cabeçalho quando o dia continua.
+   */
+  chave?: string;
   date: string;
   day: string;
   items: Movimentacao[];
@@ -258,6 +370,8 @@ export interface Processo {
   cliente?: string[];
   /** As partes do outro lado. */
   parteContraria?: string[];
+  /** A resposta do advogado, quando houve. `null` = ainda não respondeu. */
+  meuPoloManual?: PoloManual | null;
   materia: string;
   assunto?: string;
   classeJudicial?: string;
@@ -366,6 +480,12 @@ export interface TimelineEvent {
   /** Ver `Movimentacao.documentoEstado` — o mesmo sinal, na timeline do processo. */
   documentoEstado?: 'nenhum' | 'disponivel' | 'provavelIndisponivel' | 'trancado';
   prazo?: PrazoDoAto | null;
+  /**
+   * Ver `Movimentacao.prazoEmCurso`. Na timeline do PROCESSO ele é ainda mais
+   * direto do que no feed: aqui todas as linhas são do mesmo caso, então a
+   * faixa marca exatamente o trecho da timeline que corre dentro de um prazo.
+   */
+  prazoEmCurso?: PrazoEmCurso | null;
 }
 
 /**
@@ -408,6 +528,16 @@ export interface AtoDoPrazo {
  * publicou os representantes. **A tela nunca pode tratá-lo como "ativo".**
  */
 export type MeuPolo = 'ativo' | 'passivo' | 'indefinido';
+
+/**
+ * O que o advogado AFIRMOU, separado do que foi derivado.
+ *
+ * A tela precisa dos dois: `meuPolo: 'indefinido'` com `meuPoloManual:
+ * 'nenhum'` quer dizer "ele já disse que não é dele" — e aí não se pergunta de
+ * novo. Sem a distinção, o par de botões reapareceria em todo processo
+ * recusado.
+ */
+export type PoloManual = 'ativo' | 'passivo' | 'nenhum';
 
 export interface Prazo {
   id: string;
@@ -473,6 +603,14 @@ export interface Prazo {
   cienciaEm?: string | null;
   /** `true` quando a ciência é a ficta do art. 5º, § 3º — "o sistema registrou", não "você abriu". */
   cienciaFicta?: boolean | null;
+  /**
+   * Quando o advogado pediu para ser lembrado deste prazo. ISO, meia-noite de
+   * Brasília. `null` é o caso normal.
+   *
+   * Não dispara notificação — ver `Deadline.lembrarEm` no schema. O que ele faz
+   * acontece na tela: o prazo sobe para a faixa da semana a partir da data.
+   */
+  lembrarEm?: string | null;
   /**
    * O ato que abriu este prazo, embutido — ver `AtoDoPrazo`. `null` sem ato
    * gravado. "O que produzir até a data" mora em `ato.ia` desde a fusão

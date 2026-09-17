@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type {
   MeuPolo,
+  PoloManual,
   AnaliseDoCaso,
   Processo,
   ProcessoParte,
@@ -17,6 +18,8 @@ import type {
   OrigemMovimentacao,
   LeituraIa,
   PrazoDoAto,
+  PrazoEmCurso,
+  CadeiaDoPrazo,
   AtoDoPrazo,
 } from '@/types';
 import { normalizeTribunalOptions, type TribunalOption } from '@/lib/tribunals';
@@ -25,6 +28,7 @@ import { TIPOS_MOVIMENTACAO, type MovimentacaoSort } from '@/lib/movimentacao-fi
 import type { UsuarioAtual } from '@/lib/usuario';
 import { wallClock, horaWallClock as horaDoAto } from '@/lib/wall-clock';
 import { diasAteVencimento } from '@/lib/prazo-apresentacao';
+import { deQuemDoAto } from '@/lib/situacao-do-ato';
 
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 
@@ -94,6 +98,7 @@ type BackendProcess = {
   poloPassivo: BackendParte[] | null;
   /* Derivados da OAB da conta — ver `meu-polo.ts` no backend. */
   meuPolo?: MeuPolo;
+  meuPoloManual?: PoloManual | null;
   cliente?: string[];
   parteContraria?: string[];
   valorCausa: string | number | null;
@@ -316,6 +321,7 @@ function toProcesso(p: BackendProcess): Processo {
     poloAtivo,
     poloPassivo,
     meuPolo: p.meuPolo ?? 'indefinido',
+    meuPoloManual: p.meuPoloManual ?? null,
     cliente: p.cliente ?? [],
     parteContraria: p.parteContraria ?? [],
     valorCausa: normalizeValorCausa(p.valorCausa),
@@ -510,6 +516,8 @@ type BackendDocumento = {
 };
 
 type BackendMovement = {
+  /** Ainda não vista, contra `User.movimentacoesVistasAte` — ver `/movements`. */
+  naoVista?: boolean;
   /** Fontes que confirmaram o ato (`["pdpj","djen"]`). `[]` em linha legada. */
   fontes?: string[];
   id: string;
@@ -566,6 +574,22 @@ type BackendMovement = {
     publicadoEm?: string | null; parte?: string | null;
     origem?: PrazoDoAto['origem']; canal?: PrazoDoAto['canal']; deQuem?: PrazoDoAto['deQuem'];
     emDobro?: boolean | null; fundamento?: string | null;
+    cienciaFicta?: boolean | null; lembrarEm?: string | null;
+    /** Só em `GET /movements/{id}` — ver `CadeiaDoPrazo`. */
+    cadeia?: CadeiaDoPrazo | null;
+  } | null;
+  /**
+   * O prazo do PROCESSO que já estava correndo quando o ato aconteceu — não
+   * confundir com `prazo`, que é o prazo que o ato ABRIU. Ver `PrazoEmCurso`.
+   * Ausente em backend anterior a 15/09/2026.
+   */
+  prazoEmCurso?: {
+    id: string; tipoDocumento: string; peca: string | null;
+    natureza: PrazoEmCurso['natureza']; metodoPrazo: PrazoDoAto['metodoPrazo'];
+    dataLimite: string | null; dias: number | null;
+    inicioEm: string; totalDias: number | null; decorridos: number | null; restam: number | null;
+    abriuEsteAto: boolean;
+    novas?: number | null;
   } | null;
   /** Só em `GET /movements/{id}`: a listagem omite o texto no banco. */
   textoOriginal?: string | null;
@@ -688,6 +712,42 @@ function toPrazoDoAto(m: BackendMovement): PrazoDoAto | null {
     fundamento: p.fundamento,
     publicadoEm: p.publicadoEm,
     parte: p.parte,
+    cienciaFicta: p.cienciaFicta ?? null,
+    lembrarEm: p.lembrarEm ?? null,
+    /* Repassada como veio. **Nunca recalculada aqui**: a conta depende do
+       calendário forense (feriado estadual, recesso do art. 220, regime do
+       processo) e o navegador não o conhece. Uma segunda calculadora de prazo
+       no produto é como se inventa um vencimento errado. */
+    cadeia: p.cadeia ?? null,
+  };
+}
+
+/**
+ * O prazo em curso da linha — repassado como veio, com um cuidado só.
+ *
+ * **A régua não é recalculada aqui, e é deliberado.** `totalDias`,
+ * `decorridos` e `restam` vêm do backend porque a conta depende do relógio, e
+ * o único relógio que importa é o de Brasília — refazê-la no navegador daria
+ * um resultado diferente para quem estiver em outro fuso, no campo em que
+ * errar custa o prazo. A tela só formata o que recebe.
+ */
+function toPrazoEmCurso(m: BackendMovement): PrazoEmCurso | null {
+  const p = m.prazoEmCurso;
+  if (!p) return null;
+  return {
+    id: p.id,
+    tipoDocumento: p.tipoDocumento,
+    peca: p.peca ?? null,
+    natureza: p.natureza ?? null,
+    metodoPrazo: p.metodoPrazo ?? null,
+    dataLimite: p.dataLimite ?? null,
+    dias: p.dias ?? null,
+    inicioEm: p.inicioEm,
+    totalDias: p.totalDias ?? null,
+    decorridos: p.decorridos ?? null,
+    restam: p.restam ?? null,
+    abriuEsteAto: Boolean(p.abriuEsteAto),
+    novas: p.novas ?? null,
   };
 }
 
@@ -773,6 +833,7 @@ function toTimelineEvent(m: BackendMovement, index: number, total: number): Time
     // `detalhe.prazo` — e o vencimento é justamente a informação que precisa
     // aparecer ANTES de abrir, no chip "Prazo · vence em 3 dias" da linha.
     prazo: toPrazoDoAto(m),
+    prazoEmCurso: toPrazoEmCurso(m),
   };
 }
 
@@ -918,6 +979,19 @@ type MovimentacoesResult = {
   total: number;
   totalPages: number;
   page: number;
+  /**
+   * Quantas movimentações chegaram desde a última visita — sobre o conjunto
+   * FILTRADO inteiro, não sobre a página. O número que a tela mostra ("12
+   * novas") não pode encolher porque alguém virou a página.
+   */
+  naoVistas: number;
+  /** Desde quando a conta é feita. ISO, ou `null` em conta que nunca marcou. */
+  vistasAte: string | null;
+  /**
+   * A régua de "novo" que valeu: `vistasAte`, ou a última semana em conta que
+   * nunca marcou nada (o backend decide — ver `GET /movements?novas=`).
+   */
+  novidadeDesde: string | null;
 };
 
 export type MovimentacaoFilters = {
@@ -943,6 +1017,18 @@ export type MovimentacaoFilters = {
   origem?: OrigemMovimentacao | string;
   /** "" = mais recentes | "antigas" | "tribunal" — "tribunal" exige reordenar no frontend. */
   sort?: MovimentacaoSort | string;
+  /**
+   * Só o que chegou desde a última visita — filtrado NO BANCO (`?novas=true`).
+   * É a aba Novas.
+   */
+  novas?: boolean;
+  /**
+   * De quem é a providência. **Filtrado aqui, sobre a página**, como `tipo`: o
+   * `deQuem` da leitura mora no payload de `Analise`, que o backend não filtra.
+   * Por isso colapsa em uma página de até 100 linhas — o mesmo trato do "contém"
+   * de Prazos.
+   */
+  quem?: 'comigo' | 'outra' | '';
 };
 
 /** Movimentação + data de ocorrência, para ordenar antes de agrupar. */
@@ -973,9 +1059,9 @@ function sortMovEntries(entries: MovEntry[], sort?: string): void {
  * não filtra.
  */
 export async function getMovimentacoes(page = 1, limit = 20, filters: MovimentacaoFilters = {}): Promise<MovimentacoesResult> {
-  const { q, tribunal, sort, categoria, origem } = filters;
+  const { q, tribunal, sort, categoria, origem, novas, quem } = filters;
   const tipo = filters.tipo ?? [];
-  const needsClientSide = tipo.length > 0 || sort === 'tribunal';
+  const needsClientSide = tipo.length > 0 || sort === 'tribunal' || Boolean(quem);
 
   const fetchPage = needsClientSide ? 1 : page;
   const fetchLimit = needsClientSide ? 100 : limit;
@@ -989,12 +1075,17 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
   appendQueryValue(params, 'tribunal', tribunal);
   appendQueryValue(params, 'origem', origem);
   if (categoria?.length) params.set('categoria', categoria.join(','));
+  if (novas) params.set('novas', 'true');
 
   const movBody = await backendGet(`/movements?${params.toString()}`) as {
     data: BackendMovement[];
     total: number;
     page: number;
     totalPages: number;
+    /** Ver `MovimentacoesResult` — a conta é sobre o conjunto filtrado. */
+    naoVistas?: number;
+    vistasAte?: string | null;
+    novidadeDesde?: string | null;
   };
 
   let entries: MovEntry[] = movBody.data.map(m => {
@@ -1020,6 +1111,7 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       categoria: m.categoria ?? null,
       ia: toLeituraIa(m),
       prazo: toPrazoDoAto(m),
+      prazoEmCurso: toPrazoEmCurso(m),
       // Ver `temAlgoParaLer` — sem isto o feed nunca desenhava o selo de
       // inteiro teor: o campo nunca era escrito aqui, então ficava sempre
       // `undefined` e `MovimentacaoRow` some com o selo inteiro (não mostra
@@ -1033,11 +1125,24 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
       // sempre tem documento — aparecia como ato sem documento nenhum.
       temCertidao: Boolean(m.temCertidao),
       temDocumentoDoAto: Boolean(m.temDocumentoDoAto),
+      /* AINDA NÃO VISTA — derivado no backend contra a marca d'água da conta,
+         não aqui: a comparação é com `detectedAt`, que não sai na listagem.
+         Não confundir com `isNew`/`state: signal`, que é "publicado há pouco":
+         um ato de 2024 que chega hoje pelo backfill é NOVIDADE para quem
+         acompanha, e não é recente. */
+      naoVista: m.naoVista ?? false,
+      quandoCurto: quandoCurto(ocorrido),
     };
     return { item, ocorrido, isNew };
   });
 
   if (tipo.length) entries = entries.filter(({ item }) => tipo.includes(item.tipo));
+  if (quem) {
+    entries = entries.filter(({ item }) => {
+      const dele = deQuemDoAto(item);
+      return quem === 'comigo' ? dele !== 'outra' : dele === 'outra';
+    });
+  }
 
   sortMovEntries(entries, sort);
 
@@ -1046,7 +1151,7 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
   for (const { item, ocorrido } of entries) {
     const { dateLabel, dayLabel, dateKey } = formatDateGroup(ocorrido);
     if (!groupMap.has(dateKey)) {
-      groupMap.set(dateKey, { date: dateLabel, day: dayLabel, items: [] });
+      groupMap.set(dateKey, { chave: dateKey, date: dateLabel, day: dayLabel, items: [] });
     }
     groupMap.get(dateKey)!.items.push(item);
   }
@@ -1056,7 +1161,23 @@ export async function getMovimentacoes(page = 1, limit = 20, filters: Movimentac
     total: needsClientSide ? entries.length : movBody.total,
     totalPages: needsClientSide ? 1 : movBody.totalPages,
     page: needsClientSide ? 1 : movBody.page,
+    naoVistas: movBody.naoVistas ?? 0,
+    vistasAte: movBody.vistasAte ?? null,
+    novidadeDesde: movBody.novidadeDesde ?? movBody.vistasAte ?? null,
   };
+}
+
+/**
+ * `hoje` · `ontem` · `15 set` — o dia do ato numa palavra, com a MESMA chave de
+ * dia de `formatDateGroup`: a linha da aba Novas e o cabeçalho da aba Todas não
+ * podem discordar sobre o que é "ontem".
+ */
+function quandoCurto(d: Date): string {
+  const { dateLabel } = formatDateGroup(d);
+  if (dateLabel === 'HOJE') return 'hoje';
+  if (dateLabel === 'ONTEM') return 'ontem';
+  const w = wallClock(d);
+  return `${w.dia} ${MONTHS_SHORT[w.mes]}`;
 }
 
 export type MovimentacaoDetail = {
@@ -1068,6 +1189,12 @@ export type MovimentacaoDetail = {
   fontes: string[];
   /** Rótulo do ato ("Despacho — 8ª Turma Cível"). O conteúdo está em `ia.resumo`. */
   descricao: string;
+  /**
+   * O tipo canônico ("Despacho", "Acórdão") — o título da barra do ato. Mesma
+   * inferência da listagem (`extractTipo`), para a linha e o card dizerem a
+   * mesma palavra.
+   */
+  tipo: string;
   link: string | null;
   detectedAt: string;
   /** Ver `Movimentacao.documentoEstado` — o mesmo sinal, no detalhe do ato. */
@@ -1086,6 +1213,8 @@ export type MovimentacaoDetail = {
   ia: LeituraIa;
   /** O prazo que este ato abriu, em aberto. `null` quando não abriu ou já fechou. */
   prazo: PrazoDoAto | null;
+  /** O prazo do processo que já corria quando o ato aconteceu — ver `PrazoEmCurso`. */
+  prazoEmCurso: PrazoEmCurso | null;
   /**
    * O ato ÍNTEGRO, como o diário publicou. `null` fora da origem `djen`, a
    * única que traz o inteiro teor.
@@ -1166,6 +1295,7 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
     // data exibida é a de "ocorrido em"
     data: formatOcorridoEm(m.ocorridoEm),
     descricao: m.descricao,
+    tipo: extractTipo(m.descricao),
     link: movLink(m),
     detectedAt: m.detectedAt,
     ocorridoEm: m.ocorridoEm,
@@ -1181,6 +1311,7 @@ export async function getMovimentacao(id: string): Promise<MovimentacaoDetail | 
     fontes: m.fontes ?? [],
     ia: toLeituraIa(m),
     prazo: toPrazoDoAto(m),
+    prazoEmCurso: toPrazoEmCurso(m),
     textoOriginal: m.textoOriginal?.trim() || null,
     processData,
   };
@@ -1264,6 +1395,7 @@ type BackendDeadline = {
     cliente?: string[];
     parteContraria?: string[];
   } | null;
+  lembrarEm?: string | null;
 };
 
 /**
@@ -1315,8 +1447,28 @@ function toAtoDoPrazo(mov: BackendDeadlineMovimentacao): AtoDoPrazo | null {
   };
 }
 
-const toISODate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/**
+ * `AAAA-MM-DD` em **wall-clock de Brasília**, não no fuso da máquina.
+ *
+ * > **Isto era um defeito, e ele mostrava a data-limite um dia ANTES.**
+ * > A função lia `getFullYear/getMonth/getDate`, que aplicam o fuso local
+ * > sobre uma data que **já é local**: o banco grava wall-clock de Brasília
+ * > nos campos UTC (ver `wall-clock.ts`), e `dataLimite` é sempre meia-noite.
+ * > Num servidor em `America/Sao_Paulo`, `2026-09-16T00:00:00.000Z` vira
+ * > 15/09 às 21:00 e a tela escrevia **15 de setembro**. Conferido ao vivo em
+ * > 15/09/2026: o cartão dizia "vence amanhã" (certo, porque `diasRestantes`
+ * > já usava `getUTC*`) e "ter, 15 set" na linha de baixo — a mesma tela se
+ * > desmentindo.
+ * >
+ * > O erro some num container em UTC, que é onde a produção roda — por isso
+ * > ele sobreviveu. Ele reaparece em qualquer máquina a oeste de Greenwich, e
+ * > `vencimentoISO` não é só texto: é dele que `LembrarPrazo` conta "3 dias
+ * > antes" e `faixaPrazo` decide a coluna do kanban.
+ */
+const toISODate = (d: Date) => {
+  const w = wallClock(d);
+  return `${w.ano}-${String(w.mes + 1).padStart(2, '0')}-${String(w.dia).padStart(2, '0')}`;
+};
 
 function toPrazo(d: BackendDeadline): Prazo {
   const dataLimite = normalizeDate(d.dataLimite);
@@ -1326,8 +1478,9 @@ function toPrazo(d: BackendDeadline): Prazo {
   else if (dias !== null && dias <= 7) state = 'signal';
 
   const venc = dataLimite ? new Date(dataLimite) : null;
+  /* Wall-clock nos dois, pelo mesmo motivo de `toISODate` logo acima. */
   const vencimento = venc
-    ? `${String(venc.getDate()).padStart(2, '0')}/${String(venc.getMonth() + 1).padStart(2, '0')}`
+    ? `${String(wallClock(venc).dia).padStart(2, '0')}/${String(wallClock(venc).mes + 1).padStart(2, '0')}`
     : null;
   const vencimentoISO = venc ? toISODate(venc) : null;
 
@@ -1371,6 +1524,7 @@ function toPrazo(d: BackendDeadline): Prazo {
     publicadoEm: d.publicadoEm ?? null,
     cienciaEm: d.cienciaEm ?? null,
     cienciaFicta: d.cienciaFicta ?? null,
+    lembrarEm: d.lembrarEm ?? null,
     ato: toAtoDoPrazo(d.movimentacao ?? null),
     state,
   };
@@ -1519,6 +1673,144 @@ export function sortPrazos(list: Prazo[], sort?: string, order?: string): void {
  * tribunal, grau, urgência e os "contém" restantes são aplicados aqui
  * sobre a página. Filtros cronológicos excluem os itens sem data.
  */
+/**
+ * O FIO DO PRAZO — tudo que aconteceu no processo desde que o prazo abriu.
+ *
+ * `GET /deadlines/{id}/fio`. Os eventos vêm em ordem CRESCENTE (o ato que
+ * abriu primeiro, hoje por último) — a única lista deste produto assim, porque
+ * um prazo é uma história com começo e ler do fim desmontaria o que o fio tem
+ * a oferecer.
+ *
+ * Cada evento vira uma `Movimentacao` completa para `MovimentacaoRow` poder
+ * renderizá-lo: é a mesma linha do feed, da timeline e da pauta, e criar um
+ * quinto renderizador do mesmo ato aqui seria repetir o erro que a extração de
+ * 06/09/2026 desfez. O que o fio não recebe do backend — tribunal, CNJ, órgão —
+ * é o mesmo em todos os eventos e vem do PROCESSO, no cabeçalho; por isso a
+ * tela renderiza as linhas com `noProcesso`.
+ */
+export interface EventoDoFio {
+  item: Movimentacao;
+  /** Este é o ato que abriu o prazo — o primeiro do fio. */
+  abriuOPrazo: boolean;
+  /** `false` em trâmite e publicação — o que a tela colapsa. */
+  mexeComOPrazo: boolean;
+}
+
+export interface FioDoPrazo {
+  prazo: Prazo;
+  /** `null` quando o prazo não tem data-limite: o fio existe, a régua não. */
+  regua: { inicioEm: string; totalDias: number; decorridos: number; restam: number } | null;
+  eventos: EventoDoFio[];
+  /** Eventos na janela, mesmo além do teto do backend. */
+  total: number;
+}
+
+/**
+ * Um prazo em curso, como cartão — a entrada do fio.
+ *
+ * `novas` **não conta o ato que abriu**: ele não é novidade sobre si mesmo.
+ * Medido em 15/09/2026, 5 dos 11 prazos abertos da conta estavam com `novas:
+ * 0` — o processo não se moveu desde a publicação. É o estado mais comum, e a
+ * tela o escreve em uma frase em vez de mostrar um cartão vazio.
+ */
+export interface CartaoDoFio {
+  prazo: Prazo;
+  regua: FioDoPrazo['regua'];
+  /** Movimentações na janela, sem o ato que abriu. */
+  novas: number;
+  /** A mais recente que NÃO é trâmite nem publicação. `null` é frequente. */
+  ultimo: { id: string; ocorridoEm: string; descricao: string; categoria: CategoriaMovimentacao | null; resumo: string | null } | null;
+}
+
+/**
+ * Os prazos EM CURSO — `GET /deadlines/fios`.
+ *
+ * Já vêm ordenados pelo backend: o que vence primeiro no topo, o sem data no
+ * fim. A ordem é a urgência, e refazê-la aqui seria uma segunda verdade sobre
+ * a mesma lista.
+ */
+export async function getFiosDoPrazo(limit = 50): Promise<{ data: CartaoDoFio[]; total: number }> {
+  const body = await backendGetOrNull<{
+    data: { prazo: BackendDeadline; regua: FioDoPrazo['regua']; novas: number; ultimo: CartaoDoFio['ultimo'] }[];
+    total: number;
+  }>(`/deadlines/fios?limit=${Math.max(1, Math.trunc(limit))}`);
+
+  /* Backend antigo (sem a rota) responde 404 e cai aqui. A tela mostra "nenhum
+     prazo em curso", que é honesto e não quebra — mesma disciplina das rotas
+     que morreram em 07/09/2026 e derrubavam a página inteira. */
+  if (!body) return { data: [], total: 0 };
+
+  return {
+    total: body.total ?? body.data.length,
+    data: body.data.map(item => ({
+      prazo: toPrazo(item.prazo),
+      regua: item.regua ?? null,
+      novas: item.novas ?? 0,
+      ultimo: item.ultimo ?? null,
+    })),
+  };
+}
+
+export async function getFioDoPrazo(id: string): Promise<FioDoPrazo | null> {
+  const body = await backendGetOrNull<{
+    prazo: BackendDeadline;
+    regua: FioDoPrazo['regua'];
+    eventos: (BackendMovement & { abriuOPrazo?: boolean; mexeComOPrazo?: boolean })[];
+    total: number;
+  }>(`/deadlines/${encodeURIComponent(id)}/fio`);
+  if (!body) return null;
+
+  const prazo = toPrazo(body.prazo);
+  const proc = body.prazo.process ?? null;
+
+  return {
+    prazo,
+    regua: body.regua ?? null,
+    total: body.total ?? body.eventos.length,
+    eventos: (body.eventos ?? []).map(e => {
+      const ocorrido = new Date(e.ocorridoEm);
+      return {
+        abriuOPrazo: Boolean(e.abriuOPrazo),
+        mexeComOPrazo: e.mexeComOPrazo !== false,
+        item: {
+          id: e.id,
+          /* O processo é o MESMO em todo o fio e vem do cabeçalho — o backend
+             não o repete em 200 eventos de propósito (ver `eventoDoFioSelect`).
+             A tela renderiza com `noProcesso`, então estes campos são o
+             mínimo para o tipo fechar, não conteúdo que apareça. */
+          tribunal: proc ? proc.tribunal.replace(/G[12]$/, '') : prazo.tribunal,
+          cnj: proc?.numero ?? prazo.cnj,
+          orgaoJulgador: proc?.orgaoJulgador?.trim() || prazo.orgaoJulgador,
+          parte: prazo.parte,
+          assunto: proc?.assunto?.trim() || prazo.assunto,
+          tipo: extractTipo(e.descricao),
+          detail: e.descricao,
+          time: horaDoAto(ocorrido),
+          /* SEM SELO DE NOVIDADE no fio. A pergunta desta tela é "o que
+             aconteceu desde que o prazo abriu" — TUDO aqui é, por construção,
+             recente em relação a ela, e um selo em cinco de cinco linhas deixa
+             de significar "novo" e passa a significar "lista". */
+          state: 'quiet',
+          origem: e.origem ?? 'scraper',
+          fontes: e.fontes ?? [],
+          categoria: e.categoria ?? null,
+          ia: toLeituraIa(e),
+          prazo: toPrazoDoAto(e),
+          /* A faixa não entra no fio: o prazo é o cabeçalho da tela, e
+             repeti-lo em cada linha seria escrever a mesma coisa cinco vezes.
+             Quem marca os eventos aqui é o trilho do próprio fio. */
+          prazoEmCurso: null,
+          temInteiroTeor: temTexto(e),
+          documentoEstado: e.documentoEstado ?? 'nenhum',
+          temCertidao: Boolean(e.temCertidao),
+          temDocumentoDoAto: Boolean(e.temDocumentoDoAto),
+          naoVista: false,
+        },
+      };
+    }),
+  };
+}
+
 export async function getPrazos(page = 1, limit = 100, filters: PrazoFilters = {}): Promise<PrazoPage> {
   /* **A página vem do fim, não do começo.** A ordem que a tela mostra é
      decidida no cliente (`sortPrazos`); o que este `sort` decide é QUAL fatia

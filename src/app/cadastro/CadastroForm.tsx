@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Check } from 'lucide-react';
 import { AuthField } from '@/components/auth/AuthField';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import { avisoGoogle, type AvisoGoogle } from '@/components/auth/google-erros';
@@ -205,14 +206,21 @@ export function CadastroForm({ oab, nomeSugerido, googleAtivo, erroGoogle }: Cad
         </div>
       </div>
 
-      <ol className={styles.passos} aria-label="Etapas do cadastro">
-        <li className={styles.passo} data-atual>
-          <span className={styles.passoNum}>1</span> Criar a conta
-        </li>
-        <li className={styles.passo}>
-          <span className={styles.passoNum}>2</span> Conectar um tribunal
-        </li>
-      </ol>
+      {/* UM PASSO SÓ, e a mudança é de VERDADE, não de rótulo.
+          A trilha dizia "1 Criar a conta · 2 Conectar um tribunal" — e o passo
+          2 deixou de existir em 11/09/2026, quando o onboarding parou de pedir
+          credencial de tribunal: a conta nova nasce com OAB e fontes públicas,
+          e é só disso que ela precisa para o painel encher.
+
+          Prometer um segundo passo que não vem tem um custo assimétrico: quem
+          lê "conectar um tribunal" ou desiste ali (é o pedido mais caro do
+          produto) ou fica esperando uma tela que nunca aparece. Conectar o
+          login continua valendo — alcança o processo em segredo de justiça —
+          mas como passo OPCIONAL, depois, em Credenciais. */}
+      <p className={styles.passoUnico}>
+        <Check size={14} aria-hidden="true" />
+        Um passo só. Não pedimos senha de tribunal nenhuma.
+      </p>
 
       {aviso && (
         <div className={aviso.neutro ? styles.avisoBanner : styles.errorBanner} role="alert">

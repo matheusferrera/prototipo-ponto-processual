@@ -1,18 +1,36 @@
-/* A barra acima da lista: só o corte por categoria. A contagem de "novas"
-   que ficava à direita saiu junto com o selo — ver `MovimentacaoRow`. */
-.barra {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-lg);
-  padding: var(--space-md) var(--space-lg);
-  background: var(--paper-3);
+/* O corpo da tela de movimentações. No celular o DOCUMENTO rola (ver o
+   globals.css); a partir de 768px o shell é fixo e cada área rola por dentro. */
+
+.rolagem,
+.dividida {
+  flex: 1 0 auto;
+  background: var(--paper-2);
 }
 
-/* `min-width: 0` no filho é o que permite a faixa de categorias rolar dentro
-   do flex em vez de esticar a barra. */
-.barra > :first-child { min-width: 0; flex: 1 1 auto; }
-
 @media (min-width: 768px) {
-  .barra { padding: var(--space-md) var(--space-2xl); }
+  .rolagem {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .dividida {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+  }
+
+  .coluna {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+  }
+}
+
+/* ≥1200: a lista à esquerda, o ato à direita. */
+@media (min-width: 1200px) {
+  .dividida[data-com-painel] .coluna {
+    flex: 0 0 clamp(460px, 38vw, 560px);
+    border-right: 1px solid var(--line);
+  }
 }

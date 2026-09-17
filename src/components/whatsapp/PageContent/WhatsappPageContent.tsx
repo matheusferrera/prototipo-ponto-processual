@@ -21,6 +21,28 @@ interface Canal {
 type Preferencias = Pick<Canal, 'prazoAtivo' | 'resumoAtivo'>;
 
 /**
+ * O resumo de publicações que o backend enfileira quando o número é aceito.
+ * `null` quando o POST não registrou aceite novo (o mesmo número, de novo).
+ */
+type EnvioInicial =
+  | { enfileirado: true; dia: string; publicacoes: number }
+  | { enfileirado: false; motivo: 'resumoDesligado' | 'semPublicacoes' | 'indisponivel' }
+  | null;
+
+/** A frase que acompanha a ativação — diz o que vai chegar no WhatsApp. */
+function fraseDoEnvio(envio: EnvioInicial): string {
+  if (!envio) return '';
+  if (envio.enfileirado) {
+    const [, mes, dia] = envio.dia.split('-');
+    const qtd = envio.publicacoes === 1 ? 'a publicação' : `as ${envio.publicacoes} publicações`;
+    return ` O resumo com ${qtd} de ${dia}/${mes} está a caminho do seu WhatsApp.`;
+  }
+  if (envio.motivo === 'semPublicacoes') return ' Não há publicações nos últimos 30 dias — o primeiro resumo chega quando houver.';
+  if (envio.motivo === 'indisponivel') return ' Não conseguimos enviar as publicações agora; elas chegam na próxima varredura.';
+  return '';
+}
+
+/**
  * Os dois avisos, na ordem em que saem.
  *
  * `resumoAtivo` governa o template `diario_djen` e `prazoAtivo` o
@@ -58,7 +80,7 @@ function mascara(bruto: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
-async function requisitar(method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<Canal> {
+async function requisitar<T = Canal>(method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const res = await fetch('/api/whatsapp', {
     method,
     ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
@@ -114,23 +136,27 @@ export function WhatsappPageContent() {
       return;
     }
     setSalvando(true);
-    let numeroSalvo = false;
     try {
       if (precisaNumero) {
-        const data = await requisitar('POST', { telefone: `55${digitos}`, aceito: true, origem: 'painel' });
+        // As preferências vão JUNTO com o aceite, e não num PATCH depois: o
+        // aceite novo já dispara o envio das publicações, e um PATCH atrasado
+        // deixaria o resumo sair para quem acabou de desligá-lo.
+        const { envioInicial, ...data } = await requisitar<Canal & { envioInicial: EnvioInicial }>('POST', {
+          telefone: `55${digitos}`, aceito: true, origem: 'painel', ...preferencias,
+        });
         setCanal(data);
+        setPreferencias({ prazoAtivo: data.prazoAtivo, resumoAtivo: data.resumoAtivo });
         setEditando(false);
         setTelefone('');
         setAceito(false);
-        numeroSalvo = true;
+        setOk(`${cadastrado ? 'Número alterado.' : 'Avisos ativados.'}${fraseDoEnvio(envioInicial)}`);
+        return;
       }
-      // O cadastro e as preferências têm endpoints distintos. Se só o segundo
-      // falhar, conservamos o cadastro confirmado e as escolhas para repetir.
       const data = await requisitar('PATCH', preferencias);
       setCanal(data);
       setOk('Preferências salvas.');
     } catch (error) {
-      setErro(numeroSalvo ? 'Número salvo, mas não foi possível salvar os tipos de aviso. Confira suas escolhas e tente salvar novamente.' : error instanceof Error ? error.message : 'Serviço indisponível. Tente novamente.');
+      setErro(error instanceof Error ? error.message : 'Serviço indisponível. Tente novamente.');
     } finally { setSalvando(false); }
   }
 

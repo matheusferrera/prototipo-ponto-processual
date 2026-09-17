@@ -217,6 +217,47 @@ Existem porque **não existiam**: medido nos CSS Modules da tela de movimentaç�
 
 ---
 
+## Celular: os pisos moram no globals
+
+Abaixo de 768px o ponteiro é o dedo, e três pisos valem para o produto inteiro
+— estão no fim de `src/app/globals.css`, num único `@media (max-width: 767px)`,
+para que nenhuma tela nova precise redescobri-los:
+
+| Piso | Regra | Por quê |
+|---|---|---|
+| Fonte de campo ≥ 16px | `input, select, textarea { font-size: 16px !important }` | abaixo disso o iOS dá zoom ao focar; o `!important` é porque os módulos definem 11–13px com seletor de classe |
+| Alvo de toque ≥ 44px | `[data-slot="button"], .group\/button { min-height: 44px }` (+ `size-6/7/8` → 44×44) | os tamanhos `sm/xs/icon` do shadcn são de mouse; `.group\/button` cobre o `<a>` com `buttonVariants` |
+| Sem atraso de toque | `touch-action: manipulation` em `a, button, summary, label` | tira os 300ms do duplo-toque |
+
+Fora do globals, cada componente resolve o seu caso no próprio módulo, sempre
+sob `@media (max-width: 767px)`: pílulas de filtro a 44px, chips de credencial
+a 40px, links de texto com `padding-block` + `margin-block` negativo (estende
+o alvo sem mover o link), tabela de status virando cartões (`data-label` nas
+células numéricas), menu "Lembrar" decidindo a âncora em JS ao abrir.
+
+**`overflow-x: clip`, não `hidden`, no `html`/`body`** (17/09/2026). `hidden`
+num eixo força o outro a `auto` e faz do `<body>` um contêiner de rolagem que
+nunca rola: todo `position: sticky` do celular grudava nele, e não na tela.
+Medido a 390px, rolando 900px em /movimentacoes, /prazos e /processos: a barra
+do topo subia junto (topo em −900) e a `BarraInferior` nunca encostava no pé.
+Com `clip` o corte da sobra continua e as duas barras grudam — conferido a 390px
+e 360px, sem rolagem lateral.
+
+**O documento é quem rola no celular.** `html`/`body` só recebem `height: 100%`
+a partir de 768px (o shell fixo do desktop). Antes valia sempre, e no celular
+fazia do `<body>` o rolador: barra do Safari sem recolher, posição perdida ao
+voltar. O `h-full` do `<html>` e o `height: 100%` inline do `<body>` em
+`layout.tsx` saíram pelo mesmo motivo.
+
+**Como foi medido, e como medir de novo.** Playwright (o do backend, com
+`channel: 'chrome'`) logando com o usuário do seed e visitando cada rota a
+375px e 360px, medindo: elemento fora da janela ou mais largo que o pai
+(descontando faixas com `overflow-x: auto`), alvo interativo < 40px, campo
+com fonte < 16px, texto < 11px. Faixas que rolam de propósito (pílulas,
+kanban, heatmap do calendário, ticker da landing) aparecem como "overflow"
+e são falsos positivos; o `<details>` fechado também (o Chrome mantém o
+conteúdo no layout, só não pinta).
+
 ## Processos (`/processos`): lista por padrão, tabela por opção
 
 A carteira abre como **lista de casos**, não como planilha. Cada linha responde, nesta ordem: *de quem é* (Polo ativo × Polo passivo, o mesmo título da página de detalhe), *o que mudou* (última movimentação + "há 2 d", com o selo `Nova` quando o backend marca `state: signal`) e *até quando* (chip de prazo só quando existe). Tribunal, CNJ e órgão julgador ficam à direita, menores. A linha inteira é um único `<Link>`.
@@ -245,6 +286,139 @@ A leitura do último dia útil do diário: um panorama em prosa e as publicaçõ
 
 A linha do tempo do acervo. Desde 03/09/2026 ela é **100% DJEN**: o DataJud parou de gravar movimentação e ficou só na capa do processo, então toda linha aqui é a publicação de um ato no diário, com o inteiro teor guardado.
 
+### A TELA DE 17/09/2026 — três abas, e a pergunta "é comigo?" antes de tudo
+
+A tela foi redesenhada a partir de um protótipo (celular e desktop) aprovado
+pelo dono do produto. O diagnóstico, medido na conta de dev a 390px: a primeira
+movimentação só aparecia no meio da tela; o título da linha era o parágrafo da
+IA cortado em três linhas; o mesmo processo se repetia em linhas seguidas com a
+mesma faixa de prazo; e **a tela se contradizia** — o resumo dizia "o prazo é
+das requeridas" e a faixa logo abaixo dizia "Chegou dentro de um prazo seu".
+
+| aba | URL | pergunta | fonte |
+|---|---|---|---|
+| **Todas** (padrão, primeira) | `/movimentacoes` (ou `?vista=todas`) | o histórico, com busca e filtros | `GET /movements` |
+| **Novas** | `?vista=novas` | o que chegou desde a última vez, e o que disso é comigo | `GET /movements?novas=true` (até 100) |
+| **Com prazo** | `?vista=fios` | o que aconteceu nos casos com prazo correndo | `GET /deadlines/fios` |
+
+- **Sem `vista`, a aba é Todas, e ela vem primeiro** — pedido do dono do
+  produto, que inverteu o protótipo (lá, Novas abria a tela). O menu, o "Ver
+  todas" do painel e a dica da varredura apontam para `/movimentacoes` e caem
+  na lista inteira; tudo que é da aba Novas carrega `vista=novas` na URL
+  (`?ato=`, `?voltar=`).
+- **Os filtros só valem em Todas.** Novas responde "o que chegou"; um recorte
+  escondido ali faria a pessoa achar que não chegou nada. A folha de filtros do
+  celular (`FolhaDeFiltros`) SEMPRE aplica levando a Todas; a lupa leva a Todas
+  com `?buscar=1` (o campo abre focado).
+- **A régua de "é comigo" mora em `lib/situacao-do-ato.ts`** e é uma só para a
+  tela inteira (etiqueta da linha, cartão de "Pede sua ação", bloco de dias,
+  topo do ato): até 3 dias tinto, até 7 âmbar, depois verde.
+- **`deQuemDoAto`: a leitura da IA vence quando afirma.** O prazo do DJEN nasce
+  com `deQuem: destinatario` POR PADRÃO; a IA leu o ato. A exceção é
+  `prazoLegal` (recurso é de toda parte). Foi isso que desfez a contradição do
+  despacho do TJBA acima. Sem afirmação de ninguém, "a confirmar" — nunca "de
+  outra parte" (a dúvida erra para cedo).
+
+#### A aba Novas (`Novidades`, `lib/novidades.ts`)
+
+Três blocos: **Pede sua ação** (o ato abriu prazo seu, aberto e por vencer — o
+mais urgente primeiro; vencido fica de fora, porque o backfill traz prazo aberto
+de 2024), **Outras novidades** agrupadas por PROCESSO (o prazo que corre aparece
+UMA vez, no cabeçalho do cartão, e a etiqueta "No seu prazo" some das linhas) e
+**Só cartório**. Termina com "Isso é tudo desde terça às 19:05".
+
+- **Aqui o cartório recolhe mesmo dentro de um prazo** — o cabeçalho já diz que
+  o prazo corre. A exceção é o carimbo que fala de prazo ("Decorrido prazo do
+  réu"), que nunca recolhe. Em Todas vale a regra antiga (`colapsavelNaLista`).
+- **"Marcar vistas" leva a marca anterior na URL** (`?voltar=<iso>|nunca`), e é
+  isso que permite o "Desfazer" da tela vazia sem estado de cliente. O backend
+  aceita `voltarPara` só para TRÁS.
+- **Conta que nunca marcou nada vê a última semana** — detectado E praticado nos
+  últimos 7 dias (regra do backend). A conta de dev abria com "18562 novas".
+
+#### Desktop largo: a lista e o ato lado a lado (≥1200px)
+
+Em Novas, a coluna da esquerda é a lista e a da direita é `PainelDoAto`, com o
+MESMO `CorpoDoCard` do card. O clique troca o ato por `?ato=<id>` com
+`router.replace` (`LinkDoAto`) — o `href` continua sendo o do ato, então sem JS,
+no clique do meio e abaixo de 1200px o card abre como sempre. O servidor não
+sabe a largura: o ato do painel é buscado mesmo no celular (uma requisição por
+página, só em Novas). Em Com prazo e Todas, o ato abre como card no desktop.
+
+#### Todas: a linha nova (`LinhaDaLista`) e o "Carregar dias anteriores"
+
+- **Não é `MovimentacaoRow`**, e o desvio é deliberado: aquela continua sendo a
+  linha do painel, da timeline do processo e do fio. Esta tem a hora e o tipo em
+  cima e a etiqueta de situação embaixo; no desktop, colunas **hora · tipo ·
+  tribunal · parte · o que aconteceu · documento**, com a ETIQUETA embaixo do
+  tipo e o NÚMERO do processo (11px) embaixo da parte — tudo pedido pelo dono do
+  produto: quem varre a lista procura o caso antes de ler o ato, e o texto é a
+  coluna que cresce. A linha tem duas faixas no grid (`grid-template-areas`) e
+  `display: contents` no cabeçalho e no rodapé devolve cada pedaço à sua célula.
+- **A hora em toda linha, e 00:00 quando a fonte não informa** — decisão do
+  dono do produto em 17/09/2026, que inverte a regra de não inventar "00:00"
+  (o DJEN publica em DATA). O motivo fica no `title` (`semHoraMotivo`).
+  `horaDoAto`/`quandoComHora` servem a tabela, as linhas da aba Novas ("hoje às
+  00:00") e `cabecalhoDoAto` na barra do ato.
+- **Na tabela a etiqueta é CURTA** ("Seu · 8 dias", "Outra parte",
+  "Encerrado", "No prazo · 15 dias"; `EtiquetaDaSituacao.curto`), também a
+  pedido: por extenso ela ocupava 196px da largura do texto do ato, que é o que
+  se lê. Hoje ela nem tem coluna — mora embaixo do tipo, em 136px; o leitor de
+  tela e o `title` continuam com a frase inteira, e no celular ela aparece por
+  extenso.
+- **A paginação saiu** para "Carregar dias anteriores" (`MaisDias`, que chama
+  `GET /api/movimentacoes` com os MESMOS filtros). A página 2 emenda no mesmo
+  cabeçalho quando o dia continua (`MovimentacaoGroup.chave`).
+- **"Você viu até aqui"** cai antes da primeira linha vista depois de uma nova
+  (`posicaoDoDivisor`), uma vez só, atravessando as páginas.
+- **No desktop os filtros ficam na barra** (`BarraDeFiltros`); as cinco pílulas
+  aparecem LIGADAS e se desligam (`alternarCategoria` — todas ligadas volta a
+  ser a lista vazia da URL). **"Publicações e intimações" inclui o ato sem
+  categoria** (o do DJEN): sem isso, desligar QUALQUER pílula sumia com o
+  diário, porque `NULL IN (...)` é falso — regra do backend, nas três rotas.
+- **`quem=comigo|outra`** filtra na página (como `tipo`): o `deQuem` da leitura
+  mora no payload de `Analise`, que o banco não filtra. `comigo` inclui o que
+  ainda não se sabe de quem é.
+- **No celular o ícone do documento divide a primeira linha** com hora, tipo e
+  tribunal (pedido do dono do produto): numa coluna própria ele tirava 48px do
+  texto em toda a altura do item. O alvo segue com 48px — margens negativas o
+  deixam na altura da linha de texto.
+- **No celular o cabeçalho do dia gruda a 112px** — a altura medida da barra do
+  topo (título + abas). Mudou a barra, muda o número.
+
+#### O ato: a situação primeiro (`CorpoDoCard`)
+
+```
+0  a situação       chip (É com você · Prazo da outra parte · Só ciência · Cartório · No seu prazo)
+                    · a peça · faltam N dias · a régua · de onde veio a data · a conta · Protocolei/Lembrar
+1  o que aconteceu
+2  o que fazer      com lista de conferência que MARCA (guardada no aparelho)
+3  o texto do ato   fechado acima de 800 caracteres
+4  processo         cliente · número · órgão · origem · datas · saídas (fio, processo) · todos os arquivos
+```
+
+- **"Ver como chegamos na data" abre FECHADO** — pedido do dono do produto:
+  aberta, a conta empurrava "O que aconteceu" para baixo da dobra no celular.
+- **O chip do vencimento saiu da barra do card**: ele existia porque o prazo caía
+  abaixo da dobra, e agora é a primeira coisa do corpo. A barra tem o voltar, o
+  tipo ("Acórdão") e onde ("STJ · Segunda Seção · disponibilizado hoje").
+- **O rodapé do card são os DOCUMENTOS** (`AcoesDoDocumento`): a peça, a
+  certidão e "Ver no TRIBUNAL". Os verbos do prazo subiram para o bloco da
+  situação, junto do prazo a que se referem. Rodapé sem documento não existe
+  (`temAcoesDeDocumento`).
+- **A lista de conferência marca de verdade** (`ChecklistDoAto`,
+  `localStorage` por ato, `useSyncExternalStore`) e diz que a marcação fica no
+  aparelho. A regra antiga era "caixa que esquece é pior que nenhuma" — por isso
+  ela não esquece.
+
+#### Tokens novos
+
+`--ink-soft` (#56655a, 5,9:1 no papel) é a legenda que passa no AA, entre
+`--ink-2` e o `--ink-3` que reprova. `--surface` (#fff) é o cartão sobre o chão
+`--paper-2`. **O dev server não recompilou o `globals.css` na primeira edição**:
+o CSS servido ficou sem os tokens e os cartões apareceram sem fundo — conferir o
+chunk `globals_css` antes de concluir que uma regra não pegou.
+
 ### A linha é UMA, e mora em `MovimentacaoRow`
 
 A mesma movimentação tinha **três implementações** no produto: o feed (cartão com borda, 140px), o painel (JSX com estilo inline dentro de `painel/page.tsx`, 48px) e a pauta de prazos. A do painel era a mais legível e a mais barata — e era a única sem componente. Desde 06/09/2026 feed e painel usam `components/movimentacoes/MovimentacaoRow/`, com `densidade: 'compacta' | 'confortavel'`.
@@ -267,19 +441,319 @@ Fora da linha: o **cabeçalho do dia gruda no topo** e subiu para 12px/700 em `-
 
 **O selo `NOVA` compara duas datas, não uma.** `detectedAt` sozinho mentia: um backfill de 2 anos grava tudo agora e marcava **as vinte linhas da página** como novas, inclusive publicações de 2024. `atoRecemPublicado` (`api.server.ts`) exige detecção nas últimas 48h **e** publicação nos últimos 7 dias. Quando tudo é novo, nada é.
 
-### O ato abre NA LISTA — e a página do ato continua de pé
+### O FIO DO PRAZO — a movimentação no decorrer do prazo (15/09/2026)
 
-`?aberta=<id>` expande a linha no lugar, com a leitura completa: prazo por extenso + fundamento + ressalva, providência, inteiro teor (fechado acima de 2.400 chars) e os documentos. Uma linha por vez.
+O feed é cronológico e responde **"o que chegou"**. Ele não responde a pergunta
+de quem tem prazo correndo: **"o que aconteceu NESTE caso desde que o prazo
+abriu?"** — e a diferença de escala é o argumento inteiro. Medido na conta de
+dev: **18.485 movimentações** (370 páginas a 50 por página) contra **11 prazos
+abertos**. Achar no feed o que toca um prazo era varrer 370 páginas atrás dos
+eventos de 11 processos.
 
-**A linha continua sendo um `<a>`; só muda o destino.** Aponta para `?aberta=<id>` (e, quando já aberta, para o href sem o parâmetro — o mesmo clique fecha), com `scroll={false}`. Consequência: **zero JavaScript novo**, o botão voltar fecha o painel, recarregar não perde o lugar e o endereço é compartilhável. É a mesma disciplina dos filtros — a URL é a fonte da verdade —, aplicada a um estado que quase todo mundo resolveria com `useState`.
+O fio inverte o eixo: **o prazo é o recipiente, a movimentação é evento dentro
+dele.**
 
-**A rota `/movimentacoes/[id]` NÃO morreu, e não é do feed: é do ATO.** Apontam para ela a timeline do processo (`TimelineProcesso.tsx`) e o "ver o ato" da pauta de prazos (`PrazosView.tsx`) — matá-la deixaria duas telas sem destino e tiraria do ato o único endereço que se manda para um colega. O painel traz "abrir a página do ato" como saída.
+| onde | o que ganha |
+|---|---|
+| `?vista=fios` | a lista dos prazos em curso, cada um com o que mudou desde que abriu |
+| `/movimentacoes/fio/<deadlineId>` | o fio inteiro de um prazo, do ato que o abriu até hoje |
+| toda linha (feed, timeline do processo) | a **faixa** dizendo qual prazo ela toca e quanto dele já passou |
 
-**Os blocos são os MESMOS objetos** (`components/movimentacoes/AtoDetalhe/`), consumidos pela página e pelo painel — inclusive a **ficha**, que virou a sidebar da página. Sem isso seria a quarta implementação do mesmo ato no produto — e a primeira a divergir seria a regra do prazo, que é onde divergir custa caro.
+- **Nada disso depende da IA.** O corte é `ocorridoEm >= inicioEm` — aritmética
+  de datas, calculada no backend (`shared/processos/fio-do-prazo.ts`). Importa
+  porque a leitura por IA cobre **6,1% dos atos legíveis** (15 de 245 numa
+  conta, 10 de 119 na outra): um componente que dependesse dela viria vazio em
+  94% das linhas. Quando a leitura existe, ela só melhora o rótulo (`peca`).
+- **A régua NUNCA é recalculada no navegador.** `restam`, `decorridos` e
+  `totalDias` vêm prontos de `prazoEmCurso` / `regua` porque a conta depende do
+  relógio, e o único que vale é o de Brasília. Refazê-la aqui daria resultado
+  diferente para quem estiver em outro fuso — no campo em que errar custa o
+  prazo, e na direção perigosa.
+- **A barra não diz "dia 13 de 15".** `totalDias` é a janela de **calendário**
+  entre a publicação e o vencimento; o "15 dias" do ato pode ser em dias ÚTEIS
+  (21 de calendário). O numerador e o denominador seriam de contagens
+  diferentes. A frase certa — "faltam 2 dias" — vem de `restam`, que é um fato,
+  e o "prazo de 15 dias" continua sendo dito onde é verdade: ao lado do
+  vencimento.
+- **Prazo sem `dataLimite` não ganha barra.** A faixa mostra o nome e omite a
+  régua; inventar um denominador desenharia uma progressão que não existe.
+- **Âmbar tem um uso só na faixa**: `atencao` — o ato que pode mudar a peça,
+  chegando com o relógio correndo. É o caso caro e silencioso: a outra parte
+  protocola no dia 13 dos seus 15 e isso vira uma linha entre dezoito mil.
+  Pintar também o trâmite gastaria o sinal antes de ele precisar — a mesma
+  medição que tirou a borda verde de todas as linhas em 06/09/2026.
+- **"Nada novo" é resposta, e ocupa uma linha.** Medido: **5 dos 11** prazos
+  abertos não tiveram nenhuma movimentação depois da publicação. Um cartão em
+  branco nesse caso pareceria um cartão que não carregou.
+- **`novas` não conta o ato que abriu** — ele não é novidade sobre si mesmo.
+  Sem isso, 5 dos 11 cartões diriam "1 movimentação desde que abriu" e a
+  movimentação seria ele mesmo. O cabeçalho do fio subtrai pelo mesmo motivo: a
+  frase tem de significar o mesmo nas duas telas.
+- **A faixa não é link.** A linha inteira já é um `<a>`, e âncora dentro de
+  âncora é HTML inválido — o navegador desmonta o aninhamento e o clique cai no
+  elemento errado. Quem leva ao fio é o cartão da lista e o painel expandido,
+  que moram fora da âncora. Mesma disciplina do ícone de documento.
+- **`vista` não é filtro, e não entra em `MOVIMENTACAO_FILTER_KEYS`.** Um filtro
+  estreita a mesma lista; a vista troca a pergunta. Contá-la como filtro ativo
+  faria "limpar filtros" prometer voltar para uma lista que nunca esteve
+  filtrada. Trocar de vista preserva busca e tribunal, e descarta `?aberta=`,
+  que descreve uma linha do feed e não existe do outro lado.
 
-#### O painel foi desenhado a partir do celular, e para o ato SEM texto
+#### O cartório colapsa, e nunca some
 
-Duas coisas o painel não é: uma cópia da página em miniatura, e uma tela de desktop encolhida.
+Corridas **consecutivas** de `tramite` e `publicacao` viram uma linha de 44px
+com "mostrar" ao lado (`AtosDeTramite`, `<details>` nativo, sem JavaScript).
+Medido nos últimos 90 dias de uma conta (673 movimentações): trâmite **47%** e
+publicação **16%** — **63% do feed**, cada linha ocupando a altura de uma
+sentença.
+
+- **O resumo declara o conteúdo** ("5 atos de trâmite · Juntada, Conclusão,
+  Certidão"). Um colapso que não diz o que esconde é um filtro secreto — e o
+  feed já teve um: até 09/09/2026 a API escondia `tramite` por padrão, sem nada
+  na página dizendo que havia linhas ocultas.
+- **Só corridas CONSECUTIVAS.** Juntar trâmites separados por uma sentença
+  tiraria o bloco do lugar na ordem cronológica, que é o eixo da tela.
+- **Corrida de um item não colapsa.** Um clique para revelar uma linha que tem
+  quase a mesma altura da linha colapsada não ganha nada e esconde algo.
+- **O que está dentro de um prazo NUNCA entra no bloco.** "Decorrido prazo do
+  réu" é `tramite` pela categoria e é, com o relógio correndo, a linha mais
+  importante do dia (`colapsavelNaLista`).
+- **`?aberta=` dentro de um bloco abre o bloco** — senão a URL compartilhável
+  levaria a uma tela onde não se vê o que o link prometeu.
+
+> **A lista "não é o ato" existe em três cópias, e a duplicação é imposta pelo
+> harness.** Original no backend (`shared/processos/categorias.ts`); no front
+> vivem em `leitura-do-ato.ts` e `fio-do-prazo.ts`. Os testes rodam em
+> `node --test` sem bundler, e o Node não resolve import relativo sem extensão —
+> um módulo testável não pode importar outro. O que segura a divergência é
+> `tests/fio-do-prazo.test.mjs`, que importa as duas do front e as compara.
+
+> **`toISODate` mostrava a data-limite um dia ANTES.** Ele lia
+> `getFullYear/getMonth/getDate`, que aplicam o fuso local sobre uma data que
+> **já é local** — o banco grava wall-clock de Brasília nos campos UTC, e
+> `dataLimite` é sempre meia-noite. Num servidor em `America/Sao_Paulo`,
+> `2026-09-16T00:00:00.000Z` virava 15/09 às 21:00 e a tela escrevia **15 de
+> setembro**. Conferido ao vivo: o cartão dizia "vence amanhã" (certo, porque
+> `diasAteVencimento` já usava `getUTC*`) e "ter, 15 set" na linha de baixo — a
+> mesma tela se desmentindo. O erro **some num container em UTC**, que é onde a
+> produção roda; por isso sobreviveu. E `vencimentoISO` não é só texto: é dele
+> que `LembrarPrazo` conta "3 dias antes" e `faixaPrazo` decide a coluna do
+> kanban.
+
+### O ATO ABRE COMO CARD, POR CIMA DA LISTA (15/09/2026)
+
+Até aqui a linha expandia um painel dentro da lista (`?aberta=<id>`). Hoje ela é
+um **link simples para o ato**, e `app/movimentacoes/@card/(.)[id]` intercepta a
+navegação: o ato abre num card sobre a lista, que continua montada e **parada**
+atrás dele.
+
+**O ganho não é tela cheia** — `/movimentacoes/[id]` já era tela cheia. São dois:
+
+1. **a lista não se mexe.** O painel empurrava tudo para baixo ao abrir e puxava
+   de volta ao fechar; quem abria a terceira linha perdia onde estava. O ato do
+   diário tem 8 KB de média e 151 KB no maior deste acervo — a 390px, centenas
+   de pixels de deslocamento;
+2. **cabe a conta do prazo.** A cadeia de contagem nunca entrou no painel porque
+   ele já estava alto demais. Ver [A conta do vencimento](#a-conta-do-vencimento-aberta).
+
+| | |
+|---|---|
+| a URL | **a do ato** (`/movimentacoes/<id>`) — o mesmo endereço que se manda para um colega |
+| voltar | fecha, e devolve filtro, página e **ponto de rolagem** exatos |
+| F5 / link direto | o **mesmo card**, autônomo: sem lista atrás, e o × leva ao feed |
+| conteúdo | um só `AtoDetalhe`, nos dois caminhos |
+
+#### A fenda mora na RAIZ, e a posição é a decisão
+
+`app/@card/(.)movimentacoes/[id]` intercepta a navegação para um ato **venha ela
+de onde vier** — e vem de **nove lugares**: o feed, o painel, a pauta de prazos,
+o fio, a timeline do processo, o panorama, as análises da IA e as movimentações
+recentes do dashboard. Com a fenda dentro de `movimentacoes/`, só os cliques que
+já estavam no feed abriam o card; os outros caíam na página, e o advogado via a
+mesma movimentação de duas formas conforme de onde clicou.
+
+> **E naquela posição havia um defeito de verdade.** Com o interceptador irmão
+> do alvo (`movimentacoes/@card/(.)[id]` ao lado de `movimentacoes/[id]`), o
+> Next 16.2.5 duplica o marcador em desenvolvimento e recusa a rota:
+>
+> ```
+> ⨯ Invalid interception route: /movimentacoes/(.)(.)(.)(.)(.)<id>
+> ```
+>
+> **A build de produção aceitava e o dev não** — o card não abria, e a única
+> pista estava em `.next/dev/logs/next-development.log`, não no navegador nem no
+> terminal. Foi assim que apareceu: reproduzindo o clique com Playwright contra
+> o dev e lendo aquele log. Na raiz o problema não existe.
+
+#### A página do ato É o card (15/09/2026)
+
+`app/movimentacoes/[id]` era uma tela INTEIRA e diferente — breadcrumb, hero,
+sidebar de processo, 228 linhas de layout e um CSS Module só dela. O mesmo ato
+tinha duas caras: uma ao clicar no feed, outra ao abrir o link. Agora renderiza
+**o mesmo `CardDoAto`**, e a única diferença entre os caminhos é o que está
+ATRÁS (a lista, ou nada) e para onde o × leva.
+
+- **A rota não pode deixar de existir**, por mais que a tela some: é ela que
+  resolve o link compartilhado, o favorito e o F5, e é dela que a rota
+  interceptada é a interceptação. Rota interceptada sem a real por baixo é um
+  404 esperando o primeiro recarregamento.
+- **No card autônomo o × é um destino, não `back()`.** Ali não houve navegação a
+  desfazer: a entrada anterior do histórico pode ser o e-mail em que o link
+  chegou.
+- **`identidadeDoAto` monta o cabeçalho para os dois caminhos.** Se cada um
+  montasse o seu, o mesmo ato apareceria com duas identificações — o defeito que
+  a unificação existe para apagar.
+
+- **`?aberta=` morreu, e foi uma boa morte.** Ele só valia para uma linha DAQUELA
+  página com AQUELE filtro: o mesmo link aberto de outro recorte não abria nada.
+  Saíram o parâmetro, o `cleanId`, a busca condicional do detalhe no `page.tsx` e
+  o `painel` da linha do feed (`MovimentacaoRow.painel` continua, para a timeline
+  do processo, que expande localmente).
+- **`modal="trap-focus"`, não o modal cheio.** O modal padrão do Base UI trava a
+  rolagem da página, e travar rolagem é aplicar `overflow: hidden` — o que zera o
+  `scrollTop` de todo container rolável. O feed rola numa área própria
+  (`.scrollArea`), e um card que manda a lista para o topo é a mesma perda que o
+  painel tinha, com outra roupa.
+- **O foco inicial vai para o PAINEL, não para o ×.** `focus()` sem
+  `preventScroll` faz o navegador rolar containers para trazer o elemento à
+  vista. O painel é `position: fixed` e tem `tabindex="-1"`: focá-lo não move
+  rolagem nenhuma, e é o que o leitor de tela espera — ele anuncia o rótulo do
+  diálogo antes de qualquer controle.
+- **`@card/default.tsx` devolve `null`.** Sem ele, um F5 na página do ato estoura
+  em 404 — o Next não sabe o que pôr na fenda quando a rota não casa dentro dela.
+- **A abertura (`AberturaDoAto`) mora fora de `AtoDetalhe`**, porque a página do
+  ato já tem o hero dela. Ver abaixo.
+- **Os dois verbos só existem com prazo ABERTO.** Num ato de mera ciência — 46%
+  deles — um "Protocolei" no rodapé baixaria o prazo de OUTRO ato do mesmo
+  processo.
+
+> **Verificado ao vivo em 15/09/2026** (Chrome headless, produção local): card
+> abre sem recarga, URL vira a do ato, **rolagem 500 → 500**, foco volta para a
+> linha que o abriu, resto da página inerte, `Esc` e o gesto de voltar fecham,
+> 1040×820 no desktop e 390×844 no celular, URL direta sem card, zero erro de
+> console.
+>
+> **Duas medições minhas estavam erradas antes de eu olhar direito**, e as duas
+> eram artefato do teste: o Playwright rola a linha até a vista antes de clicar,
+> então clicar na PRIMEIRA linha movia a lista sozinho. Medir rolagem exige
+> clicar numa linha já visível.
+
+#### O corpo do card: sete blocos, na ordem da urgência
+
+> **Substituído em 17/09/2026** — a ordem hoje abre pela situação. Ver [O ato: a situação primeiro](#o-ato-a-situação-primeiro-corpodocard). O texto abaixo fica pelo porquê dos blocos-folha.
+
+`CorpoDoCard` — **não é o `AtoDetalhe` de antes**, e a diferença é composição,
+não folhas. Aquele nasceu como painel DENTRO da linha e tem a forma de lá: tudo
+espremido num card de prazo, com texto e ficha numa grade de duas colunas para
+caber embaixo de uma linha de lista. Os blocos-folha continuam os MESMOS objetos
+(`TeorDoAto`, `DocumentosDoAto`, `FichaDoAto`, `CadeiaDoPrazo`, `LeituraDoAto`).
+
+```
+1  o que aconteceu        sempre
+2  o que fazer            só com leitura da IA
+3  até quando             só com prazo — com a CONTA aberta
+4  no decorrer do prazo   só dentro de uma janela
+5  arquivos               quando há
+6  inteiro teor           fechado acima de 800 chars
+7  ficha                  sempre
+```
+
+É a ordem do DOM, do Tab e do leitor de tela, igual no celular e no desktop.
+**Bloco sem dado não vira moldura vazia**: sem prazo não há "Até quando", sem
+leitura não há "O que fazer" — uma caixa dizendo "nenhuma providência
+identificada" é lida como *não há nada a fazer*, a leitura errada no lugar mais
+caro do produto.
+
+`AtoDetalhe` continua de pé para quem o usa como painel: a timeline do processo.
+A pauta de prazos o usava na linha expandida até 17/09/2026 — ver [A pauta abre
+o prazo no card do ato](#a-pauta-abre-o-prazo-no-card-do-ato-17092026).
+
+##### 1 · O que aconteceu — três versões, e a do meio é a que quase ninguém desenha
+
+| situação | o que aparece | quanto do acervo |
+|---|---|---|
+| a IA leu | o resumo é o texto de abertura | **6,1%** dos atos legíveis |
+| não leu, mas há teor | **o próprio ato fala** — o trecho de `FINALIDADE`, citado | 100% dos atos do diário |
+| trâmite ou publicação | **"Isto não cobra nada de você."** | **63%** do feed |
+
+- O trecho prefere `FINALIDADE` — o campo em que o DJEN escreve para que serve a
+  comunicação. A CAPA (`PROCESSO:`, `CLASSE:`, `POLO ATIVO:`) fica de fora:
+  repetir o número do processo seria o card repetindo a si mesmo no lugar mais
+  caro dele. Ver `trechoDeAbertura`.
+- A frase do carimbo vem em **verde-sage**: cinza leria como ausência de
+  informação, e este bloco é o contrário disso — é a resposta à pergunta que
+  trouxe a pessoa ali.
+- **`LeituraDoAto` entra com `mostrarLeitura={false}`.** O conteúdo da leitura já
+  está na tela (resumo aqui, providência e checklist no bloco 2); renderizá-lo
+  uma terceira vez transformava a resposta em eco. O que sobra é o que aquele
+  componente tem de único: o pedido, a fila e o "ler de novo".
+
+##### O TÍTULO TEM DOIS TAMANHOS, e a medida é o motivo
+
+Sem leitura ele é o rótulo do cartório — três a oito palavras, 22px carrega bem.
+Com leitura ele é o resumo da IA, que **no acervo real é um parágrafo**: o maior
+desta conta tem **619 caracteres**. Em corpo de manchete ele ocupava a primeira
+tela inteira e virava o elemento mais pesado do card — mas o mais pesado tem de
+ser **o que fazer**, não o que aconteceu: o primeiro é decisão, o segundo é
+contexto. Acima de 120 caracteres ele cai para 15px/600 e ganha teto de medida.
+
+##### O VENCIMENTO MORA NA BARRA, além do bloco 3
+
+> **Desfeito em 17/09/2026**: o prazo passou a ser o primeiro bloco do corpo, e o chip saiu da barra.
+
+Com aquele resumo de 619 caracteres, a 390px o bloco "Até quando" cai **abaixo
+da dobra**. A pergunta mais cara do produto não pode depender de rolagem, e a
+barra é o único lugar do card que não sai da vista. O chip diz a distância na
+frente e a data atrás (`vence em 21 dias · ≈ 6 out`) — o verbo aparece uma vez
+só, e o `≈` cola na DATA, que é o que foi calculado. Ele **não substitui** o
+bloco 3: lá está a conta inteira.
+
+##### O rodapé é GRID, não flex
+
+> **Desde 17/09/2026 o rodapé é dos documentos**; a grade de duas trilhas vale agora para os verbos dentro do bloco da situação (`.verbos`).
+
+`BaixarPrazo.compacto` se declara `width: 100%` no celular (nasceu para o
+kanban, onde ocupa a linha). Como item de flex isso empurrava o "Lembrar" para
+uma segunda linha — 113px de rodapé comendo a tela. Em duas trilhas de `1fr`, o
+`width: 100%` dele passa a ser 100% da trilha: 61px, dois alvos de 175px.
+
+##### O desktop ficou em UMA coluna, e isto é um desvio do desenho
+
+O artifact propunha 1040px com uma calha de 352px à direita (o decorrer, os
+arquivos e a ficha). A calha não foi implementada: para ela existir, o DOM teria
+de ser reordenado — e aqui a ordem do DOM **é** a ordem de leitura, do Tab e do
+leitor de tela. O card ficou com 880px e teto de medida nos blocos de prosa, que
+resolve o mesmo problema (linhas de 110 caracteres) sem pagar com acessibilidade.
+
+#### A conta do vencimento, aberta
+
+`CadeiaDoPrazo` mostra os quatro marcos que produzem a data-limite —
+disponibilização → publicação (1º dia útil) → início (o seguinte) → vencimento —
+com o dispositivo legal de cada passo. É a mesma cadeia do rodapé da certidão do
+CNJ.
+
+- **Nada é calculado aqui.** Os marcos vêm de `prazo.cadeia`, do backend, que só
+  os devolve quando terminam exatamente na `dataLimite` gravada. Recalcular no
+  navegador seria uma segunda calculadora de prazo sem calendário forense.
+- **A barra não diz "dia N de M"** e a cadeia não inventa passo: quando o
+  backend recusa explicar (origem `painel`/`grid`, sem disponibilização, ou a
+  conta não reproduz a data), a tela mostra a data sozinha, como sempre mostrou.
+- **A ressalva vira parágrafo.** Na linha o `≈` é tudo que cabe; aqui há espaço
+  para dizer o que a conta NÃO sabe — feriado municipal, dobra por convênio,
+  suspensão por portaria — e pedir conferência em vez de afirmar.
+- `diaCurto` monta a data com `Date.UTC` a partir dos componentes, nunca com
+  `new Date('03/09/2026')` — essa string é lida como mês/dia em locale
+  americano e 03/09 viraria 9 de março, silenciosamente.
+- **O dia da semana não é enfeite**: é ele que responde "tenho o fim de
+  semana?", e é o que torna a cadeia auditável de relance — um passo caindo num
+  sábado denuncia a conta sem ninguém precisar pensar.
+
+#### `AtoDetalhe`, o painel — desenhado a partir do celular, e para o ato SEM texto
+
+**Isto descreve `AtoDetalhe`, que é o painel EXPANDIDO da timeline do processo**
+(e era o da linha da pauta até 17/09/2026). Ele foi o corpo do card até `CorpoDoCard` existir, e as
+decisões abaixo continuam valendo onde ele ainda é usado. Duas coisas ele não é:
+uma cópia da página em miniatura, e uma tela de desktop encolhida.
 
 - **A ordem é a da urgência no telefone** — prazo → providência → texto (fechado) → arquivos → ficha —, e é a mesma ordem do DOM, do Tab e do leitor de tela. A partir de 768px as áreas do grid põem o texto à esquerda e arquivos + ficha na calha de 320px, **sem reordenar o DOM**.
 - **O `<details>` do teor abre fechado acima de 800 caracteres no painel** (a página usa 2.400). O corte é do celular: a 396px, 800 chars já são ~20 linhas, e um ato de 8 KB empurraria arquivos e ficha para 1.500px abaixo do polegar.
@@ -300,6 +774,41 @@ Junto vieram `fontes[]` (**quais** fontes confirmaram o ato: `pdpj + diário` qu
 **`?aberta=` de um ato fora do recorte não abre nada e não redireciona.** A URL do feed descreve a LISTA; o parâmetro só tem efeito sobre o que está nela. Quem quer o ato tem o endereço dele. O id é saneado (`[A-Za-z0-9_-]{1,64}`) antes de virar requisição, e o href da linha carrega a página atual — senão abrir um ato na página 2 voltaria para a 1, onde ele não está.
 
 > **O custo declarado:** abrir uma linha re-renderiza a página no servidor, inclusive as 50 linhas. Medido localmente em ~50ms. Se em produção pesar, a saída é envolver só o painel num `<Suspense>` — não foi feito preventivamente.
+
+#### A pauta abre o prazo no card do ato (17/09/2026)
+
+A linha de prazo era um `<details>` com painel próprio — mais uma composição dos
+mesmos blocos, com os defeitos que tiraram o painel do feed em 15/09. Agora ela é
+um link para `/movimentacoes/<movementId>`, e a fenda `@card` o abre por cima da
+pauta, nas três vistas (lista, kanban, calendário).
+
+- **O card do ato É o card do prazo.** `Deadline.movementId` é NOT NULL e
+  `@unique` no backend: o "Até quando" e a barra de ação do card são deste prazo.
+  Um card próprio de prazo seria mais uma composição do mesmo ato.
+- **Os verbos ficam fora do link.** O `<a>` é o corpo da linha e um `::after` o
+  estende sobre ela inteira; `.verbos` (posicionado, depois no DOM) pinta por
+  cima e recebe o próprio clique. O que tem `title` sobe com `.comDica` para o
+  hover chegar — como é descendente do link, o clique ainda abre o card.
+  **No Playwright**, `locator.click()` num elemento coberto pelo véu falha com
+  "intercepts pointer events"; clique por coordenada (`page.mouse.click`).
+- **O card herdou o que só o painel da pauta mostrava**: `intimado: …` e a
+  ciência ficta, no bloco "Até quando". Para isso `MovementView.prazo` ganhou
+  `cienciaFicta` e `lembrarEm` no backend.
+- **O lembrete aparece no card.** As duas páginas do card passavam
+  `lembrarEm={null}` fixo — com a pauta atrás mostrando "Lembrar em 20/09".
+- **O "Lembrar" nunca tinha gravado.** O proxy `PATCH /api/prazos/{id}` só
+  aceitava `fechado` e devolvia 400 para `{ lembrarEm }`; passou a encaminhar os
+  dois.
+- **`vencimentoDoAto` não marca `≈` em prazo `painel`/`grid`**: ali o
+  `metodoPrazo` vem sempre nulo e a data é do tribunal.
+
+> **Em aberto — o `≈` tem sete regras.** A pauta decide por ORIGEM
+> (`djen`/`tribunalPublico` → `≈`, e esquece `pdpj`); o feed, o card, o fio, o
+> painel e o `PrazoQueCorre` decidem por `metodoPrazo !== 'textoExplicito'`.
+> Discordam no prazo do DJEN com os dias escritos no ato: a pauta mostra
+> "≈ 23/09", o card mostra "23 set" sem ressalva. O backend diz que no DJEN "a
+> data-limite é sempre calculada aqui", o que favorece a regra da pauta — mas é
+> decisão de produto, não foi tomada.
 
 #### A pauta mostra a PEÇA na linha fechada (10/09/2026)
 
@@ -344,12 +853,14 @@ A rota que lê UM ato existe desde 07/09/2026 (`POST /ia/movimentacoes/{id}`, er
 - **No ato já lido o rótulo é "Ler de novo"**, e ele manda `?forcar=true`. É o caso de o inteiro teor ter chegado depois da primeira leitura — o backend derruba só o `analisadoEm IS NULL`, as outras condições continuam valendo.
 - **`router.refresh()` quando a leitura chega**: o título da linha ACIMA do collapse é o resumo da IA (`resumoMovimentacao`), renderizado no servidor. Sem o refresh, o painel mostraria a leitura e o título continuaria sendo o rótulo do cartório.
 - **Estourar o teto de espera não é erro.** A fila `ia` é global e serial (~20 s por ato, `KIMI_RPM` 3): um ato pedido enquanto a ronda drena espera a vez. Passados 5 minutos o poll para e a leitura aparece na próxima vez que a tela carregar — dizer "falhou" ali seria mentira.
-- **`LeituraIaDoAto` saiu de `AtoDetalhe.tsx` para arquivo próprio** porque quem o renderiza depois da resposta é um client component ao lado; deixá-lo onde estava faria `AtoDetalhe → LeituraDoAto → AtoDetalhe`, ciclo de import atravessando a fronteira client/server. `AtoDetalhe` o reexporta — `PrazoRow` mostra a leitura dentro do collapse do PRAZO, onde o botão é outro.
+- **`LeituraIaDoAto` saiu de `AtoDetalhe.tsx` para arquivo próprio** porque quem o renderiza depois da resposta é um client component ao lado; deixá-lo onde estava faria `AtoDetalhe → LeituraDoAto → AtoDetalhe`, ciclo de import atravessando a fronteira client/server. `AtoDetalhe` o reexporta para quem quer a leitura sem o botão (era o collapse do prazo, que saiu em 17/09/2026).
 - **A página do ato ganhou o bloco que lhe faltava**: sem vencimento, o card do prazo não existe — e com ele sumia também a leitura, que mora lá dentro. O ato de mera ciência (a maioria) chegava à página sem lugar nenhum onde pedir a leitura, embora o painel do feed já a mostrasse.
 
 Medido ao vivo em 10/09/2026, no `Ato ordinatório — 4ª Vara Federal Cível da SJDF` (DJEN, ainda não lido): `202 {enfileirados: 1}` → resumo na tela em ~10 s, `confianca: alta`, e **nenhum `Deadline` criado** — a IA concluiu o mesmo que a heurística nova (`ciencia`): "o prazo de 5 dias é para o arquivamento dos autos, não impondo obrigação específica à parte".
 
 ### O corte é a CATEGORIA, e a faixa de métricas saiu
+
+> **Desde 17/09/2026 a faixa de pílulas saiu do topo**: no celular o recorte vive na folha de filtros e aparece como frase; no desktop, na barra da aba Todas.
 
 O topo do feed gastava 108px com "Novas (48h) 12 · Nesta página 20 · Total 6478", e dois desses três números não eram informação — "nesta página" é o tamanho da página e "total" já está na paginação. O lugar valia mais como o corte que a página não oferecia: **decisões · petições · publicações · prazos · trâmite**, que o backend já filtra no banco e para o qual **já existia componente pronto (`CategoriaFilter`), montado em tela nenhuma**.
 
@@ -649,5 +1160,5 @@ Decisões que não se leem no código:
 - [x] Login e cadastro com o Google (OAuth Authorization Code + PKCE)
 - [ ] Tela `/configuracoes/whatsapp`
 - [ ] Onboarding (primeira vez sem processos)
-- [ ] Responsivo mobile
+- [x] Responsivo mobile — auditado tela a tela em 375/360px em 16/09/2026; ver [Celular: os pisos moram no globals](#celular-os-pisos-moram-no-globals)
 - [x] Extrair `TimelineItem` de `/processos/[id]/page.tsx` para componente próprio (`TimelineProcesso`)

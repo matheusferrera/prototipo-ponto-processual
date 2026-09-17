@@ -1,71 +1,48 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, ExternalLink, FileText } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ExternalLink, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
 import { ExportProcessoPdfButton } from '@/components/processos/ExportProcessoPdfButton/ExportProcessoPdfButton';
 import { AnalisarProcessoButton } from '@/components/processos/AnalisarProcessoButton/AnalisarProcessoButton';
-import { ProcessoPanorama } from '@/components/processos/ProcessoPanorama/ProcessoPanorama';
 import { CopiarCnj } from '@/components/processos/ProcessoPanorama/ProcessoControls';
-import { PrazoRow } from '@/components/prazos/PrazoRow/PrazoRow';
-import { nomeDoCaso, nomeLegivel } from '@/lib/processo-apresentacao';
-import { getAnalisesDoProcesso, getDocumentosCount, getDocumentosDoProcesso, getProcesso, getProcessoMovements, getProcessoPrazos } from '@/lib/api.server';
-import { getAbsoluteUrl } from '@/lib/site-url';
-import { buildQuery } from '@/lib/utils';
-import { parseCategorias } from '@/lib/categoria-movimentacao';
+import { ConfirmarCliente } from '@/components/processos/ConfirmarCliente/ConfirmarCliente';
+import { SecaoProcesso } from '@/components/processos/SecaoProcesso/SecaoProcesso';
+import { PrazoQueCorre } from '@/components/processos/PrazoQueCorre/PrazoQueCorre';
+import { MudouOCaso } from '@/components/processos/MudouOCaso/MudouOCaso';
+import { OndeEsta, PoloBlock } from '@/components/processos/OndeEsta/OndeEsta';
+import { PecasQueAbrem } from '@/components/processos/PecasQueAbrem/PecasQueAbrem';
+import { CalendarioProcesso } from '@/components/movimentacoes/CalendarioProcesso/CalendarioProcesso';
 import { ProcessoMovementFilters } from '@/components/movimentacoes/ProcessoMovementFilters/ProcessoMovementFilters';
 import { TimelineProcesso } from '@/components/movimentacoes/TimelineProcesso/TimelineProcesso';
-import { AnalisesIa } from '@/components/processos/AnalisesIa/AnalisesIa';
-import docStyles from '@/components/movimentacoes/documentos.module.css';
-import { DocumentoLink } from '@/components/movimentacoes/DocumentoLink/DocumentoLink';
-import type { Processo, ProcessoParte } from '@/types';
+import { nomeDoCaso, nomeLegivel, tempoCurto } from '@/lib/processo-apresentacao';
+import { panoramaProcesso } from '@/lib/processo-panorama';
+import { partesCurtas, partesDoTexto } from '@/lib/pje-text';
+import { parseCategorias } from '@/lib/categoria-movimentacao';
+import {
+  getCalendarioDoProcesso,
+  getProcesso,
+  getProcessoMovements,
+  getProcessoPrazos,
+} from '@/lib/api.server';
+import { getAbsoluteUrl } from '@/lib/site-url';
+import type { Processo } from '@/types';
 import styles from './page.module.css';
 
-const ABAS = ['movimentacoes', 'prazos', 'documentos', 'ia'] as const;
-type Aba = (typeof ABAS)[number];
-
 const MOVS_PAGE = 50;
+/** Quantas movimentações com peça alimentam a calha de peças do desktop. */
+const PECAS_AMOSTRA = 8;
 
 interface Props {
   params: Promise<{ numero: string }>;
-  searchParams: Promise<{ aba?: string; movs?: string; cat?: string | string[]; q?: string; from?: string; to?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{
+    movs?: string; cat?: string | string[]; q?: string; from?: string; to?: string;
+    sort?: string; page?: string; ano?: string;
+  }>;
 }
 
-const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-function displayDate(value: string | null): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : dateFormatter.format(date);
-}
-
-/** Distância humana até agora — "há 2h", "há 3d". */
-function timeAgo(value: string | null): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (minutes < 1) return 'agora';
-  if (minutes < 60) return `há ${minutes}min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `há ${hours}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `há ${days}d`;
-  return `há ${Math.floor(days / 30)}mes`;
-}
-
-
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Ativo',
-  archived: 'Arquivado',
-  suspended: 'Suspenso',
-};
-
-/** Título do processo: o confronto entre os polos, que é como o advogado o identifica. */
+/** Título do processo: o confronto entre os polos, que é como o PDF e o OG o nomeiam. */
 function confronto(processo: Processo): string {
   const { ativo, passivo } = nomeDoCaso(processo);
   return passivo ? `${ativo} × ${passivo}` : ativo;
@@ -75,9 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { numero } = await params;
   const processo = await getProcesso(decodeURIComponent(numero));
 
-  if (!processo) {
-    return { title: 'Processo não encontrado' };
-  }
+  if (!processo) return { title: 'Processo não encontrado' };
 
   const titulo = confronto(processo);
   const description = `${processo.materia} · ${processo.tribunal} · CNJ ${processo.cnj}`;
@@ -92,59 +67,52 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       images: [{ url: imageUrl, width: 1200, height: 630, alt: `${titulo} — ${processo.cnj}` }],
     },
-    twitter: {
-      card: 'summary_large_image',
-      title: titulo,
-      description,
-      images: [imageUrl],
-    },
+    twitter: { card: 'summary_large_image', title: titulo, description, images: [imageUrl] },
   };
 }
 
-function PoloBlock({ titulo, partes }: { titulo: string; partes: ProcessoParte[] }) {
-  return (
-    <div className={styles.polo}>
-      <h3 className={styles.capaLabel}>{titulo}</h3>
-      {partes.length === 0 ? (
-        <p className={styles.capaMuted}>Partes ainda não disponíveis nesta consulta.</p>
-      ) : (
-        <ul className={styles.poloList}>
-          {partes.map((parte, i) => (
-            <li key={`${parte.nome}-${i}`} className={styles.poloItem}>
-              <span className={styles.poloNome}>{nomeLegivel(parte.nome)}</span>
-              <span className={styles.poloDoc}>
-                {[parte.tipo, parte.documento].filter(Boolean).join(' · ')}
-              </span>
-              {parte.representantes.length > 0 && (
-                <span className={styles.poloRepresentantes}>{parte.representantes.join(' · ')}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function CapaItem({ label, value }: { label: string; value: string }) {
-  const muted = value === '—' || value === 'Não extraído';
-  return (
-    <div className={styles.capaItem}>
-      <dt className={styles.capaLabel}>{label}</dt>
-      <dd className={muted ? styles.capaMuted : styles.capaValue}>{value}</dd>
-    </div>
-  );
-}
-
+/**
+ * A TELA DO PROCESSO — uma rolagem só, na ordem em que o advogado pergunta.
+ *
+ * ## A ordem das perguntas
+ *
+ * Um advogado com ~100 processos não abre um processo para navegar: abre por um
+ * motivo. A página responde os motivos na ordem em que eles aparecem, e a lista
+ * cronológica — que era a tela inteira — passa a ser a última coisa, não a
+ * primeira.
+ *
+ * 1. **de quem é o caso, e de que lado eu estou** — o nome do cliente em 22px,
+ *    primeiro item abaixo do CNJ. Era a 5ª linha do cabeçalho, depois do
+ *    título, dos três botões e da linha de meta;
+ * 2. **o que corre agora** — o prazo, a régua e a providência;
+ * 3. **o que já foi decidido, o que já foi protocolado** — duas linhas fixas;
+ * 4. **onde o processo está** — fase, grau, órgão, autuação, valor, à vista;
+ * 5. **o que aconteceu** — o mapa do ano e a lista.
+ *
+ * ## As quatro abas viraram uma rolagem
+ *
+ * Três das quatro eram salas quase sempre vazias, e uma aba cobra um clique
+ * para descobrir isso — de novo em cada visita:
+ *
+ * | aba | medição | onde foi parar |
+ * |---|---|---|
+ * | Prazos | 11 abertos numa conta de ~100 processos, 4 na outra | bloco no topo |
+ * | Documentos | 63% dos pedidos de arquivo ao portal voltam vazios | calha de peças |
+ * | IA | a leitura cobre 6,1% dos atos legíveis | dentro do ato |
+ * | Movimentações | a única com conteúdo em todo processo | virou a página |
+ *
+ * ## A URL continua sendo a fonte da verdade
+ *
+ * `?cat=`, `?q=`, `?from=`, `?to=`, `?sort=` e `?ano=` seguem existindo e
+ * seguem sendo o estado desta tela. **O único parâmetro que deixou de existir é
+ * `?aba=`.**
+ */
 export default async function ProcessoDetailPage({ params, searchParams }: Props) {
   const { numero } = await params;
   const sp = await searchParams;
-  const decodedNumero = decodeURIComponent(numero);
-
-  const processo = await getProcesso(decodedNumero);
+  const processo = await getProcesso(decodeURIComponent(numero));
   if (!processo) notFound();
 
-  const aba: Aba = (ABAS as readonly string[]).includes(sp.aba ?? '') ? sp.aba as Aba : 'movimentacoes';
   const requestedPage = Number(sp.page);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const cat = Array.isArray(sp.cat) ? sp.cat.join(',') : sp.cat;
@@ -156,83 +124,87 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
   const from = validDate(sp.from);
   const to = validDate(sp.to);
   const filters = { q: sp.q?.trim(), from, to, sort, page } as const;
+  const catParaBackend = todas ? ['todas'] : categorias;
 
-  // a aba de documentos filtra por `comDocumento` no backend e pagina por
-  // baixo até esgotar o que existe (ver `getDocumentosDoProcesso`) — não é
-  // mais "as 100 movimentações mais recentes", é "todas as documentadas".
-  const [{ events: timeline, total: totalMovs }, prazos, documentosCount, recentes, dossieIa] = await Promise.all([
-    aba === 'documentos'
-      ? getDocumentosDoProcesso(processo.id)
-      : getProcessoMovements(processo.id, MOVS_PAGE, todas ? ['todas'] : categorias, filters),
+  const [
+    { events: timeline, total: totalMovs },
+    prazos,
+    calendario,
+    decisao,
+    peticao,
+    comPeca,
+  ] = await Promise.all([
+    getProcessoMovements(processo.id, MOVS_PAGE, catParaBackend, filters),
     getProcessoPrazos(processo.id),
-    // Nas OUTRAS abas: o contador do badge da aba Documentos é um `limit=1`
-    // filtrado, então é barato mesmo fora dela — mesmo padrão do contador de
-    // Movimentações (`recentes.total`) e de Prazos (`prazos.length`).
-    aba === 'documentos' ? Promise.resolve(null) : getDocumentosCount(processo.id),
-    // O panorama não muda ao filtrar, paginar ou inverter a timeline.
-    getProcessoMovements(processo.id, 20, ['todas'], { sort: 'desc' }),
-    // Mesma regra: uma ida a mais que só a aba de IA consome. O dossiê traz as
-    // três famílias de análise numa chamada — buscá-las nas rotas separadas
-    // seriam três, com três formatos.
-    aba === 'ia' ? getAnalisesDoProcesso(processo.id) : Promise.resolve(null),
+    // O mapa pinta o MESMO conjunto que a lista mostra: um dia aceso que o
+    // filtro exclui levaria a um clique que não devolve nada.
+    getCalendarioDoProcesso(processo.id, catParaBackend.join(',')),
+    /* A última decisão e a última petição vêm de busca própria, não de um
+       filtro sobre a página carregada: decisório é 6% e ato de parte 10% dos
+       últimos 90 dias, então as 50 primeiras linhas podem não conter nenhum
+       dos dois — num processo em execução, a última decisão pode estar a três
+       anos de distância. `limit=1` é barato. */
+    getProcessoMovements(processo.id, 1, ['decisorio'], { sort: 'desc' }),
+    getProcessoMovements(processo.id, 1, ['atoDeParte'], { sort: 'desc' }),
+    getProcessoMovements(processo.id, PECAS_AMOSTRA, ['todas'], { comDocumento: true, sort: 'desc' }),
   ]);
-  // Na aba de documentos o `total` da própria busca já é a contagem certa;
-  // nas outras, veio da chamada dedicada acima.
-  const totalDocumentos = aba === 'documentos' ? totalMovs : documentosCount ?? 0;
 
-  const syncLabel = processo.syncError ? 'Falha na última consulta'
-    : processo.lastScrapedAt ? `Última consulta ${timeAgo(processo.lastScrapedAt)}` : 'Aguardando primeira consulta';
-  const syncState = processo.syncError ? 'alert' : 'quiet';
-  const grau = processo.grau === '1' || processo.grau === '2' ? `${processo.grau}º grau` : 'Grau não informado';
+  const { prazo, vencidos, semData } = panoramaProcesso(timeline, prazos);
+  const prazosAbertos = prazos.filter(p => !p.fechado).length;
 
-  /**
-   * As peças da aba de documentos, de TRÊS fontes — e cada uma existe porque a
-   * anterior não cobria um acervo inteiro.
-   *
-   * 1. `evento.documentos` — o que o tribunal anexou ao ato, mais o PDF que a
-   *    fonte serve por rota (`baixavel`/`temDocumentoDoAto`, resolvidos em
-   *    `toDocumentos`). Sozinho, deixava a aba vazia numa carteira 100% DJEN.
-   * 2. A CERTIDÃO DE PUBLICAÇÃO de cada ato: o PDF oficial do CNJ, com cabeçalho
-   *    do tribunal, capa, destinatário, advogados com OAB e o teor integral.
-   *
-   * Em todas, a chave que abre o documento na origem fica no backend; o que a
-   * tela recebe é um caminho `/api/...` que confere a sessão.
-   *
-   * **Havia uma terceira e uma quarta, e as duas saíram em 08/09/2026** — não
-   * por decisão de tela, mas porque as rotas do backend deixaram de existir
-   * quando as fontes foram para `_backup/` (07/09):
-   *
-   *   `GET /processes/{id}/documentos/{tribunal}/{doc}` — a peça pelo scraper
-   *     autenticado, que alimentava o "catálogo público" do processo;
-   *   `GET /processes/{id}/certidao-andamento` — a certidão de andamento do
-   *     STJ, o único documento que cobria a timeline inteira lá.
-   *
-   * As duas respondiam **404 em HTML**, e o `res.json()` do proxy estourava
-   * nele: a tela dizia "Serviço indisponível" em vez de "não existe". Oferecer
-   * um botão que não abre é pior que não oferecer — daí terem saído em vez de
-   * ficarem esperando as fontes voltarem.
-   */
-  const documentos: Array<{ url: string; nome: string; oficial: boolean; movimentacao: string; data: string; n: string; indisponibilidade?: string }> = [
-    ...timeline.flatMap(evento => [
-      ...evento.documentos.map(doc => ({
-        url: doc.url, nome: doc.nome, oficial: false, indisponibilidade: doc.indisponibilidade,
-        movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
-      })),
-      ...(evento.temCertidao
-        ? [{
-            url: `/api/movimentacoes/${encodeURIComponent(evento.id)}/certidao`,
-            nome: 'Certidão de publicação',
-            oficial: true,
-            movimentacao: evento.title, data: `${evento.date} ${evento.ano}`, n: evento.n,
-          }]
-        : []),
-    ]),
-  ];
+  /* O ANO DO MAPA abre no ÚLTIMO COM MOVIMENTAÇÃO, não no ano corrente.
+     Metade de um acervo está parada: num processo cuja última movimentação é
+     de 2019, abrir em 2026 mostraria 365 quadrados vazios — um mapa que diz
+     "não temos dado" quando o que ele tem é dado demais, sete anos atrás. */
+  const anoPedido = Number(sp.ano);
+  const anoBase = calendario.ultimoAno ?? new Date().getFullYear();
+  const ano = Number.isSafeInteger(anoPedido)
+    && calendario.primeiroAno !== null && calendario.ultimoAno !== null
+    && anoPedido >= calendario.primeiroAno && anoPedido <= calendario.ultimoAno
+    ? anoPedido : anoBase;
 
   const basePath = `/processos/${encodeURIComponent(processo.cnj)}`;
-  const abaHref = (destino: Aba) =>
-    `${basePath}${buildQuery({}, { aba: destino === 'movimentacoes' ? undefined : destino })}`;
+  const paramsAtuais = {
+    cat: categorias.length ? categorias.join(',') : undefined,
+    q: filters.q, from, to, sort: sort === 'asc' ? 'asc' : undefined,
+  };
 
+  const { ativo, passivo, outras } = nomeDoCaso(processo);
+  const polo = processo.meuPolo ?? 'indefinido';
+  const cliente = processo.cliente ?? [];
+  /* A pergunta só some quando ele já respondeu — inclusive "não é meu".
+     `?? null` e não `=== null`: em resposta de backend anterior ao campo,
+     `meuPoloManual` chega `undefined`, e comparar com `null` daria `false` —
+     a pergunta nunca apareceria justamente nos ~30% do acervo para os quais
+     ela existe. */
+  const respondeu = (processo.meuPoloManual ?? null) !== null;
+  const perguntarOLado = (polo === 'indefinido' || cliente.length === 0) && !respondeu;
+  /* `partesDoTexto` e não `partesCurtas`, por duas razões que só aparecem no
+     acervo real:
+     1. os tribunais mandam as partes em CAIXA ALTA, e `nomeLegivel` precisa ser
+        aplicada A CADA NOME. Sobre a string já montada ela desiste, porque o
+        sufixo "+4 partes" vem em minúsculas e o teste de "veio todo em caixa
+        alta" falha — o maior texto da tela saía gritando;
+     2. o "+N partes" não pode entrar no `<h1>`. O polo coletivo do TRF1 tem
+        607 partes, e "JOSE MANOEL DE BARROS, NELSON WAGNER SERAFIM DE ALMEIDA
+        +4 partes" em 26px/800 é uma lista, não um nome. A contagem já vive na
+        linha de qualificação, e lá ela é a do processo inteiro. */
+  const doCliente = partesDoTexto(cliente.join(', '), 2);
+  const nomeCliente = doCliente.nomes.length ? doCliente.nomes.map(nomeLegivel).join(', ') : null;
+  const daContraria = partesDoTexto(processo.parteContraria?.join(', ') ?? '', 2);
+  const nomeAdversario = daContraria.nomes.length
+    ? daContraria.nomes.map(nomeLegivel).join(', ')
+    : polo === 'passivo' ? ativo : passivo;
+
+  const qualificacao = [
+    polo !== 'indefinido' ? `polo ${polo}` : null,
+    processo.poloAtivo[0]?.tipo && polo === 'ativo' ? nomeLegivel(processo.poloAtivo[0].tipo) : null,
+    processo.poloPassivo[0]?.tipo && polo === 'passivo' ? nomeLegivel(processo.poloPassivo[0].tipo) : null,
+    /* De onde veio a resposta. "OAB no ato" é a derivação do backend cruzando
+       a inscrição da conta com os representantes; "você confirmou" é a resposta
+       dele, que vence a derivação. */
+    processo.meuPoloManual && processo.meuPoloManual !== 'nenhum' ? 'você confirmou' : polo !== 'indefinido' ? 'OAB no ato' : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <AppLayout
@@ -244,7 +216,7 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
           href={processo.link}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${styles.mobileHeaderAction} ${styles.mobileHeaderActionPrimary}`}
+          className={`${styles.botao} ${styles.botaoIcone} ${styles.botaoForte}`}
           aria-label="Abrir processo no tribunal"
           title="Abrir no tribunal"
         >
@@ -254,228 +226,237 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
     >
       <div className={styles.pageShell}>
         <nav className={styles.breadcrumb} aria-label="Navegação do processo">
-          <Link href="/processos" className={styles.backLink}>
+          <Link href="/processos" className={styles.voltar}>
             <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
             Carteira
           </Link>
-          <span className={styles.breadcrumbDivider}>/</span>
-          <span className={styles.breadcrumbCurrent}>{processo.cnj}</span>
-          <div className={styles.breadcrumbSpacer} />
+          <span className={styles.breadcrumbBarra}>/</span>
+          <span className={styles.breadcrumbAtual}>{processo.cnj}</span>
         </nav>
 
-        <section className={styles.hero} aria-labelledby="processo-title">
-          <div className={styles.headerMain}>
-            <div className={styles.identity}>
-              <CopiarCnj cnj={processo.cnj} />
-              <h1 id="processo-title" className={styles.title}>{confronto(processo)}</h1>
-              {nomeDoCaso(processo).outras > 0 && <a href="#partes-do-processo" className={styles.otherParties}>+{nomeDoCaso(processo).outras} partes · ver detalhes</a>}
-            </div>
-            <div className={styles.headerActions}>
-              <AnalisarProcessoButton processId={processo.id} numero={processo.cnj} className={styles.actionButton} />
-              <ExportProcessoPdfButton processo={processo} prazos={prazos} className={styles.actionButton} />
-          {processo.link ? (
-            <a
-              href={processo.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
-            >
-              <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
-              Abrir no tribunal
-            </a>
-          ) : (
-            <span
-              title="Link do tribunal indisponível"
-              className={`${styles.actionButton} ${styles.actionButtonDisabled}`}
-              aria-disabled="true"
-            >
-              <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
-              Abrir no tribunal
+        {/* A IDADE DO QUE A TELA MOSTRA, antes de qualquer conteúdo.
+            Quando a consulta falha, tudo abaixo é de antes — e quem lê precisa
+            saber disso antes de decidir com base nisso, não depois. */}
+        {processo.syncError && (
+          <p className={styles.falha} role="status">
+            <AlertTriangle aria-hidden="true" size={15} strokeWidth={2} />
+            <span>
+              A última consulta falhou{processo.lastScrapedAt ? ` ${tempoCurto(processo.lastScrapedAt)}` : ''}.
+              O que você vê abaixo é do que veio antes dela. Use “Analisar processo” para tentar de novo.
             </span>
-          )}
+          </p>
+        )}
+
+        {/* ══ 1. DE QUEM É O CASO, E DE QUE LADO EU ESTOU ══════════════════ */}
+        <header className={styles.identidade}>
+          <div className={styles.identidadeCorpo}>
+            <div className={styles.cnjLinha}>
+              <TribTag label={processo.tribunal} />
+              <CopiarCnj cnj={processo.cnj} />
             </div>
-          </div>
-          <div className={styles.heroMeta}>
-            <TribTag label={processo.tribunal} />
-            <span className={styles.metaSeparator}>·</span>
-            <span className={styles.heroMetaText}>{processo.classeJudicial ?? processo.materia}</span>
-            <span className={styles.metaSeparator}>·</span>
-            <span className={styles.heroMetaText}>{grau}</span>
-            <span className={styles.metaSeparator}>·</span>
-            <span className={styles.heroMetaText}>{STATUS_LABELS[processo.status] ?? processo.status}</span>
-          </div>
 
-          {processo.syncError && (
-            <p className={styles.syncErrorBanner} role="status">
-              <AlertTriangle aria-hidden="true" size={15} strokeWidth={2} />
-              <span>A última consulta falhou. Os dados exibidos podem estar desatualizados. Tente novamente em “Analisar processo”.</span>
-            </p>
-          )}
-
-          <div className={styles.contextRow}>
-            <span>Parte representada <strong>Cliente de exemplo</strong> <span className={styles.demoTag}>Demonstração</span></span>
-            <span>Responsável <strong>Mariana Oliveira</strong> <span className={styles.demoTag}>Demonstração</span></span>
-            <span className={styles.statusPill}><StatusDot state={syncState} /><span>{syncLabel}</span></span>
-          </div>
-        </section>
-
-        <ProcessoPanorama eventos={recentes.events} prazos={prazos} basePath={basePath} caso={processo.analiseCaso} />
-
-        <details className={styles.capa} id="detalhes-processo">
-          <summary className={styles.capaSummary}>Detalhes do processo <span>Partes, classificação e acompanhamento</span></summary>
-          <div className={styles.capaBody}>
-            <div className={styles.partesGrid} id="partes-do-processo">
-              <PoloBlock titulo="Polo ativo" partes={processo.poloAtivo} />
-              <PoloBlock titulo="Polo passivo" partes={processo.poloPassivo} />
-            </div>
-            <dl className={styles.capaGrid}>
-              <CapaItem label="Órgão julgador" value={processo.orgaoJulgador} />
-              <CapaItem label="Assunto" value={processo.assunto ?? '—'} />
-              <CapaItem label="Autuação" value={displayDate(processo.autuadoEm)} />
-              <CapaItem label="Valor da causa" value={processo.valorCausa == null ? '—' : currencyFormatter.format(processo.valorCausa)} />
-              <CapaItem label="Última consulta" value={displayDate(processo.lastScrapedAt)} />
-              <CapaItem label="Alertas WhatsApp" value={processo.whatsEnabled ? 'Ativos' : 'Desativados'} />
-            </dl>
-          </div>
-        </details>
-
-        <div className={styles.body}>
-          <div className={styles.main}>
-            <nav className={styles.tabs} aria-label="Seções do processo">
-              <Link
-                href={abaHref('movimentacoes')}
-                className={aba === 'movimentacoes' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-                aria-current={aba === 'movimentacoes' ? 'page' : undefined}
-              >
-                Movimentações <span className={styles.tabCount}>{recentes.total}</span>
-              </Link>
-              <Link
-                href={abaHref('prazos')}
-                className={aba === 'prazos' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-                aria-current={aba === 'prazos' ? 'page' : undefined}
-              >
-                Prazos <span className={styles.tabCount}>{prazos.length}</span>
-              </Link>
-              <Link
-                href={abaHref('documentos')}
-                className={aba === 'documentos' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-                aria-current={aba === 'documentos' ? 'page' : undefined}
-              >
-                Documentos <span className={styles.tabCount}>{totalDocumentos}</span>
-              </Link>
-              {/* Por último: é a leitura do que as outras abas mostram cru, e
-                  quem chega ao processo procura primeiro o que aconteceu. */}
-              <Link
-                href={abaHref('ia')}
-                className={aba === 'ia' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-                aria-current={aba === 'ia' ? 'page' : undefined}
-              >
-                IA
-              </Link>
-            </nav>
-
-            {aba === 'movimentacoes' && (
-              <section className={styles.timeline} aria-labelledby="movimentacoes-title">
-                <div className={styles.sectionHeader}>
-                  <h2 id="movimentacoes-title">§ MOVIMENTAÇÕES</h2>
-                  <div className={styles.sectionRule} />
-                  <span>{sort === 'asc' ? 'do mais antigo ao mais recente' : 'do mais recente ao mais antigo'}</span>
+            {perguntarOLado ? (
+              <ConfirmarCliente
+                processoId={processo.id}
+                manual={processo.meuPoloManual ?? null}
+                nomeAtivo={processo.poloAtivo[0]?.nome ? nomeLegivel(partesCurtas(processo.poloAtivo[0].nome, 1)) : null}
+                nomePassivo={processo.poloPassivo[0]?.nome ? nomeLegivel(partesCurtas(processo.poloPassivo[0].nome, 1)) : null}
+                variante="bloco"
+              />
+            ) : (
+              <>
+                <div className={styles.partes}>
+                  <div className={styles.parte}>
+                    <span className={styles.rotulo}>{nomeCliente ? 'Você representa' : 'Polo ativo'}</span>
+                    {/* O `<h1>` é o NOME DO CLIENTE, não o número nem o confronto:
+                        é ele que a pessoa procura ao abrir a página, e é ele que
+                        um leitor de tela anuncia primeiro. */}
+                    <h1 className={styles.cliente}>{nomeCliente ?? ativo}</h1>
+                  </div>
+                  <div className={styles.divisor} aria-hidden="true" />
+                  <div className={styles.parte}>
+                    <span className={styles.rotulo}>Contra</span>
+                    <p className={styles.adversario}>{nomeAdversario ?? 'Parte contrária não identificada'}</p>
+                  </div>
                 </div>
+                <p className={styles.qualificacao}>
+                  {qualificacao}
+                  {outras > 0 && (
+                    <>
+                      {qualificacao ? ' · ' : ''}
+                      <a href="#detalhes-processo" className={styles.maisPartes}>+{outras} partes</a>
+                    </>
+                  )}
+                  {/* A correção só aparece quando a resposta foi DELE: o que a
+                      OAB derivou não se desfaz por botão. */}
+                  {processo.meuPoloManual && (
+                    <ConfirmarCliente
+                      processoId={processo.id}
+                      manual={processo.meuPoloManual}
+                      nomeAtivo={null}
+                      nomePassivo={null}
+                    />
+                  )}
+                </p>
+              </>
+            )}
+          </div>
 
-                <ProcessoMovementFilters
-                  basePath={basePath}
-                  filters={{ q: filters.q, from, to, sort, categorias }}
-                  total={totalMovs}
-                />
+          <div className={styles.acoes}>
+            <AnalisarProcessoButton processId={processo.id} numero={processo.cnj} className={styles.botao} />
+            {/* O PDF sai no celular: são três alvos de 44px numa faixa de
+                390px, e exportar não é o que se faz do telefone. */}
+            <ExportProcessoPdfButton processo={processo} prazos={prazos} className={`${styles.botao} ${styles.soDesktop}`} />
+            {processo.link ? (
+              <a
+                href={processo.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${styles.botao} ${styles.botaoForte}`}
+              >
+                <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
+                Abrir no tribunal
+              </a>
+            ) : (
+              <span
+                title="Link do tribunal indisponível"
+                className={`${styles.botao} ${styles.botaoInerte}`}
+                aria-disabled="true"
+              >
+                <ExternalLink aria-hidden="true" size={16} strokeWidth={2} />
+                Abrir no tribunal
+              </span>
+            )}
+          </div>
+        </header>
 
+        {/* ══ o corpo ═══════════════════════════════════════════════════════
+            UM DOM SÓ, duas formas. No celular `.principal` e `.calha` são
+            `display: contents` e as seis seções viram irmãs numa coluna,
+            reordenadas por `order`; a partir de 1180px os envoltórios voltam a
+            existir e viram as duas colunas. Renderizar o mapa e o "onde está"
+            duas vezes — uma por layout — duplicaria `id`s (`#detalhes-processo`,
+            `#calendario-title`) e o `aria-labelledby` passaria a apontar para
+            dois elementos. */}
+        <div className={styles.corpo}>
+          <div className={styles.principal}>
+            <SecaoProcesso
+              id="corre-agora"
+              titulo="§ O QUE CORRE AGORA"
+              nota={prazosAbertos === 0 ? 'nenhum prazo' : `${prazosAbertos} ${prazosAbertos === 1 ? 'prazo aberto' : 'prazos abertos'}`}
+              className={`${styles.secao} ${styles.ordemCorre}`}
+            >
+              <PrazoQueCorre prazo={prazo} vencidos={vencidos} semData={semData} processo={processo} />
+            </SecaoProcesso>
+
+            <SecaoProcesso
+              id="mudou-o-caso"
+              titulo="§ O QUE MUDOU O CASO"
+              className={`${styles.secao} ${styles.ordemMudou}`}
+            >
+              <MudouOCaso decisao={decisao.events[0] ?? null} peticao={peticao.events[0] ?? null} />
+            </SecaoProcesso>
+
+            <SecaoProcesso
+              id="o-que-aconteceu"
+              titulo="§ O QUE ACONTECEU"
+              nota={`${processo.movimentacoesCount} ${processo.movimentacoesCount === 1 ? 'movimentação' : 'movimentações'}`}
+              className={`${styles.secao} ${styles.ordemLista}`}
+            >
+              <ProcessoMovementFilters
+                basePath={basePath}
+                filtros={{ q: filters.q, from, to, sort, categorias, ano: sp.ano }}
+                total={totalMovs}
+              />
+
+              <div className={styles.lista}>
                 <TimelineProcesso
                   key={JSON.stringify([processo.id, categorias, todas, filters.q, from, to, sort])}
                   processId={processo.id}
                   inicial={timeline}
                   total={totalMovs}
                   porPagina={MOVS_PAGE}
-                  // `todas ? ['todas'] : categorias` — o MESMO array que a
-                  // busca da página 1 usou, não as categorias cruas. Sem
-                  // filtro, a página pede `['todas']` (4.900 movimentações,
-                  // trâmite incluído) enquanto uma lista vazia faria o backend
-                  // aplicar o default, que ESCONDE trâmite (3.986). Divergir
-                  // aqui faria a página 2 vir de outro conjunto: o cartório
-                  // sumiria a partir do primeiro "Carregar mais", e a contagem
-                  // nunca fecharia.
-                  filtros={{ categorias: todas ? ['todas'] : categorias, q: filters.q, from, to, sort }}
+                  // O MESMO array que a página 1 usou, não as categorias cruas:
+                  // sem filtro a página pede `['todas']` (trâmite incluído)
+                  // enquanto uma lista vazia faria o backend aplicar o default,
+                  // que ESCONDE trâmite — e a página 2 viria de outro conjunto.
+                  filtros={{ categorias: catParaBackend, q: filters.q, from, to, sort }}
                 />
-              </section>
-            )}
-
-            {aba === 'prazos' && (
-              <section className={styles.panel} aria-labelledby="prazos-title">
-                <div className={styles.sectionHeader}>
-                  <h2 id="prazos-title">Prazos do processo</h2>
-                  <div className={styles.sectionRule} />
-                  <span>do vencimento mais próximo ao mais distante</span>
-                </div>
-                {prazos.length === 0 ? (
-                  <div className={styles.emptyState}>Nenhum prazo disponível nesta consulta.</div>
-                ) : (
-                  <ul className={styles.prazoList}>
-                    {prazos.map(prazo => <li key={prazo.id}><PrazoRow prazo={prazo} /></li>)}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            {aba === 'documentos' && (
-              <section className={styles.panel} aria-labelledby="documentos-title">
-                <div className={styles.sectionHeader}>
-                  <h2 id="documentos-title">Documentos do processo</h2>
-                  <div className={styles.sectionRule} />
-                  <span>certidões de publicação e peças anexadas</span>
-                </div>
-                {documentos.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    Nenhum documento disponível nesta consulta. Peças e certidões aparecem aqui quando disponibilizadas pela fonte.
-                  </div>
-                ) : (
-                  <ul className={styles.documentoList}>
-                    {documentos.map((doc, i) => (
-                      <li key={`${doc.url}-${i}`} className={styles.documentoItem}>
-                        {doc.url ? <DocumentoLink url={doc.url} className={docStyles.docLink}>
-                          <FileText aria-hidden="true" size={14} strokeWidth={2} />
-                          {doc.nome}
-                        </DocumentoLink> : <span className={docStyles.docUnavailable}>
-                          <FileText aria-hidden="true" size={14} strokeWidth={2} />
-                          <span>{doc.nome}<span className={docStyles.docUnavailableReason}>{doc.indisponibilidade}</span></span>
-                        </span>}
-                        <span className={styles.documentoMeta}>
-                          {doc.n !== '—' && `§ ${doc.n} · `}{doc.data} · {doc.movimentacao}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {totalMovs > timeline.length && <p className={styles.documentoMeta}>Esta lista cobre os documentos recuperados nesta consulta e pode não incluir todas as peças do processo. Consulte o tribunal para conferir o acervo completo.</p>}
-              </section>
-            )}
-
-            {/* Mesma casca das outras abas — `.panel` + `.sectionHeader`. A
-                aba de IA renderizava o componente solto aqui, e ele trazia o
-                próprio `padding: … 0` e um teto de 880px: o painel ficava 28px
-                à esquerda do resto da página (fora do `--processo-gutter` que
-                a barra de abas, a capa e os outros dois painéis usam) e mais
-                estreito que eles. A medida de leitura continua sendo do
-                CONTEÚDO, não do painel. */}
-            {aba === 'ia' && (
-              <section id="analises-ia" className={styles.panel} aria-labelledby="ia-title">
-                <div className={styles.sectionHeader}>
-                  <h2 id="ia-title">Análises de IA</h2>
-                  <div className={styles.sectionRule} />
-                  <span>o que o modelo já leu deste processo</span>
-                </div>
-                <AnalisesIa dossie={dossieIa} />
-              </section>
-            )}
+              </div>
+            </SecaoProcesso>
           </div>
 
+          <aside className={styles.calha} aria-label="Ficha do processo">
+            <SecaoProcesso
+              id="onde-esta"
+              titulo="§ ONDE ESTÁ"
+              nota={processo.syncError ? 'consulta falhou' : processo.lastScrapedAt ? `consultado ${tempoCurto(processo.lastScrapedAt)}` : null}
+              className={`${styles.secao} ${styles.ordemOnde}`}
+            >
+              <OndeEsta
+                processo={processo}
+                detalhes={
+                  <>
+                    <div className={styles.partesGrid} id="partes-do-processo">
+                      <PoloBlock titulo="Polo ativo" partes={processo.poloAtivo} />
+                      <PoloBlock titulo="Polo passivo" partes={processo.poloPassivo} />
+                    </div>
+                    <dl className={styles.ficha}>
+                      <div><dt>Assunto</dt><dd>{processo.assunto ?? '—'}</dd></div>
+                      <div><dt>Classe judicial</dt><dd>{processo.classeJudicial ?? processo.materia}</dd></div>
+                      <div><dt>Alertas WhatsApp</dt><dd>{processo.whatsEnabled ? 'Ativos' : 'Desativados'}</dd></div>
+                    </dl>
+                    {/* A SÍNTESE DO CASO, que vem de graça com o processo
+                        (`analiseCaso`) e não custa uma ida a mais. Ela fica
+                        aqui dentro porque é leitura, não fato do dia: o que a
+                        tela promove da análise é a FASE, lá em cima. */}
+                    {processo.analiseCaso?.sintese && (
+                      <div className={styles.sintese}>
+                        <p className={styles.sinteseTitulo}>
+                          <Sparkles aria-hidden="true" size={14} strokeWidth={2} />
+                          Resumo do caso pela IA
+                          {processo.analiseCaso.confianca === 'baixa' && <span className={styles.sinteseRessalva}>leitura incerta</span>}
+                        </p>
+                        <p className={styles.sinteseTexto}>{processo.analiseCaso.sintese}</p>
+                        {processo.analiseCaso.atualizadaEm && (
+                          <p className={styles.sinteseData}>
+                            Lido em {new Date(processo.analiseCaso.atualizadaEm).toLocaleDateString('pt-BR')} · confira no ato original
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                }
+              />
+            </SecaoProcesso>
+
+            <SecaoProcesso
+              id="caso-no-tempo"
+              titulo="§ O CASO NO TEMPO"
+              className={`${styles.secao} ${styles.ordemTempo}`}
+            >
+              {/* O MAPA DO CASO — construído, com rota de backend, e que nenhum
+                  arquivo do app montava: a constante `ABAS` tinha quatro
+                  valores e `calendario` não era um deles. Cada quadrado é um
+                  dia e é um link que filtra a lista naquele dia — é a resposta
+                  para o processo de 4.900 movimentações e para o que atravessa
+                  37 anos. */}
+              <CalendarioProcesso
+                calendario={calendario}
+                ano={ano}
+                basePath={basePath}
+                paramsAtuais={paramsAtuais}
+              />
+            </SecaoProcesso>
+
+            <SecaoProcesso
+              id="pecas-que-abrem"
+              titulo="§ PEÇAS QUE ABREM"
+              className={`${styles.secao} ${styles.ordemPecas}`}
+            >
+              <PecasQueAbrem eventos={comPeca.events} totalComPeca={comPeca.total} />
+            </SecaoProcesso>
+          </aside>
         </div>
       </div>
     </AppLayout>

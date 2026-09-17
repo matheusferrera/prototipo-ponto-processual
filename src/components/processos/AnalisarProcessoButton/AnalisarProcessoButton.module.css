@@ -16,7 +16,7 @@
    `breadcrumbSpacer` da página já empurra o grupo para a direita, então basta
    não crescerem. */
 .detalhe {
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-family: var(--ui);
   font-size: 11px;
   line-height: 1.3;

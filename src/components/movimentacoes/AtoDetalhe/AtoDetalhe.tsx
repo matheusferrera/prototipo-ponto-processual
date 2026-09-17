@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Clock3, Lock } from 'lucide-react';
 import type { MovimentacaoDetail } from '@/lib/api.server';
+import type { PrazoDoAto as PrazoDoAtoTipo } from '@/types';
+import { marcosDaCadeia } from '@/lib/cadeia-do-prazo';
 import { grauLabel } from '@/lib/grau';
 import { destinatariosDoAto, pedeConferencia, vencimentoDoAto } from '@/lib/movimentacao';
 import { blocosDoAto } from '@/lib/ato-texto';
@@ -10,9 +12,9 @@ import { CONFIANCA, LeituraIaDoAto } from './LeituraIaDoAto';
 import { LeituraDoAto } from './LeituraDoAto';
 import styles from './AtoDetalhe.module.css';
 
-/* Reexportado porque `PrazoRow` mostra a leitura do ato dentro do collapse do
-   PRAZO, onde não há o que pedir — o botão de lá é o do prazo. Quem quer o
-   bloco COM o botão usa `LeituraDoAto`. */
+/* Reexportado para quem quer a leitura SEM o botão de pedir. `PrazoRow` era
+   esse consumidor até 17/09/2026, quando a pauta passou a abrir o prazo no card
+   do ato. Quem quer o bloco COM o botão usa `LeituraDoAto`. */
 export { LeituraIaDoAto };
 
 /**
@@ -128,12 +130,95 @@ export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
             {destinatarios.join(', ')}{ocultos > 0 && ` +${ocultos}`}
           </p>
         )}
+
+        <CadeiaDoPrazo prazo={p} estimado={vencimento.estimado} />
       </div>
 
       <div className={styles.prazoLeitura}>
         <LeituraDoAto mov={mov} />
       </div>
     </section>
+  );
+}
+
+/**
+ * A CONTA DO VENCIMENTO, aberta.
+ *
+ * ## Por que ela é o bloco mais importante desta tela
+ *
+ * A data-limite é o número mais caro do produto, e até aqui o advogado tinha de
+ * aceitá-lo. Esta é a mesma cadeia que o CNJ imprime no rodapé de toda certidão
+ * de publicação — disponibilização, publicação, início, vencimento —, e
+ * mostrá-la troca um pedido de fé por uma conferência de quinze segundos.
+ *
+ * Os dados existem desde 07/09/2026 (`publicadoEm`, `fundamento`, `canal`) e
+ * **nenhuma tela os mostrava**. O que faltava eram os dois marcos do meio, que
+ * não são gravados — o backend os recalcula com a mesma função que produziu a
+ * `dataLimite`, e só devolve a cadeia quando ela termina exatamente nela.
+ *
+ * ## `null` é a resposta em vários casos, e todos são recusas honestas
+ *
+ * Origem `painel`/`grid` (o vencimento é do TRIBUNAL, não há conta nossa a
+ * abrir), sem disponibilização, sem dias declarados, ou quando o recálculo não
+ * reproduz a data gravada. Nesses casos a tela mostra a data sozinha, como
+ * sempre mostrou — uma cadeia terminando num dia com o chip mostrando outro
+ * seria a tela se desmentindo no campo em que errar custa o prazo.
+ *
+ * ## A ressalva vira parágrafo
+ *
+ * Na linha do feed o `≈` é tudo que cabe. Aqui há espaço para dizer o que a
+ * conta NÃO sabe — feriado municipal, dobra por convênio, suspensão por
+ * portaria local — e para pedir conferência em vez de afirmar. É a regra da
+ * casa: toda dúvida erra para cedo, e quem decide é quem tem os autos.
+ */
+export function CadeiaDoPrazo({
+  prazo,
+  estimado,
+}: {
+  prazo: PrazoDoAtoTipo | null | undefined;
+  /** A data é cálculo nosso — `metodoPrazo !== 'textoExplicito'`. */
+  estimado: boolean;
+}) {
+  const marcos = prazo?.cadeia ? marcosDaCadeia(prazo.cadeia) : [];
+  const fundamento = prazo?.fundamento?.trim();
+
+  /* Sem cadeia mas COM fundamento, o bloco ainda vale: o dispositivo legal
+     sozinho já responde "de onde saiu esse número". Sem nenhum dos dois não há
+     o que explicar. */
+  if (!marcos.length && !fundamento) return null;
+
+  return (
+    <div className={styles.cadeia}>
+      {marcos.length > 0 && (
+        <>
+          <p className={styles.cadeiaRotulo}>Como chegamos nessa data</p>
+          <ol className={styles.cadeiaLista}>
+            {marcos.map(marco => (
+              <li key={marco.rotulo} className={styles.cadeiaPasso} data-fim={marco.fim ? '' : undefined}>
+                <span className={styles.cadeiaMarca} aria-hidden="true" />
+                <span className={styles.cadeiaTexto}>
+                  <span className={styles.cadeiaEtapa}>{marco.rotulo}</span>
+                  {marco.regra && <span className={styles.cadeiaRegra}>{marco.regra}</span>}
+                </span>
+                <span className={styles.cadeiaData}>{marco.quando}</span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      {fundamento && <p className={styles.cadeiaFundamento}>fundamento: {fundamento}</p>}
+
+      {estimado && (
+        <p className={styles.cadeiaRessalva}>
+          <strong>Esta data é nossa, não do tribunal.</strong> A conta segue o art. 4º da
+          Lei 11.419 e o CPC 224, e conhece o feriado nacional, o estadual e o da Justiça
+          Federal — mas <strong>não</strong> conhece feriado municipal, ponto facultativo da
+          comarca, dobra por convênio nem suspensão por portaria local. Confira antes de
+          contar com ela.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -152,9 +237,10 @@ export function PrazoDoAto({ mov }: { mov: MovimentacaoDetail }) {
  * atos que não abrem prazo. Agora `oQueFazer` é o gate: `null` só quando a IA
  * ainda não leu, e aí o bloco não existe — `:empty` some com a linha do grid.
  *
- * A linha FECHADA do feed continua com o gate antigo (`acaoMovimentacao`, em
- * `movimentacao.ts`, exige `peca`): cinquenta linhas de pauta com um parágrafo
- * de providência em cada é o ruído que este bloco existe para evitar. Aqui a
+ * A linha FECHADA do feed não mostra providência NENHUMA desde 15/09/2026 —
+ * cinquenta linhas de pauta com um parágrafo em cada é o ruído que este bloco
+ * existe para evitar, e na linha que abre prazo ele era a terceira explicação
+ * do mesmo prazo (o chip dá a data, a `FaixaDoPrazo` nomeia a peça). Aqui a
  * pessoa já abriu o ato — ela pediu para saber.
  *
  * ### "De quem" indefinido conta como MINHA

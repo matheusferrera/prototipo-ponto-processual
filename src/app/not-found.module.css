@@ -104,7 +104,7 @@
 .ctaSecondary {
   background: transparent;
   color: var(--ink);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   transition: border-color 150ms, color 150ms;
 }
 

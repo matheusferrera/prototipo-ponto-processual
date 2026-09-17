@@ -1,0 +1,306 @@
+/* O bloco do prazo que corre — ver o docblock do componente.
+   Zero raio, zero sombra: com canto reto a borda é a única estrutura. */
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  min-width: 0;
+}
+
+/* ── A COR DO PRAZO É O DADO ────────────────────────────────────────────────
+   Tinto até 7 dias, âmbar até 14, sálvia acima — `tomDoPrazo`, a única escala
+   de urgência desta tela. Ninguém escolheu vermelho para o bloco do topo: ele
+   fica vermelho quando o prazo tem 7 dias. */
+.cartao[data-tom='urgente'] { --tom: var(--alert); --tom-soft: var(--alert-soft); }
+.cartao[data-tom='proximo'] { --tom: var(--signal-ink); --tom-soft: var(--signal-soft); }
+.cartao[data-tom='calmo']   { --tom: var(--quiet-ink); --tom-soft: var(--quiet-soft); }
+
+.topo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--tom);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.selo svg { flex: none; }
+
+.restam {
+  margin-left: auto;
+  padding: 4px var(--space-sm);
+  background: var(--tom-soft);
+  color: var(--tom);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.vencimentoBloco { min-width: 0; }
+
+.rotulo {
+  display: block;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.vencimento {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+/* O "≈" é a ressalva de que o vencimento é cálculo nosso. Em mono e em negrito
+   porque ele tem de ser lido — no `--ink-4` de antes media 2,33:1 e era o
+   caractere menos visível da linha que ele existe para ressalvar. */
+.estimado {
+  margin-right: 3px;
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.qualificacao {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* "a confirmar" NÃO pode ter a cara de um dado: contorno sem preenchimento. */
+.aConfirmar {
+  margin-left: var(--space-sm);
+  padding: 0 var(--space-xs);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.reguaLinha {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+/* `outline` em vez de `border` para o trilho não somar 2px à altura de 6px —
+   a barra tem de bater com a régua da faixa da linha, que usa o mesmo truque. */
+.barra {
+  position: relative;
+  flex: 1;
+  display: block;
+  min-width: 0;
+  height: 6px;
+  background: var(--paper);
+  outline: 1px solid var(--line-strong);
+  outline-offset: -1px;
+}
+
+.preenchida {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  background: var(--tom);
+}
+
+.janela {
+  flex: none;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aviso {
+  margin: 0;
+  padding: 10px var(--space-md);
+  background: var(--signal-soft);
+  color: var(--signal-ink);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.providencia {
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line-soft);
+  min-width: 0;
+}
+
+.providenciaRotulo {
+  display: block;
+  color: var(--brick);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.providenciaTexto {
+  margin: var(--space-xs) 0 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  /* medida de leitura: a providência é a única prosa longa do bloco */
+  max-width: 62ch;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: var(--space-sm) 0 0;
+}
+
+.chip {
+  padding: 2px var(--space-sm);
+  background: var(--paper-3);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.chipAlerta { background: var(--alert-soft); color: var(--alert); }
+.chipAtencao { background: var(--signal-soft); color: var(--signal-ink); }
+.chipQuieto { background: var(--quiet-soft); color: var(--quiet-ink); }
+
+.outros {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.saidas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line-soft);
+}
+
+/* 44px de alvo de toque, e canto reto — a base tinha `border-radius: 4px` nos
+   botões, contra o `--radius: 0` declarado no sistema.
+
+   `flex: 1 1 0` e não `1 1 auto`: com base automática os dois botões ficam do
+   tamanho do próprio rótulo ("Ver o fio do prazo" é quase o dobro de "Ver o
+   ato") e o par vira uma escada. Base zero reparte a linha em partes iguais, e
+   os dois saem com a mesma largura. */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background-color 160ms ease;
+}
+
+.botao:hover { background: var(--paper-2); }
+.botao:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.botaoForte { border-color: var(--ink); }
+
+/* ── O PROCESSO PARADO ──────────────────────────────────────────────────── */
+
+.parado { background: var(--paper-2); gap: var(--space-sm); }
+
+.paradoTitulo {
+  margin: 0;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+}
+
+.paradoTexto {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+.paradoTexto strong { color: var(--ink); font-weight: 650; }
+
+.paradoSync {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 0;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.paradoSync strong { color: var(--ink); font-weight: 650; }
+.paradoSync > :first-child { flex: none; margin-top: 6px; }
+
+/* Os dois envoltórios são transparentes no celular: ali o bloco é uma coluna
+   só e eles apenas herdam o ritmo do cartão. */
+.conta, .lado {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.lado:empty { display: none; }
+
+@media (min-width: 768px) {
+  /* Duas colunas: a conta e a providência lado a lado, que é o que tira o
+     bloco de ~370px de altura e o traz para ~210px — e é o que faz a primeira
+     movimentação aparecer acima da dobra numa tela de 900px. */
+  .cartao:not(.parado) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-lg) var(--space-xl);
+    align-items: start;
+  }
+  .conta, .lado { grid-column: auto; }
+  .lado:not(:empty) {
+    padding-left: var(--space-xl);
+    border-left: 1px solid var(--line-soft);
+  }
+  .providencia { padding-top: 0; border-top: 0; }
+  .outros, .saidas { grid-column: 1 / -1; }
+  .restam { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) { .botao { transition: none; } }

@@ -1,10 +1,20 @@
 .item { border-bottom: 1px solid var(--line-soft); }
-.linha { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); list-style: none; cursor: pointer; touch-action: manipulation; transition: background-color 150ms ease; }
-.linha::-webkit-details-marker { display: none; }
+.linha { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); cursor: pointer; transition: background-color 150ms ease; }
 .linha:hover { background: var(--paper-2); }
 .linha:active { background: var(--paper-3); }
-.linha:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
-.item[open] { background: var(--paper-2); }
+
+/* O LINK QUE ABRE O CARD. Ele é o corpo da linha, e o `::after` o estende
+   sobre a linha inteira — tags e CNJ abrem o card também. Quem fica de fora é
+   o que vem DEPOIS no DOM e é posicionado (`.verbos`): pinta por cima do véu e
+   recebe o próprio clique. O anel de foco vai no véu, para contornar a linha
+   toda e não só o corpo. */
+.abrir { color: inherit; text-decoration: none; }
+.abrir::after { content: ''; position: absolute; inset: 0; }
+.abrir:focus-visible { outline: none; }
+.abrir:focus-visible::after { outline: 2px solid var(--brick); outline-offset: -2px; }
+/* O que tem dica (`title`) sobe acima do véu para o hover chegar nele. Como é
+   DESCENDENTE do link, o clique ainda borbulha até o `<a>` e abre o card. */
+.comDica { position: relative; z-index: 1; }
 .corpo, .calha { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
 .vencimento { display: inline-flex; align-items: center; flex-wrap: wrap; align-self: flex-start; gap: var(--space-xs) var(--space-sm); padding: var(--space-xs) var(--space-sm); color: var(--signal-ink); background: var(--signal-soft); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .vencimento svg { flex: none; }
@@ -35,68 +45,19 @@
 .tags { display: flex; align-items: center; gap: var(--space-sm); }
 .natureza { font-size: 12px; color: var(--ink-2); }
 .cnj { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); overflow-wrap: anywhere; }
-.seta { color: var(--ink-2); flex: none; transition: transform 150ms ease; }
-.item[open] .seta { transform: rotate(90deg); }
-/* O painel expandido é uma pilha de blocos — o que fazer, o que aconteceu, até
-   quando, o que produzir, os documentos — cada um a sua própria caixa, na
-   ordem de urgência do advogado. `gap` sozinho separa; nenhum bloco reserva
-   espaço quando não tem conteúdo (cada um decide sozinho se renderiza). */
-.detalhe { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-lg); border-top: 1px solid var(--line); }
+.seta { color: var(--ink-2); flex: none; }
 
-/* Até quando e por quê — mesma moldura reta dos demais blocos do painel. */
-.quando { display: flex; flex-direction: column; gap: var(--space-xs); border: 1px solid var(--line); background: var(--paper); padding: var(--space-md) var(--space-lg); }
-.quandoLinha { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.5; }
-.quandoProcedencia { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); max-width: 75ch; overflow-wrap: anywhere; }
-
-/* O topo do painel: você precisa e até quando LADO A LADO no desktop (ver o
-   `@media`), e a leitura do ato embaixo, cruzando as duas colunas — mesma
-   grade de `.prazo` em `AtoDetalhe.module.css`. As duas primeiras respondem
-   perguntas diferentes (o que fazer, até quando) e uma embaixo da outra
-   empurrava a leitura para fora da primeira tela. `:empty` some com o bloco
-   quando ele não tem conteúdo (prazo sem `ato`, ou ato que a IA não leu)
-   em vez de deixar um vão com moldura vazia — e é ele que faz o `:has()`
-   desistir das duas colunas, para o "até quando" não ficar numa metade com a
-   outra vazia. */
-.painel { display: grid; gap: var(--space-md); min-width: 0; }
-.painelQuando:empty,
-.painelPrecisa:empty { display: none; }
-.painelLeitura { min-width: 0; border-top: 1px solid var(--line-soft); padding-top: var(--space-md); }
-
-/* O que sobra depois dos blocos acima: órgão e assunto, quando não subiram
-   para o título da linha. Recibo — rótulo à esquerda, valor à direita. */
-.ficha { display: flex; flex-direction: column; gap: var(--space-sm); margin: 0; }
-.ficha div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-md); min-width: 0; border-bottom: 1px solid var(--line-soft); padding-bottom: var(--space-sm); }
-.ficha dt { flex: 0 0 34%; color: var(--ink-2); font-size: 12px; margin-bottom: var(--space-xs); }
-.ficha dd { text-align: right; min-width: 0; color: var(--ink); margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-
-.links { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-lg); border-top: 1px solid var(--line-soft); padding-top: var(--space-xs); }
-.links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2); font-size: 13px; font-weight: 600; text-decoration: none; }
-.links a:hover { color: var(--ink); text-decoration: underline; }
-.links a:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
-.nota { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; max-width: 70ch; }
 @media (min-width: 768px) {
   .linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-xl); padding: var(--space-md) var(--space-2xl); }
   .calha { flex-direction: column; align-items: flex-end; }
-  .detalhe { padding: var(--space-lg) var(--space-2xl); }
-  .ficha { flex-direction: row; flex-wrap: wrap; }
-  .ficha div { flex: 1 1 260px; }
-
-  .painel:has(.painelPrecisa:not(:empty)) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .painel:has(.painelPrecisa:not(:empty)) .painelLeitura { grid-column: 1 / -1; }
 }
 .compacto .linha { display: flex; padding: var(--space-md); }
 .compacto .calha { align-items: flex-start; }
-.compacto .detalhe { padding: var(--space-md); }
-/* No kanban a coluna é estreita: o par volta a empilhar. */
-.compacto .painel:has(.painelPrecisa:not(:empty)) { grid-template-columns: minmax(0, 1fr); }
-.compacto .painel:has(.painelPrecisa:not(:empty)) .painelLeitura { grid-column: auto; }
-@media (prefers-reduced-motion: reduce) { .linha, .seta { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .linha { transition: none; } }
 
 /* A peça a produzir, na linha FECHADA — o único pedaço da leitura que sobe
    para o sumário. Ele responde "o que eu faço com isto", que é a pergunta de
-   quem varre a pauta; o resto da análise continua no painel, onde há espaço.
+   quem varre a pauta; o resto da análise continua no card, onde há espaço.
    Sem leitura não há chip nenhum: nada de moldura vazia esperando conteúdo. */
 .peca {
   display: inline-flex;
@@ -129,10 +90,54 @@
 .parteAConfirmar {
   margin-left: var(--space-sm);
   padding: 0 var(--space-xs);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   color: var(--ink-2);
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* ── A LINHA BAIXADA ──────────────────────────────────────────────────────
+   Ela FICA, e é isso que o desenho tem de dizer: cumprida, não removida.
+
+   Verde-sage (`--quiet-soft`) e não cinza, porque cinza no sistema significa
+   "sem informação" (é o chip `neutro`, sem preenchimento) e aqui há informação
+   — o expediente foi cumprido. O risco no título é o segundo canal: cor nunca
+   trabalha sozinha, que é a regra da casa desde os chips de prazo.
+
+   O chip de vencimento perde a urgência junto: um prazo baixado em vermelho
+   continuaria cobrando em tom de alarme algo que já acabou. */
+.item[data-baixado] { background: var(--quiet-soft); }
+
+.item[data-baixado] .titulo {
+  color: var(--quiet-ink);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.item[data-baixado] .parte,
+.item[data-baixado] .peca { color: var(--quiet-ink); }
+
+.item[data-baixado] .vencimento {
+  color: var(--quiet-ink);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* No celular a calha vira uma linha própria e os verbos ocupam a largura —
+   é o que os mantém em 44px sem espremer o CNJ. */
+@media (max-width: 767px) {
+  .calha { width: 100%; }
+  .cnj { flex: 1 1 100%; }
+}
+
+/* Os dois verbos, lado a lado. No celular eles dividem a largura do cartão —
+   é o que os mantém em 44px sem espremer o CNJ ao lado. */
+.verbos { position: relative; display: flex; align-items: center; gap: var(--space-sm); flex: none; cursor: auto; }
+
+@media (max-width: 767px) {
+  .verbos { width: 100%; }
+  .verbos > * { flex: 1; }
+  .verbos :global(details) > summary { width: 100%; }
 }

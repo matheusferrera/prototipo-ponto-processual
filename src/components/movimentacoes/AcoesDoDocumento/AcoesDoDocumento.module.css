@@ -1,0 +1,63 @@
+/* Uma linha só no celular: o rodapé é a faixa que nunca sai da vista, e dois
+   andares de botão comiam 110px dela. */
+.acoes {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.principal,
+.secundario { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Com um segundo botão ao lado, "Certidão de publicação" não cabe a 390px —
+   vira "Certidão", que continua dizendo qual documento é. */
+@media (max-width: 459px) {
+  .acoes[data-com-extra] .longo { display: none; }
+}
+
+/* No celular o botão principal ocupa o que sobra — é o alvo que o polegar
+   procura. */
+.principal {
+  flex: 1 1 0;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: 0 var(--space-lg);
+  border: 1px solid var(--brick);
+  background: var(--brick);
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.principal:hover { background: var(--brick-deep); color: #fff; }
+
+.secundario {
+  flex: 0 1 auto;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.secundario:hover { background: var(--paper-2); color: var(--ink); }
+
+.principal:focus-visible,
+.secundario:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+@media (min-width: 768px) {
+  .principal { flex: 0 0 auto; min-height: 44px; font-size: 14px; }
+  .secundario { min-height: 44px; font-size: 14px; }
+}

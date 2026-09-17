@@ -161,7 +161,7 @@
 .prazoChip[data-estimado] { background: var(--signal-soft); color: var(--signal-ink); }
 
 /* ===== Painel genérico ===== */
-.panel { border: 1px solid var(--line); background: var(--paper); }
+.panel { border: 1px solid var(--line-strong); background: var(--paper); }
 .panelHead {
   display: flex;
   align-items: center;
@@ -262,7 +262,7 @@
 .carteiraValor { font-family: var(--mono); font-size: var(--text-small); font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .carteiraValor[data-destaque] { color: var(--brick); }
 .carteiraNota { font-size: var(--text-caption); color: var(--ink-2); line-height: 1.5; }
-.subHead { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); margin: var(--space-xs) 0 var(--space-2xs); }
+.subHead { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-2); margin: var(--space-xs) 0 var(--space-2xs); }
 
 /* ===== Empty states ===== */
 .empty {
@@ -356,4 +356,17 @@
 @media (max-width: 640px) {
   .avisoCanal { flex-wrap: wrap; }
   .avisoCanalAcao { margin-left: 14px; }
+}
+
+/* Links de texto de 17px de altura: o padding com margem negativa estende o
+   alvo até 44px sem mudar o lugar do link. */
+@media (max-width: 767px) {
+  .panelLink,
+  .avisoCanalAcao {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 12px;
+    margin-block: -12px;
+  }
 }

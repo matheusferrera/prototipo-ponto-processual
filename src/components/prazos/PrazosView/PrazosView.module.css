@@ -22,7 +22,7 @@
 .semDataHeader h2 { margin: 0; font-size: 13px; font-weight: 600; }
 .semDataNote { margin: var(--space-sm) var(--space-lg); color: var(--ink-2); font-size: 13px; line-height: 1.5; max-width: 70ch; }
 .kanbanWrap { display: flex; align-items: flex-start; gap: var(--space-lg); padding: var(--space-lg); overflow-x: auto; scroll-snap-type: x proximity; }
-.kanbanCol { flex: 1 0 min(82vw, 280px); min-width: 0; max-width: 360px; background: var(--paper); border: 1px solid var(--line); scroll-snap-align: start; }
+.kanbanCol { flex: 1 0 min(82vw, 280px); min-width: 0; max-width: 360px; background: var(--paper); border: 1px solid var(--line-strong); scroll-snap-align: start; }
 .kanbanColHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: var(--space-md); background: var(--paper-2); border-bottom: 1px solid var(--line); color: var(--ink-2); }
 .kanbanColHead h2 { margin: 0; font-size: 13px; font-weight: 600; }
 .kanbanColHead span { font-size: 12px; font-variant-numeric: tabular-nums; }

@@ -1,0 +1,133 @@
+/* A faixa do prazo em curso — ver o docblock do componente. */
+
+.faixa {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding: 6px var(--space-sm) 6px 9px;
+  min-width: 0;
+  /* O filete da esquerda é o que a faz ler como faixa e não como chip. Com
+     `--radius: 0`, é a única marca de contorno que o sistema permite. */
+  border-left: 3px solid var(--line-strong);
+  background: var(--paper-2);
+}
+
+/* ── OS TRÊS TONS ────────────────────────────────────────────────────────
+   `curso` é contexto: trâmite dentro da janela. Cinza-papel, sem cor.
+   `abriu` é o despacho que determinou o prazo. Verde, o tom institucional.
+   `atencao` é o ato que pode mudar a peça, com o relógio correndo. Âmbar —
+   e é o ÚNICO uso de âmbar na linha, de propósito. */
+.faixa[data-tom='abriu'] { border-left-color: var(--brick); background: var(--brick-soft); }
+.faixa[data-tom='atencao'] { border-left-color: var(--signal); background: var(--signal-soft); }
+
+/* Vencido e ainda aberto — ninguém deu baixa. Manda sobre o tom: é o estado
+   que não pode ser lido como rotina, venha o ato de onde vier. */
+.faixa[data-vencido] { border-left-color: var(--alert); background: var(--alert-soft); }
+
+/* ── URGENTE: ≤3 DIAS, E AINDA EM PÉ ─────────────────────────────────────
+   `data-urgente` era escrito no elemento desde o primeiro dia e **não tinha
+   regra nenhuma** — atributo emitido, CSS nenhum. Passou despercebido porque
+   quem pintava a urgência era o chip de vencimento no topo da linha (vermelho
+   até 7 dias). O chip saiu em 15/09/2026 por ser a segunda declaração do mesmo
+   prazo, e sem esta regra a linha que vence em 3 dias sairia no MESMO verde
+   institucional da que vence em 22 — perder cor de urgência é errar na direção
+   que custa o prazo.
+
+   Vermelho, o mesmo do vencido, porque era o que o chip fazia: a escala dele
+   também juntava "venceu" e "vence em 3 dias" num tom só, e o texto ao lado
+   ("faltam 3 dias" × "venceu há 2 dias") é quem separa os dois. Âmbar
+   continua reservado a `atencao` — ver o docblock do componente. */
+.faixa[data-urgente]:not([data-vencido]) {
+  border-left-color: var(--alert);
+  background: var(--alert-soft);
+}
+
+.texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-sm);
+}
+
+.titulo {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  /* `--ink-2` mede 7,8:1 e passa o AA; `--ink-3` (4,32:1) não — ver a nota de
+     contraste no CLAUDE.md. */
+  color: var(--ink-2);
+}
+
+.detalhe {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.faixa[data-tom='abriu'] .titulo,
+.faixa[data-tom='abriu'] .detalhe { color: var(--brick-deep); }
+/* `--signal` como TEXTO dá 2,86:1 sobre o próprio `--signal-soft` e reprova.
+   Quem serve é `--signal-ink`, que existe para isto. Mesma história de
+   `--quiet-ink`. */
+.faixa[data-tom='atencao'] .titulo,
+.faixa[data-tom='atencao'] .detalhe { color: var(--signal-ink); }
+.faixa[data-vencido] .titulo,
+.faixa[data-vencido] .detalhe,
+.faixa[data-urgente]:not([data-vencido]) .titulo,
+.faixa[data-urgente]:not([data-vencido]) .detalhe { color: var(--alert); }
+
+.detalhe { font-weight: 600; }
+.titulo { font-weight: 700; }
+
+.estimado {
+  margin-right: 3px;
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+/* A data-limite, entre parênteses, depois da distância. O espaço é `margin` e
+   não um nó de texto: o JSX come o espaço entre uma expressão e um elemento em
+   linhas diferentes, e "faltam 22 dias(7 out)" sairia colado. Sem cor própria
+   — ela herda a do `.detalhe`, que é quem os três tons já pintam. */
+.vence {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── A BARRA ─────────────────────────────────────────────────────────────
+   64px no celular: larga o bastante para a proporção ser legível e estreita
+   o bastante para não disputar a linha com o texto, que é quem realmente
+   informa. No desktop ela cresce, porque lá sobra largura. */
+.barra {
+  flex: none;
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 5px;
+  background: var(--paper);
+  /* Sem o contorno, a trilha some sobre `--brick-soft` e `--signal-soft` — o
+     fundo da faixa é claro demais para um cinza de 1,16:1 se destacar. */
+  outline: 1px solid var(--line-strong);
+  outline-offset: -1px;
+}
+
+.preenchida {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  background: var(--line-strong);
+}
+
+.faixa[data-tom='abriu'] .preenchida { background: var(--brick); }
+.faixa[data-tom='atencao'] .preenchida { background: var(--signal); }
+.faixa[data-vencido] .preenchida,
+.faixa[data-urgente]:not([data-vencido]) .preenchida { background: var(--alert); }
+
+@media (min-width: 768px) {
+  .barra { width: 96px; }
+}

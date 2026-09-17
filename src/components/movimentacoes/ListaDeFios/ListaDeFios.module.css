@@ -1,0 +1,259 @@
+/* A aba "Com prazo". Base = cartões do celular; ≥1024 = linhas de tabela. */
+
+.aba {
+  display: flex;
+  flex-direction: column;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: 14px var(--space-lg) var(--space-md);
+}
+
+.introTexto { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ink); }
+.introTexto strong { font-weight: 800; }
+.introNota { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
+
+.tabela { padding: 0 var(--space-md) var(--space-2xl); }
+
+.colunas { display: none; }
+
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Um prazo, como cartão ───────────────────────────────────────────────── */
+
+.linha {
+  display: grid;
+  /* A segunda trilha é o respiro entre o bloco de dias e o texto: com
+     `column-gap`, o mesmo respiro separaria também "vence" de "TJDFT", que
+     dividem uma linha. */
+  grid-template-columns: 76px 14px auto minmax(0, 1fr);
+  grid-template-areas:
+    'dias . prazo prazo'
+    'dias . vence trib'
+    'dias . regua regua'
+    'dias . mudou mudou';
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.linha:hover { border-color: var(--line-strong); }
+.linha:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.dias {
+  grid-area: dias;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-md) var(--space-xs);
+  background: var(--brick-soft);
+  color: var(--brick-deep);
+  text-align: center;
+}
+
+.linha[data-tom='ambar'] .dias { background: var(--signal-soft); color: var(--signal-ink); }
+.linha[data-tom='tinto'] .dias { background: var(--alert-soft); color: var(--alert); }
+.linha[data-tom='neutro'] .dias { background: var(--paper-2); color: var(--ink-2); }
+
+.diasNumero { font-size: 32px; line-height: 1; font-weight: 800; letter-spacing: -0.02em; }
+.diasUnidade { font-size: 12px; font-weight: 700; }
+.diasHoje { font-size: 18px; font-weight: 800; }
+.diasSem { font-size: 12px; font-weight: 700; }
+
+.prazo {
+  grid-area: prazo;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-md);
+  padding-right: 14px;
+}
+
+.peca { font-size: 16px; line-height: 1.3; font-weight: 800; overflow-wrap: anywhere; }
+
+.partes {
+  font-size: 14px;
+  color: var(--ink-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vence {
+  grid-area: vence;
+  margin-top: var(--space-xs);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.venceFonte { display: none; }
+
+.trib {
+  grid-area: trib;
+  margin-top: var(--space-xs);
+  padding-right: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* No cartão, vence e tribunal dividem uma linha: "vence seg, 21 set ≈ · TJDFT". */
+.trib::before { content: '\00a0· '; }
+
+.regua {
+  grid-area: regua;
+  display: block;
+  height: 4px;
+  margin: 10px 14px var(--space-xs) 0;
+  background: color-mix(in srgb, var(--brick) 16%, transparent);
+}
+
+.regua > span { display: block; height: 4px; background: var(--brick); }
+.linha[data-tom='ambar'] .regua { background: color-mix(in srgb, var(--signal-ink) 16%, transparent); }
+.linha[data-tom='ambar'] .regua > span { background: var(--signal); }
+.linha[data-tom='tinto'] .regua { background: color-mix(in srgb, var(--alert) 16%, transparent); }
+.linha[data-tom='tinto'] .regua > span { background: var(--alert); }
+.regua:empty { visibility: hidden; height: 0; margin-top: var(--space-xs); }
+
+.mudou {
+  grid-area: mudou;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 14px 14px 0;
+}
+
+.contagem {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brick);
+}
+
+.ultimo {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.silencio { font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
+
+.teto {
+  margin: 20px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 64px var(--space-2xl);
+  text-align: center;
+}
+
+.vazioTitulo { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); }
+.vazioTexto { margin: 0; max-width: 360px; font-size: 15px; line-height: 1.5; color: var(--ink-2); }
+
+@media (min-width: 768px) {
+  .intro { padding: var(--space-xl) var(--space-2xl) var(--space-lg); }
+  .tabela { padding: 0 var(--space-2xl) var(--space-2xl); }
+}
+
+/* ── ≥1024: a tabela ─────────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  .intro {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-lg);
+  }
+
+  .introNota { margin-left: auto; }
+
+  .tabela {
+    margin: 0 var(--space-2xl) var(--space-2xl);
+    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .colunas,
+  .linha {
+    grid-template-columns: 92px minmax(0, 340px) 88px 150px 140px minmax(0, 1fr);
+    column-gap: var(--space-lg);
+  }
+
+  .colunas {
+    display: grid;
+    padding: 10px var(--space-lg);
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .lista { gap: 0; }
+
+  .linha {
+    grid-template-areas: 'dias prazo trib vence regua mudou';
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    border: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .lista > li:last-child .linha { border-bottom: 0; }
+  .linha:hover { background: color-mix(in srgb, var(--brick-soft) 35%, var(--surface)); }
+  .linha:focus-visible { outline-offset: -2px; }
+
+  .dias { width: 64px; height: 64px; padding: 0; }
+  .diasNumero { font-size: 28px; }
+
+  .prazo { padding: 0; gap: 2px; }
+  .peca { font-size: 15px; }
+  .partes { white-space: normal; overflow: visible; }
+
+  .trib { margin: 0; padding: 0; font-family: var(--mono); color: var(--ink); }
+  .trib::before { content: none; }
+
+  .vence { margin: 0; display: flex; flex-direction: column; gap: 2px; white-space: normal; }
+  .venceVerbo { display: none; }
+  .venceData { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .venceFonte { display: block; font-size: 12px; font-weight: 500; color: var(--ink-soft); }
+
+  .regua { height: 6px; margin: 0; }
+  .regua > span { height: 6px; }
+  .regua:empty { visibility: hidden; height: 6px; margin: 0; }
+
+  .mudou { padding: 0; }
+  .teto { margin: 0; padding: var(--space-md) var(--space-lg); text-align: left; border-top: 1px solid var(--line-soft); }
+}

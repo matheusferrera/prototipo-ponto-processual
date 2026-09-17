@@ -1,136 +1,176 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
-import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
-import { FilterWorkspace } from '@/components/filters/FilterWorkspace';
-import { PageContent } from '@/components/movimentacoes/PageContent/PageContent';
-import { CategoriaFilter } from '@/components/movimentacoes/CategoriaFilter/CategoriaFilter';
-import { ActiveMovimentacaoFilters } from '@/components/movimentacoes/MovimentacaoFilters/ActiveMovimentacaoFilters';
+import { AcoesDoTopoNoCelular, CabecalhoDaTela } from '@/components/movimentacoes/CabecalhoDaTela/CabecalhoDaTela';
+import type { VistaDasMovimentacoes } from '@/components/movimentacoes/AbasDaTela/AbasDaTela';
+import { ListaCompleta } from '@/components/movimentacoes/ListaCompleta/ListaCompleta';
+import { ListaDeFios } from '@/components/movimentacoes/ListaDeFios/ListaDeFios';
+import { Novidades, novidadesDe, primeiroDaAbaNovas } from '@/components/movimentacoes/Novidades/Novidades';
+import { PainelDoAto } from '@/components/movimentacoes/PainelDoAto/PainelDoAto';
 import {
-  MOVIMENTACAO_PANEL_HOST_ID,
-  MovimentacaoFilterControls,
-} from '@/components/movimentacoes/MovimentacaoFilters/MovimentacaoFilterControls';
-import { AtoDetalhe } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
-import { getMovimentacao, getMovimentacoes, getTribunaisDaCarteira } from '@/lib/api.server';
+  getFiosDoPrazo,
+  getMovimentacao,
+  getMovimentacoes,
+  getTribunaisDaCarteira,
+} from '@/lib/api.server';
 import {
+  MOVIMENTACOES_POR_PAGINA,
   movimentacaoFiltersToApi,
-  movimentacaoFiltersToRecord,
   parseMovimentacaoFilters,
   serializeMovimentacaoFilters,
   type MovimentacaoSearchParams,
 } from '@/lib/movimentacao-filters';
-import type { CategoriaMovimentacao } from '@/types';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
   title: 'Movimentações — Ponto Processual',
-  description: 'Feed geral de movimentações de todos os processos monitorados.',
+  description: 'O que chegou nos seus processos, o que corre nos seus prazos e o histórico inteiro.',
 };
 
 /**
- * Linhas por página.
- *
- * Eram 20, o que num acervo real dá 324 páginas — e cada "próxima" devolve a
- * pessoa ao topo. Com a linha em ~56px, 50 linhas ocupam menos rolagem do que
- * as 20 de antes ocupavam a 140px, e o número de páginas cai para um terço.
+ * Quantas novas a aba Novas traz de uma vez — o teto de `GET /movements`.
+ * Passando disso, a aba diz que mostra as mais recentes e aponta para Todas.
  */
-const POR_PAGINA = 50;
+const TETO_DE_NOVAS = 100;
+
+const primeiro = (valor: string | string[] | undefined) => (Array.isArray(valor) ? valor[0] : valor)?.trim() ?? '';
 
 /**
- * O `?aberta=` da URL, saneado.
- *
- * Ids são cuid do Prisma; qualquer coisa fora de `[A-Za-z0-9_-]` é lixo ou
- * tentativa, e vira "nenhuma linha aberta" em vez de chegar ao backend.
+ * A ABA pedida na URL — **Todas é a padrão** (pedido do dono do produto em
+ * 17/09/2026: a tela abre pelo histórico, e é para lá que apontam o menu, o
+ * "Ver todas" do painel e a dica da varredura). Novas e Com prazo são
+ * explícitas (`?vista=novas`, `?vista=fios`).
  */
-function cleanId(valor: string | string[] | undefined): string | null {
-  const bruto = (Array.isArray(valor) ? valor[0] : valor)?.trim() ?? '';
-  return /^[A-Za-z0-9_-]{1,64}$/.test(bruto) ? bruto : null;
+function vistaDaUrl(sp: MovimentacaoSearchParams): VistaDasMovimentacoes {
+  const pedida = primeiro(sp.vista);
+  return pedida === 'fios' || pedida === 'novas' ? pedida : 'todas';
 }
 
+/** Id de movimentação que pode virar requisição — o resto é descartado. */
+const ID_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * MOVIMENTAÇÕES — três perguntas sobre o mesmo acervo.
+ *
+ * | aba | pergunta | de onde vem |
+ * |---|---|---|
+ * | Todas (padrão) | o histórico inteiro, com busca e filtros | `GET /movements` |
+ * | Novas | o que chegou desde a última vez, e o que disso é comigo | `GET /movements?novas=true` |
+ * | Com prazo | o que aconteceu nos casos em que tenho prazo correndo | `GET /deadlines/fios` |
+ *
+ * **Os filtros só valem na aba Todas.** A aba Novas responde "o que chegou",
+ * e um recorte escondido ali faria a pessoa achar que não chegou nada; trocar
+ * de aba descarta os filtros, e voltar para Todas os perde também — a URL de
+ * Todas é a que os carrega.
+ *
+ * No desktop largo (≥1200px) a aba Novas vira tela dividida: a lista à
+ * esquerda e o ato escolhido à direita (`?ato=`). Nas outras larguras e nas
+ * outras abas, o ato abre como card por cima da lista (a fenda `@card`).
+ */
 export default async function MovimentacoesPage({
   searchParams,
 }: {
   searchParams: Promise<MovimentacaoSearchParams>;
 }) {
   const sp = await searchParams;
-  const requestedPage = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
-  const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const vista = vistaDaUrl(sp);
 
-  /* Só os tribunais em que esta conta tem processo: filtrar por um tribunal
-     vazio nunca devolveu nada, e a lista completa escondia os que chegam
-     pelas fontes públicas. Ver `getTribunaisDaCarteira`. */
-  const tribunals = await getTribunaisDaCarteira();
-  const filters = parseMovimentacaoFilters(sp, tribunals.map(tribunal => tribunal.code));
+  const hrefVista = (proxima: VistaDasMovimentacoes) =>
+    proxima === 'todas' ? '/movimentacoes' : `/movimentacoes?vista=${proxima}`;
 
-  const { groups, total, totalPages, page: backendPage } =
-    await getMovimentacoes(currentPage, POR_PAGINA, movimentacaoFiltersToApi(filters));
+  /* A contagem de prazos em curso e a de novas alimentam as abas de TODAS as
+     vistas — por isso saem sempre, em paralelo com o que a vista pede. As
+     contagens pedem uma linha só: o que interessa é o `total`. */
+  const [tribunais, fios, contagemDeNovas] = await Promise.all([
+    getTribunaisDaCarteira(),
+    getFiosDoPrazo(vista === 'fios' ? 50 : 1),
+    vista === 'novas'
+      ? getMovimentacoes(1, TETO_DE_NOVAS, { novas: true })
+      : getMovimentacoes(1, 1, { novas: true }),
+  ]);
+  const filtros = parseMovimentacaoFilters(sp, tribunais.map(t => t.code));
+  const novas = contagemDeNovas.total;
+  const vistasAte = contagemDeNovas.vistasAte;
 
-  const listParams = movimentacaoFiltersToRecord(filters);
-
-  /* A LINHA ABERTA.
-   *
-   * `?aberta=<id>` é o estado da expansão, e ele vive na URL pelo mesmo motivo
-   * que todo filtro deste projeto vive: o botão voltar fecha o painel, o
-   * endereço é compartilhável, recarregar não perde o lugar, e nada disso custa
-   * um client component.
-   *
-   * O id só vale para uma linha DESTA página. Um link com `?aberta=` de um ato
-   * que ficou fora do recorte (outro filtro, outra página) não abre nada e não
-   * redireciona: a URL do feed descreve a LISTA, e o parâmetro só tem efeito
-   * sobre o que está nela. Quem quer o ato em si tem o endereço dele —
-   * `/movimentacoes/<id>`, que continua de pé e é o que a timeline do processo
-   * e o "ver o ato" dos prazos usam.
-   *
-   * O detalhe é buscado no servidor, como o resto da tela: o `textoOriginal`
-   * não vem na listagem (média de 8 KB na origem `djen`, 151 KB no maior deste
-   * acervo), então ele custa uma requisição — e essa requisição só existe
-   * quando alguém abre uma linha. */
-  const idAberto = cleanId(sp.aberta);
-  const naPagina = idAberto
-    ? groups.some(g => g.items.some(m => m.id === idAberto))
-    : false;
-  const detalhe = naPagina ? await getMovimentacao(idAberto!) : null;
-  const aberta = detalhe ? { id: detalhe.id, painel: <AtoDetalhe mov={detalhe} /> } : null;
-
-  /* O href de cada categoria: a seleção nova, sempre voltando à página 1 —
-     senão o filtro herda a página 12 de um conjunto que acabou de encolher. */
-  const hrefCategoria = (proximas: CategoriaMovimentacao[]) => {
-    const params = serializeMovimentacaoFilters({ ...filters, categoria: proximas });
-    const query = params.toString();
-    return query ? `/movimentacoes?${query}` : '/movimentacoes';
-  };
-
-  const cabecalho = (
-    <div className={styles.barra}>
-      <CategoriaFilter ativas={filters.categoria} href={hrefCategoria} />
-    </div>
-  );
-
-  return (
+  const comum = { vista, href: hrefVista, novas, emCurso: fios.total };
+  const layout = (conteudo: ReactNode, processos?: number) => (
     <AppLayout
       active="Movimentações"
       mobileTitle="Movimentações"
-      mobileBreadcrumb="Início / Movimentações"
-      mobileActions={<MovimentacaoFilterControls filters={filters} tribunals={tribunals} variant="mobile" />}
+      mobileActions={<AcoesDoTopoNoCelular {...comum} filtros={filtros} tribunais={tribunais} />}
+      /* O badge do menu conta movimentações NÃO VISTAS — e só elas. Os prazos
+         em curso daqui não entram como `prazos`: aquele contador, nas outras
+         telas, é "o que ainda vence", e o `total` de `/deadlines/fios` inclui
+         prazo aberto já vencido. Dois números diferentes no mesmo lugar do
+         menu fariam a navegação mentir. */
+      contadores={{ movimentacoes: novas }}
     >
-      <PageHeader basePath="/movimentacoes" title="Movimentações" breadcrumb="Início / Movimentações">
-        <MovimentacaoFilterControls filters={filters} tribunals={tribunals} />
-      </PageHeader>
-
-      <FilterWorkspace panelHostId={MOVIMENTACAO_PANEL_HOST_ID}>
-        <ActiveMovimentacaoFilters filters={filters} />
-
-        <PageContent
-          key={backendPage}
-          movimentacoes={groups}
-          total={total}
-          totalPages={totalPages}
-          currentPage={backendPage}
-          porPagina={POR_PAGINA}
-          listParams={listParams}
-          aberta={aberta}
-          pageInfo={cabecalho}
-        />
-      </FilterWorkspace>
+      <CabecalhoDaTela {...comum} vistasAte={vistasAte} processos={processos} />
+      {conteudo}
     </AppLayout>
+  );
+
+  /* ── COM PRAZO ─────────────────────────────────────────────────────────── */
+  if (vista === 'fios') {
+    return layout(
+      <div className={styles.rolagem}>
+        <ListaDeFios fios={fios.data} total={fios.total} />
+      </div>,
+    );
+  }
+
+  /* ── TODAS ─────────────────────────────────────────────────────────────── */
+  if (vista === 'todas') {
+    const lista = await getMovimentacoes(1, MOVIMENTACOES_POR_PAGINA, movimentacaoFiltersToApi(filtros));
+    return layout(
+      <div className={styles.rolagem}>
+        <ListaCompleta
+          /* A chave troca com o recorte: sem ela, o "carregar dias anteriores"
+             guardaria as páginas do recorte anterior ao mudar um filtro. */
+          key={serializeMovimentacaoFilters(filtros).toString()}
+          grupos={lista.groups}
+          filtros={filtros}
+          tribunais={tribunais}
+          pagina={lista.page}
+          totalPaginas={lista.totalPages}
+          vistasAte={lista.vistasAte}
+          focarBusca={primeiro(sp.buscar) === '1'}
+        />
+      </div>,
+    );
+  }
+
+  /* ── NOVAS ─────────────────────────────────────────────────────────────── */
+  const itens = contagemDeNovas.groups.flatMap(g => g.items);
+  const pedido = primeiro(sp.ato);
+  const selecionado = ID_VALIDO.test(pedido) && itens.some(m => m.id === pedido)
+    ? pedido
+    : primeiroDaAbaNovas(itens);
+  /* O ato do painel é buscado mesmo quando a tela é estreita e o painel não
+     aparece: o servidor não sabe a largura. É uma requisição por página, e só
+     na aba Novas com alguma novidade. */
+  const mov = selecionado ? await getMovimentacao(selecionado) : null;
+
+  const voltarCru = primeiro(sp.voltar);
+  const voltar = voltarCru === 'nunca' ? null
+    : voltarCru && !Number.isNaN(Date.parse(voltarCru)) ? voltarCru
+    : undefined;
+
+  return layout(
+    <div className={styles.dividida} data-com-painel={itens.length > 0 || undefined}>
+      <div className={styles.coluna}>
+        <Novidades
+          itens={itens}
+          total={novas}
+          vistasAte={vistasAte}
+          selecionado={selecionado}
+          hrefPainel={id => `/movimentacoes?vista=novas&ato=${encodeURIComponent(id)}`}
+          voltar={voltar}
+          emCurso={fios.total}
+        />
+      </div>
+      {itens.length > 0 && <PainelDoAto mov={mov} />}
+    </div>,
+    itens.length > 0 ? novidadesDe(itens).totalProcessos : undefined,
   );
 }

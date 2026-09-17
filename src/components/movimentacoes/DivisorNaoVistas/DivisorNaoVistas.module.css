@@ -1,0 +1,59 @@
+/* O divisor de novidade — ver o docblock do componente. */
+
+.raiz {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--brick-soft);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* O quadrado verde é o MESMO sinal que marca cada linha não vista na lista —
+   é ele que liga o divisor às linhas abaixo dele. */
+.marca { width: 6px; height: 6px; flex: none; background: var(--brick); }
+
+.texto {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brick-deep);
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
+  flex: none;
+  border: 1px solid var(--brick);
+  background: var(--paper);
+  color: var(--brick-deep);
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.botao:hover:not(:disabled) { background: var(--brick); color: #fff; }
+.botao:disabled { opacity: .6; cursor: default; }
+.botao:focus-visible { outline: 2px solid var(--brick-deep); outline-offset: 2px; }
+.botao svg { flex: none; }
+
+.erro { font-size: 11px; color: var(--alert); }
+
+.girando { animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .girando { animation: none; } }
+
+@media (max-width: 767px) {
+  /* 44px de alvo, e o botão ocupa a largura: no celular ele desce para a
+     segunda linha, e um alvo estreito ali seria difícil de acertar. */
+  .botao { width: 100%; min-height: 44px; justify-content: center; }
+}

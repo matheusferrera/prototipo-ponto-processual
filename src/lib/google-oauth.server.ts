@@ -41,16 +41,28 @@ export const googleAtivo = () => !!googleClientId() && !!googleClientSecret();
  * mostrar a tela de contas (`redirect_uri_mismatch`).
  *
  * Precedência: `GOOGLE_REDIRECT_URI` (escape para ambientes atrás de proxy que
- * reescreve host) → `NEXT_PUBLIC_SITE_URL`/`SITE_URL` → a origem da própria
- * requisição, que é o que faz o dev em `localhost:3001` funcionar sem
- * configurar nada. `getSiteUrl()` de `site-url.ts` NÃO serve aqui: o default
- * dele é `localhost:3000`, que em dev é o backend, não o front.
+ * reescreve host) → `NEXT_PUBLIC_SITE_URL`/`SITE_URL` → o host que o cliente
+ * pediu, que é o que faz o dev em `localhost:3001` funcionar sem configurar
+ * nada. `getSiteUrl()` de `site-url.ts` NÃO serve aqui: o default dele é
+ * `localhost:3000`, que em dev é o backend, não o front.
+ *
+ * O host sai dos headers, nunca de `req.nextUrl`: atrás de um túnel (ngrok) o
+ * `nextUrl` junta o proto encaminhado com o host do bind local e inventa
+ * `https://localhost:3001` — que não está registrado e ainda mandaria o
+ * celular de volta para ele mesmo. Ler `x-forwarded-host` é seguro aqui:
+ * host forjado só vira redirect de verdade se já estiver na allowlist do
+ * Google, e quem precisa de garantia extra fixa `GOOGLE_REDIRECT_URI`.
  */
 export function redirectUri(req: NextRequest): string {
   const explicito = process.env.GOOGLE_REDIRECT_URI;
   if (explicito) return explicito;
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || req.nextUrl.origin;
+  const primeiro = (v: string | null) => v?.split(',')[0]?.trim() || '';
+  const host = primeiro(req.headers.get('x-forwarded-host')) || primeiro(req.headers.get('host'));
+  const proto = primeiro(req.headers.get('x-forwarded-proto')) || req.nextUrl.protocol.replace(':', '');
+  const origem = host ? `${proto}://${host}` : req.nextUrl.origin;
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || origem;
   return new URL(CAMINHO_CALLBACK, base.startsWith('http') ? base : `https://${base}`).toString();
 }
 

@@ -35,7 +35,11 @@ export function descricaoMovimentacao(m: Movimentacao): string {
  * O fallback não é degradação rara: só a origem `djen` traz o texto do ato, e
  * movimentação do DataJud ou do painel nunca terá resumo.
  */
-export function resumoMovimentacao(m: Pick<Movimentacao, 'detail' | 'ia'>): string {
+/* `ia` OPCIONAL no tipo porque já era opcional em tempo de execução: o corpo
+   faz `m.ia?.resumo`, e `TimelineEvent.ia` é declarado `LeituraIa | undefined`.
+   Exigi-lo obrigava cada chamador da timeline a inventar uma leitura vazia só
+   para satisfazer o compilador. */
+export function resumoMovimentacao(m: Pick<Movimentacao, 'detail'> & { ia?: Movimentacao['ia'] }): string {
   return m.ia?.resumo || descricaoMovimentacao(m as Movimentacao);
 }
 
@@ -52,6 +56,12 @@ export function temLeituraIa(m: Pick<Movimentacao, 'ia'>): boolean {
  * rótulo explícito, porque mostrá-la sem dizer de quem é foi o erro medido no
  * TRF1 — "cite-se a União para contestar em 30 dias" lido como prazo do
  * cliente.
+ *
+ * > **Sem consumidor desde 15/09/2026.** A linha do feed era a única tela que
+ * > o chamava, e a providência saiu dela: na linha que abre prazo ela era a
+ * > terceira explicação do mesmo prazo. Quem mostra providência hoje é
+ * > `ProvidenciaDoAto`, com outro gate (`oQueFazer`). Fica aqui pelo erro do
+ * > TRF1, que é a razão de qualquer gate deste campo existir.
  */
 export function acaoMovimentacao(m: Pick<Movimentacao, 'ia'>): { texto: string; minha: boolean } | null {
   // `peca` é o sinal de que há algo concreto a produzir — `oQueFazer` sozinho
@@ -178,7 +188,11 @@ export function vencimentoDoAto(m: Pick<Movimentacao, 'prazo'>): {
     emDias,
     encerrado,
     dias: prazo.dias ? `${prazo.dias} ${prazo.dias === 1 ? 'dia' : 'dias'}` : null,
-    estimado: prazo.metodoPrazo !== 'textoExplicito',
+    /* `painel`/`grid` é a data que o TRIBUNAL publicou, e lá `metodoPrazo` vem
+       sempre nulo (só as origens calculadas o preenchem). Sem esta guarda o card
+       punha "≈" num vencimento oficial — e a pauta, que abre o prazo nesse mesmo
+       card, mostrava a mesma data sem "≈". Ver `procedenciaPrazo`. */
+    estimado: prazo.origem !== 'painel' && prazo.origem !== 'grid' && prazo.metodoPrazo !== 'textoExplicito',
     quando,
     urgente: !encerrado && emDias <= 3,
   };
@@ -223,4 +237,85 @@ export function destinatariosDoAto(
   limite = 3,
 ): { nomes: string[]; ocultos: number } {
   return partesDoTexto(m.prazo?.parte, limite);
+}
+
+const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const SEMANA_LONGA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+/**
+ * `seg, 21 set` — uma DATA do banco (wall-clock de Brasília gravado em UTC),
+ * com o dia da semana na frente.
+ *
+ * O dia da semana não é enfeite: é ele que responde "tenho o fim de semana?",
+ * a primeira conta que se faz diante de um vencimento. Mesmo formato do cartão
+ * de "Com prazo" (`ListaDeFios`), para a data ter uma cara só na tela.
+ */
+export function diaComSemana(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${SEMANA_CURTA[d.getUTCDay()]}, ${d.getUTCDate()} ${MESES_CURTOS[d.getUTCMonth()]}`;
+}
+
+/**
+ * `hoje, 09:12` · `ontem, 18:40` · `terça, 19:05` · `12/09, 19:05` — a
+ * referência de "desde quando", curta. `conector` troca a vírgula por " às "
+ * quando a data entra numa frase ("desde terça às 19:05").
+ *
+ * **Recebe um INSTANTE, não uma data do banco.** A marca d'água
+ * (`movimentacoesVistasAte`) é `new Date()` no servidor, UTC de verdade — o
+ * oposto das datas de ato, que são wall-clock gravado em UTC. Por isso aqui se
+ * desconta o fuso (−3 h) antes de ler com `getUTC*`; lá não.
+ *
+ * O nome do dia vale até seis dias atrás: "terça" é mais rápido que "15/09" e
+ * não fica ambíguo dentro da mesma semana.
+ */
+export function desdeQuando(iso: string, conector = ', ', agora = Date.now()): string {
+  const brasilia = (ms: number) => new Date(ms - 3 * 60 * 60 * 1000);
+  const d = brasilia(new Date(iso).getTime());
+  if (Number.isNaN(d.getTime())) return 'a última visita';
+  const hoje = brasilia(agora);
+  const dia = (x: Date) => Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate());
+  const dias = Math.round((dia(hoje) - dia(d)) / 86_400_000);
+  const hora = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+
+  if (dias <= 0) return `hoje${conector}${hora}`;
+  if (dias === 1) return `ontem${conector}${hora}`;
+  if (dias < 7) return `${SEMANA_LONGA[d.getUTCDay()]}${conector}${hora}`;
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}${conector}${hora}`;
+}
+
+/**
+ * A primeira letra em maiúscula — para a PEÇA que vira título.
+ *
+ * A leitura da IA devolve a peça como termo ("petição de manifestação sobre a
+ * resposta ao ofício"), e como título de cartão a minúscula inicial parece
+ * texto cortado.
+ */
+export function comoTitulo(texto: string): string {
+  return texto ? texto.charAt(0).toLocaleUpperCase('pt-BR') + texto.slice(1) : texto;
+}
+
+/**
+ * A hora do ato, `HH:MM` — e **00:00 quando a fonte não informa**.
+ *
+ * Decisão do dono do produto em 17/09/2026, e ela inverte uma regra que este
+ * projeto seguia: o DJEN publica numa DATA, e a tela evitava "00:00" para não
+ * dar ao ato do diário uma precisão de relógio que ele não tem. O pedido é ver
+ * uma hora em toda linha; o motivo continua no `title` (`semHoraMotivo`).
+ */
+export function horaDoAto(m: Pick<Movimentacao, 'time'>): string {
+  return m.time ?? '00:00';
+}
+
+/** `hoje às 14:32` · `ontem às 00:00` · `15 set às 09:10`. */
+export function quandoComHora(m: Pick<Movimentacao, 'quandoCurto' | 'time'>): string {
+  return m.quandoCurto ? `${m.quandoCurto} às ${horaDoAto(m)}` : horaDoAto(m);
+}
+
+/** O porquê do 00:00 — a fonte não informou a hora. */
+export function semHoraMotivo(m: Pick<Movimentacao, 'origem'>): string {
+  return m.origem === 'djen'
+    ? 'O diário publica em data, sem horário.'
+    : 'O tribunal não informou o horário deste ato.';
 }

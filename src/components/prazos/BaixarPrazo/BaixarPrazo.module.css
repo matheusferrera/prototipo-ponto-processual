@@ -1,0 +1,109 @@
+/* Os verbos da pauta. Mesma gramática dos botões do app: zero radius, borda
+   reta, 44px de alvo no celular — o piso que `.navItem` e `.links a` já
+   respeitam. */
+
+.raiz {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: none;
+}
+
+.protocolei,
+.desfazer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  /* 44px no celular, 34 a partir de `md` — ver o `@media` no fim. Alvo de
+     toque não é preferência: é o piso de acerto do polegar. */
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.protocolei {
+  background: var(--brick);
+  border-color: var(--brick);
+  color: #fff;
+}
+
+/* Só escurece. Nada cresce e nada se desloca: a linha vizinha não pode se
+   mexer enquanto o polegar viaja até aqui. */
+.protocolei:hover:not(:disabled) { background: var(--brick-deep); border-color: var(--brick-deep); }
+.protocolei:active:not(:disabled) { background: var(--brick-deep); }
+
+.protocolei:disabled {
+  background: var(--paper-2);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+  cursor: default;
+}
+
+.desfazer {
+  background: var(--paper);
+  border-color: var(--quiet-ink);
+  color: var(--quiet-ink);
+}
+
+.desfazer:hover { background: var(--quiet-soft); }
+
+.protocolei:focus-visible,
+.desfazer:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}
+
+/* "Baixado" é ESTADO, não botão: sem borda, sem cursor, sem hover. O único
+   controle que sobra na linha é o desfazer. */
+.feito {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--quiet-ink);
+  white-space: nowrap;
+}
+
+.feito svg,
+.protocolei svg,
+.desfazer svg { flex: none; }
+
+.erro {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--alert);
+  max-width: 22ch;
+  text-align: right;
+}
+
+.girando { animation: girar 0.8s linear infinite; }
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; }
+  .protocolei, .desfazer { transition: none; }
+}
+
+/* No celular os dois verbos dividem a largura do cartão em vez de ficarem
+   soltos à direita — é o que os mantém alcançáveis sem gesto escondido. */
+.compacto { display: grid; grid-template-columns: 1fr auto; width: 100%; }
+.compacto .protocolei { width: 100%; }
+.compacto .erro { grid-column: 1 / -1; text-align: left; max-width: none; }
+
+@media (min-width: 768px) {
+  .protocolei, .desfazer { min-height: 34px; padding: 0 12px; font-size: 12px; }
+  .compacto { display: flex; width: auto; }
+  .compacto .protocolei { width: auto; }
+}

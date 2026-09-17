@@ -1,0 +1,143 @@
+/* O segundo verbo da pauta. Mesma gramática de `BaixarPrazo`: zero radius,
+   44px de alvo no celular, 34 a partir de `md`. */
+
+.raiz { position: relative; flex: none; }
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  list-style: none;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.botao::-webkit-details-marker { display: none; }
+.botao:hover { background: var(--paper-2); }
+.botao:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.botao svg { flex: none; }
+
+/* O menu abre ANCORADO À DIREITA e para CIMA no celular: na pauta ele fica no
+   pé do cartão, e abrindo para baixo cairia fora da tela na última linha. */
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: var(--z-dropdown);
+  min-width: 232px;
+  padding: 6px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  box-shadow: 3px 3px 0 rgba(20, 26, 21, 0.1);
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcao:hover { background: var(--paper-2); }
+.opcao:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.quando {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* A frase que impede o botão de prometer push — ver o docblock do componente. */
+.nota {
+  margin: 4px 0 0;
+  padding: 8px 10px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.erro { margin: 0; padding: 4px 10px 6px; font-size: 11px; line-height: 1.5; color: var(--alert); }
+
+/* Marcado: estado, não botão. O único controle que sobra é o "tirar". */
+.marcado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 0 4px 0 8px;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--signal-ink);
+  background: var(--signal-soft);
+  white-space: nowrap;
+}
+
+.marcado svg { flex: none; }
+
+.tirar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  border: 0;
+  background: none;
+  color: var(--signal-ink);
+  cursor: pointer;
+}
+
+.tirar:hover { background: rgba(146, 64, 14, 0.12); }
+.tirar:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.girando { animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .girando { animation: none; } .botao { transition: none; } }
+
+@media (min-width: 768px) {
+  .botao, .marcado { min-height: 34px; font-size: 12px; padding: 0 12px; }
+  .marcado { padding-right: 2px; }
+  .opcao { min-height: 38px; }
+}
+
+/* A ÂNCORA É DECIDIDA AO ABRIR, não no CSS. Ancorado à direita com 232px de
+   largura mínima, e o botão "Lembrar" sendo a metade esquerda do cartão
+   (168px), o menu saía 48px pela borda esquerda — medido em 16/09/2026,
+   `left: -48`. E o gatilho mora em três telas (pauta, fio, página do ato), em
+   posições diferentes, então nenhuma âncora fixa serve às três: o componente
+   mede onde o gatilho está e marca `data-ancora="esquerda"` quando à direita
+   não cabe. `position: fixed` foi tentado e NÃO serve: um ancestral com
+   `transform` vira o bloco continente e o menu fica preso a ele. */
+.raiz[data-ancora="esquerda"] .menu {
+  right: auto;
+  left: 0;
+}
+
+@media (max-width: 767px) {
+  .menu { max-width: calc(100vw - 32px); }
+}

@@ -2,52 +2,41 @@ import Link from 'next/link';
 import { ChevronRight, Clock3 } from 'lucide-react';
 import type { Prazo } from '@/types';
 import { TribTag } from '@/components/ui/TribTag/TribTag';
-import { ProvidenciaDoAto, DocumentosDoAto } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
 import { RISCO_ROTULO } from '@/components/movimentacoes/AtoDetalhe/LeituraIaDoAto';
-import { LeituraDoAto } from '@/components/movimentacoes/AtoDetalhe/LeituraDoAto';
-import { clienteEhPresumido, clientePrazo, expedientePrazo, procedenciaPrazo, qualificacaoPrazo, rotuloNatureza } from '@/lib/prazo';
+import { BaixarPrazo } from '@/components/prazos/BaixarPrazo/BaixarPrazo';
+import { LembrarPrazo } from '@/components/prazos/LembrarPrazo/LembrarPrazo';
+import { clienteEhPresumido, clientePrazo, expedientePrazo, rotuloNatureza } from '@/lib/prazo';
 import { tribunalTagLabel } from '@/lib/tribunals';
 import { dataPrazo, faixaPrazo, quandoPrazo } from '@/lib/prazo-apresentacao';
-import { partesCurtas } from '@/lib/pje-text';
-import { dataWallClock } from '@/lib/wall-clock';
 import styles from './PrazoRow.module.css';
 
 /**
- * Até quando, e por quê — "manifestação · pelo diário · sem dobra · do
- * destinatário", seguido de como a data foi obtida. É o que substitui a ficha
- * genérica de rótulo/valor: os mesmos campos existiam no tipo desde sempre,
- * só nunca chegavam preenchidos do mapeador (ver `toPrazo` em `api.server.ts`).
+ * Uma hierarquia para pauta, kanban, calendário e expedientes sem data.
+ *
+ * ## Abrir um prazo é abrir o CARD do ato que o abriu (17/09/2026)
+ *
+ * Até aqui a linha era um `<details>` que expandia um painel próprio — outra
+ * composição dos mesmos blocos, com os mesmos três defeitos que tiraram o
+ * painel do feed em 15/09/2026: a lista saltando ao abrir, a pauta inteira
+ * continuando visível embaixo, e a cadeia de contagem do vencimento sem lugar.
+ *
+ * Agora a linha é um link para `/movimentacoes/<movementId>`, que
+ * `app/@card/(.)movimentacoes/[id]` intercepta: o card abre por cima da pauta,
+ * que continua montada e parada, e fechar devolve filtro, vista e rolagem.
+ *
+ * **O card do ato É o card deste prazo**, e não por aproximação:
+ * `Deadline.movementId` é NOT NULL e `@unique` no backend — um ato abre no
+ * máximo um prazo, e todo prazo tem o seu ato. O "Até quando" do card e a barra
+ * de ação dele são deste prazo. Um card próprio de prazo seria a sexta
+ * composição do mesmo ato, e a primeira a divergir seria a regra do prazo.
+ *
+ * ## Os verbos ficam FORA do link
+ *
+ * Âncora com botão dentro é HTML inválido, e o navegador desmonta a árvore. O
+ * link cobre o corpo; um `::after` o estende sobre a linha inteira (tags e CNJ
+ * inclusive), e os verbos, por virem depois no DOM e serem posicionados,
+ * pintam por cima dele e recebem o próprio clique.
  */
-function QuandoEPorQue({ p }: { p: Prazo }) {
-  const qualificacao = qualificacaoPrazo(p);
-  const estimado = Boolean(p.vencimentoISO) && (p.origemPrazo === 'djen' || p.origemPrazo === 'tribunalPublico');
-  if (qualificacao.length === 0 && !p.publicadoEm) return null;
-
-  return (
-    <div className={styles.quando}>
-      {qualificacao.length > 0 && <p className={styles.quandoLinha}>{qualificacao.join(' · ')}</p>}
-      {/* `p.fundamento` (o artigo de lei) não entra aqui, de propósito — é o
-          mesmo texto que `LeituraIaDoAto` também não mostra mais: repetiria
-          o "prazo de N dias" que `qualificacao` já deu, uma linha acima. */}
-      <p className={styles.quandoProcedencia}>
-        {procedenciaPrazo(p)}
-        {estimado && '. Não considera feriado local nem suspensão por portaria.'}
-      </p>
-      {p.publicadoEm && (
-        <p className={styles.quandoProcedencia}>
-          Conta da publicação de {dataWallClock(new Date(p.publicadoEm))}
-          {/* Três nomes, não o polo inteiro — aqui cabe um a mais que na
-              linha fechada, porque o card aberto é onde se confere de quem é
-              o prazo. `partesCurtas` diz quantos ficaram de fora. */}
-          {p.parte ? ` · intimado: ${partesCurtas(p.parte, 3)}` : ''}
-          {p.cienciaFicta && ' · ciência automática (ficta)'}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** Uma hierarquia para pauta, kanban, calendário e expedientes sem data. */
 export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compacto?: boolean }) {
   const faixa = faixaPrazo(p);
   const natureza = rotuloNatureza(p);
@@ -59,26 +48,29 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
   const partePresumida = clienteEhPresumido(p);
   const estimado = Boolean(p.vencimentoISO) && (p.origemPrazo === 'djen' || p.origemPrazo === 'tribunalPublico');
 
-  // O que sobra depois de leitura, providência, qualificação e documentos já
-  // terem dito o resto: só órgão e assunto, quando não subiram para o título.
-  const fichaResidual = [
-    ['Órgão julgador', p.orgaoJulgador !== '—' ? p.orgaoJulgador : null],
-    ['Assunto', p.assunto && p.assunto !== parte ? p.assunto : null],
-  ].filter((item): item is [string, string] => Boolean(item[1]));
+  /* O processo é só a rede para uma API anterior a 07/09/2026, quando
+     `movementId` ainda podia vir nulo. Hoje ele sempre vem. */
+  const href = p.movementId
+    ? `/movimentacoes/${encodeURIComponent(p.movementId)}`
+    : `/processos/${encodeURIComponent(p.cnj)}`;
 
   return (
-    <details className={`${styles.item} ${compacto ? styles.compacto : ''}`}>
-      <summary className={styles.linha}>
-        <span className={styles.corpo}>
+    <div className={`${styles.item} ${compacto ? styles.compacto : ''}`} data-baixado={p.fechado ? '' : undefined}>
+      <div className={styles.linha}>
+        <Link href={href} className={`${styles.corpo} ${styles.abrir}`}>
           <span className={styles.vencimento} data-faixa={faixa}>
             <Clock3 size={14} aria-hidden="true" />
             <span>{p.fechado ? 'Encerrado' : quandoPrazo(p.diasRestantes)}</span>
             {/* O `≈` antes da data JÁ diz que é cálculo nosso — a etiqueta
                 "Data estimada" ao lado repetia a mesma informação e roubava a
                 largura de quem lê a data. A ressalva por extenso continua no
-                detalhe, que é onde ela cabe. */}
+                card, que é onde ela cabe. */}
             {p.vencimentoISO && (
-              <time dateTime={p.vencimentoISO} title={estimado ? 'Data calculada por nós, não publicada pelo tribunal' : undefined}>
+              <time
+                className={styles.comDica}
+                dateTime={p.vencimentoISO}
+                title={estimado ? 'Data calculada por nós, não publicada pelo tribunal' : undefined}
+              >
                 {estimado ? '≈ ' : ''}{dataPrazo(p.vencimentoISO)}
               </time>
             )}
@@ -89,7 +81,7 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
               {parte}
               {partePresumida && (
                 <span
-                  className={styles.parteAConfirmar}
+                  className={`${styles.parteAConfirmar} ${styles.comDica}`}
                   title="O tribunal não publicou os representantes deste processo, então não dá para afirmar de que lado você está. Este é o nome que o ato cita."
                 >
                   a confirmar
@@ -113,7 +105,7 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
               )}
             </span>
           )}
-        </span>
+        </Link>
         <span className={styles.calha}>
           <span className={styles.tags}>
             {natureza && <span className={styles.natureza}>{natureza}</span>}
@@ -121,56 +113,30 @@ export function PrazoRow({ prazo: p, compacto = false }: { prazo: Prazo; compact
             <ChevronRight size={16} className={styles.seta} aria-hidden="true" />
           </span>
           <span className={styles.cnj}>{p.cnj}</span>
+          {/* O VERBO, na linha fechada. Ele é a razão de a pauta existir como
+              tela de trabalho e não como relatório: até 15/09/2026 a linha
+              inteira era um link, e a única coisa que se podia fazer com um
+              prazo era abrir o detalhe dele. A linha voltou a abrir o detalhe
+              — o card —, mas os verbos continuam aqui, sem precisar abri-lo.
+
+              Fica na calha, embaixo do CNJ, e não no corpo: o corpo responde
+              "o que é isto" e a calha responde "o que eu faço com isto". */}
+          {/* OS DOIS VERBOS. "Protocolei" encerra; "Lembrar" adia sem encerrar
+              — é a diferença entre o prazo que acabou e o que ainda vai
+              precisar de trabalho. Prazo já baixado não oferece lembrete: não
+              há o que lembrar. */}
+          <span className={styles.verbos}>
+            {!p.fechado && (
+              <LembrarPrazo
+                prazoId={p.id}
+                vencimentoISO={p.vencimentoISO}
+                lembrarEm={p.lembrarEm ?? null}
+              />
+            )}
+            <BaixarPrazo prazoId={p.id} fechado={Boolean(p.fechado)} compacto={compacto} />
+          </span>
         </span>
-      </summary>
-      <div className={styles.detalhe}>
-        {/* Você precisa vem primeiro — a providência é a pergunta que se
-            responde ao abrir o card. Até quando/por quê fica na coluna ao
-            lado no desktop, e a leitura do ato fecha embaixo das duas, em
-            largura total: mesma ordem e mesma grade de `PrazoDoAto`, em
-            `AtoDetalhe.module.css`. */}
-        <div className={styles.painel}>
-          {/* O que fazer — a providência que o ato cobra, e de quem ela é. */}
-          {p.ato && (
-            <div className={styles.painelPrecisa}>
-              <ProvidenciaDoAto mov={p.ato} />
-            </div>
-          )}
-
-          <div className={styles.painelQuando}>
-            <QuandoEPorQue p={p} />
-          </div>
-
-          {/* O que aconteceu, o que produzir até lá (peça, checklist, o que
-              falta, o risco) e o botão que pede a leitura quando ainda falta —
-              tudo na mesma chamada desde a fusão ato+prazo. Substitui a
-              `LeituraIaDoAto` somente-leitura + o `AnalisePrazoPainel` (rota
-              `/ia/prazos/{id}`, removida) que existiam separados até 10/09/2026. */}
-          {p.ato && (
-            <div className={styles.painelLeitura}>
-              <LeituraDoAto mov={p.ato} />
-            </div>
-          )}
-        </div>
-
-        {/* Os documentos — a peça do tribunal e a certidão de publicação. */}
-        {p.ato && <DocumentosDoAto mov={p.ato} />}
-
-        {!p.vencimentoISO && (
-          <p className={styles.nota}>Este expediente não tem data de vencimento informada e não entra na contagem de urgência.</p>
-        )}
-
-        {fichaResidual.length > 0 && (
-          <dl className={styles.ficha}>
-            {fichaResidual.map(([rotulo, valor]) => <div key={rotulo}><dt>{rotulo}</dt><dd>{valor}</dd></div>)}
-          </dl>
-        )}
-
-        <div className={styles.links}>
-          {p.movementId && <Link href={`/movimentacoes/${encodeURIComponent(p.movementId)}`}>Ver o ato que abriu o prazo →</Link>}
-          <Link href={`/processos/${encodeURIComponent(p.cnj)}`}>Ver o processo →</Link>
-        </div>
       </div>
-    </details>
+    </div>
   );
 }

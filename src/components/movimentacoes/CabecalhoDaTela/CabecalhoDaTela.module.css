@@ -1,0 +1,122 @@
+/* O topo do desktop só existe a partir de 768px — no celular, a barra do
+   AppLayout faz o mesmo papel. */
+.topo {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .topo {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+  }
+}
+
+.titulo {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0 var(--space-2xl);
+}
+
+.h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.busca { width: min(380px, 40vw); }
+
+.campo {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-md);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+}
+
+.campo:focus-within { outline: 2px solid var(--brick); outline-offset: 1px; }
+
+.campo input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+.campo input::placeholder { color: var(--ink-soft); }
+
+.filtros {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.filtros:hover { background: var(--paper-2); }
+.filtros:focus-visible { outline: 2px solid var(--brick); outline-offset: 1px; }
+
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-lg);
+  padding: 0 20px 0 var(--space-2xl);
+  border-bottom: 1px solid var(--line);
+}
+
+.novas {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.novasTexto {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.novasTexto strong { font-weight: 800; color: var(--ink); }
+
+/* ── Celular: os ícones da barra do AppLayout ────────────────────────────── */
+
+.icones {
+  display: flex;
+  align-items: center;
+  margin-right: -10px;
+}
+
+.icone {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.icone:hover { background: var(--paper-2); }
+.icone:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }

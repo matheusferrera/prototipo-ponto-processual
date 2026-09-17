@@ -1,0 +1,119 @@
+/* O card do ato — ver o docblock do componente. */
+
+.veu {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background: var(--ink);
+  opacity: .42;
+}
+
+/* Sem transição no véu e no card: o card abre por NAVEGAÇÃO, e o feed é
+   percorrido dezenas de vezes por dia. Um slide de 200ms atrasa a leitura toda
+   vez — o custo se paga em cada clique, o ganho é uma vez só. */
+
+.card {
+  position: fixed;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  /* CELULAR: ocupa tudo. Não há contexto a preservar numa tela de 390px, e
+     meia tela com a lista espiando atrás seria a mesma disputa de superfície
+     que o painel tinha. */
+  inset: 0;
+  overflow: hidden;
+}
+
+.barra {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 56px;
+  padding: 6px var(--space-lg) 6px var(--space-xs);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.fechar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.fechar:hover { background: var(--paper-2); }
+.fechar:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.identidade { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.tipo {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.onde {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  /* Uma linha: tribunal · órgão · quando. Órgão longo ("Gabinete Desa. Joanice
+     Maria Guimarães de Jesus") corta no fim, e o que corta é o que já está por
+     extenso no bloco "Processo". */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* O impulso do iOS, senão a rolagem dentro do diálogo fica travada. */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.rodape {
+  flex: none;
+  padding: var(--space-md) var(--space-lg);
+  /* A área segura do iPhone: sem isto os botões ficam debaixo da barra de
+     gestos. Mesmo tratamento da `BarraInferior`. */
+  padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  background: var(--paper);
+  border-top: 1px solid var(--line-strong);
+}
+
+@media (min-width: 900px) {
+  /* DESKTOP: um cartão centrado, com a lista visível atrás do véu. A lista não
+     reflui — é isso que o painel na linha não conseguia dar. */
+  .card {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* 880 e não 1040: o card virou um DOCUMENTO de uma coluna, e 1040px de
+       largura útil dava linhas de mais de 110 caracteres. O desenho original
+       usava 1040 com uma calha de 352px à direita — a calha saiu porque, para
+       existir, o DOM teria de ser reordenado, e a ordem do DOM aqui É a ordem
+       de leitura, do Tab e do leitor de tela. */
+    width: min(880px, calc(100vw - 96px));
+    height: min(860px, calc(100vh - 80px));
+    border: 1px solid var(--brick-deep);
+    /* A ÚNICA sombra do sistema, e ela é estrutural: com `--radius: 0` e sem
+       elevação em lugar nenhum, é o que separa o card do que está atrás dele. */
+    box-shadow: 0 18px 48px rgb(20 26 21 / 30%);
+  }
+
+  .barra { padding: var(--space-md) var(--space-xl) var(--space-md) var(--space-md); }
+  .tipo { font-size: 18px; }
+  .rodape { padding: var(--space-md) var(--space-2xl); }
+}

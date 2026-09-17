@@ -48,6 +48,10 @@ export default async function PrazosPage({
       active="Prazos"
       mobileTitle="Prazos"
       mobileBreadcrumb="Início / Prazos"
+      /* Mesma conta do painel: só o que ainda vence. */
+      contadores={{
+        prazos: prazos.filter(p => !p.fechado && p.diasRestantes !== null && p.diasRestantes >= 0).length,
+      }}
       mobileActions={(
         <PrazoFilterControls
           filters={filters}

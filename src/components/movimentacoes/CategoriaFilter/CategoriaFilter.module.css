@@ -24,7 +24,7 @@
    arredondada de 999px que este componente trazia nasceu antes de ele ser
    montado em alguma tela. */
 .pill {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink-2);
   font-family: var(--ui);
@@ -51,4 +51,13 @@
 .pill:focus-visible {
   outline: 2px solid var(--brick);
   outline-offset: 2px;
+}
+
+/* 27px de altura é pílula de mouse. No dedo, 44. */
+@media (max-width: 767px) {
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

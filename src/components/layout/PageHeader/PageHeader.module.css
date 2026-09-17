@@ -8,7 +8,7 @@
   display: none;
   position: relative;
   padding: 10px 32px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-strong);
   align-items: center;
   gap: 16px;
   background: var(--paper);
@@ -29,7 +29,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .title {
@@ -44,7 +44,7 @@
 
 .breadcrumb {
   font-size: 11px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -61,7 +61,7 @@
 .tabs {
   display: inline-flex;
   flex: 0 0 auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
 }
 
@@ -186,7 +186,7 @@
   width: 100%;
   min-height: 42px;
   padding: 0 12px 0 38px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 0;
   background: var(--paper);
   color: var(--ink);
@@ -240,6 +240,7 @@
 .iconControl {
   width: 44px;
   min-height: 44px;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -311,7 +312,7 @@
   overscroll-behavior: contain;
   padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
   background: var(--paper);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-width: 1px 0 0;
   box-shadow: 0 -18px 48px rgba(20, 26, 21, 0.22);
 }
@@ -376,7 +377,7 @@
   min-height: 44px;
   min-width: 44px;
   padding: 0 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink-2);
   font-family: var(--ui);
@@ -417,7 +418,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .filterOptions {

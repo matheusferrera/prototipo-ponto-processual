@@ -1,0 +1,112 @@
+/* A navegação do celular — ver o docblock de `BarraInferior`.
+   Some inteira a partir de 768px, onde o menu lateral volta. */
+
+/* ── POSICIONAMENTO ──────────────────────────────────────────────────────
+   `sticky: bottom`, não `fixed`. `fixed` tiraria a barra do fluxo e o último
+   item de qualquer lista ficaria permanentemente escondido atrás dela — numa
+   pauta, seria o prazo mais distante; num feed, a linha mais antiga da página.
+   Com `sticky` dentro do `<main>` em coluna, o fluxo reserva a altura e a
+   barra acompanha a rolagem por cima do conteúdo; no fim da lista ela encosta
+   sem cobrir nada.
+
+   `margin-top: auto` a empurra para o pé quando a página é mais curta que a
+   tela — senão ela flutuaria colada ao conteúdo, no meio do vazio.
+
+   Mora AQUI e não no módulo do layout: prender o posicionamento a um
+   `.main > nav:last-child` faria a barra depender da ordem dos filhos de
+   outro componente, e quebraria em silêncio na primeira reordenação. */
+.barra {
+  display: flex;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  margin-top: auto;
+  background: var(--paper);
+  border-top: 1px solid var(--line-strong);
+  /* A faixa de gestos do iOS e a barra de navegação do Android comem os
+     últimos pixels. Sem isto, o rótulo do último item fica debaixo delas. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.aba {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  /* 56px, acima do piso de 44 — aqui o alvo é percorrido com o polegar em
+     movimento, não com o dedo parado, e a margem extra é o que evita o toque
+     na aba vizinha. */
+  min-height: 56px;
+  padding: 6px 2px;
+  border: 0;
+  background: none;
+  font-family: var(--ui);
+  color: var(--ink-2);
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.abaAtiva { color: var(--brick); }
+
+.aba:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+/* A âncora do badge. `position: relative` fica no ÍCONE e não na aba inteira
+   para o número acompanhar o desenho, não a caixa de toque. */
+.icone { position: relative; display: flex; align-items: center; justify-content: center; }
+
+.rotulo {
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abaAtiva .rotulo { font-weight: 800; }
+
+.badge {
+  position: absolute;
+  top: -5px;
+  left: 11px;
+  min-width: 15px;
+  padding: 0 3px;
+  background: var(--ink-2);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* Tinto só no prazo: é a única contagem que COBRA alguma coisa. Verde nas
+   movimentações, que informam. Gastar o vermelho nas duas o esvaziaria. */
+.badge[data-tom='alert'] { background: var(--alert); }
+.badge[data-tom='brick'] { background: var(--brick); }
+
+/* O número tem de existir para o leitor de tela sem virar texto na tela —
+   o badge visual é `aria-hidden`. */
+.somenteLeitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 768px) {
+  .barra { display: none; }
+}

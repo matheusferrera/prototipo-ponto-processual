@@ -69,9 +69,33 @@
   gap: var(--space-2xs);
 }
 
-/* O ato — o que aconteceu. Título da linha desde 06/09/2026. Uma linha só:
-   o resumo da IA é uma frase inteira e, sem corte, ela sozinha empurrava a
-   linha para 200px. Quem quer a frase inteira abre o ato. */
+/* ── O TÍTULO DO ATO ──────────────────────────────────────────────────────
+   O que aconteceu. Título da linha desde 06/09/2026, quando ele deixou de ser
+   o rótulo do cartório e passou a ser o resumo da IA.
+
+   **A linha única era DELIBERADA, e a razão continua válida:** sem corte, uma
+   frase inteira sozinha empurrava a linha para 200px, e a densidade é o que
+   este redesenho comprou — 140px → 68px por linha, 6,6 → 13 linhas por tela,
+   324 → 130 páginas (medido em 06/09/2026). Quem quisesse a frase inteira
+   abria o ato.
+
+   O que mudou não foi a razão: foi onde ela se aplica. O corte em uma linha
+   economiza 38px — e na linha que abre prazo, que carrega a `FaixaDoPrazo`
+   embaixo, ela já passa de 120px. Ali os 38px não compram densidade nenhuma, e
+   custam justamente a manchete: o título saía cortado com "…" enquanto o bloco
+   abaixo dele aparecia inteiro.
+
+   O segundo argumento era a providência do destinatário — três ou quatro
+   linhas livres embaixo da faixa —, que saiu da linha em 15/09/2026; ver o
+   comentário da faixa no componente.
+
+   Três linhas no celular, duas a partir de `md`. Nas linhas de mera ciência —
+   a maioria, e as que sustentam a contagem de 68px — o resumo cabe em uma
+   linha e o clamp nunca acende: a densidade medida se mantém onde ela existe.
+
+   O par `-webkit-line-clamp` + `line-clamp` é obrigatório — o Safari ainda
+   exige o prefixado, como já está anotado em `ProcessoPanorama`. E o `title`
+   no elemento continua, para o caso raro em que três linhas não bastem. */
 .ato {
   font-size: 14px;
   font-weight: 600;
@@ -79,10 +103,26 @@
   letter-spacing: -0.01em;
   color: var(--ink);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: anywhere;
 }
 
+/* ── DE QUEM, ONDE, QUAL: parte · vara · número · tribunal ────────────────
+   Os quatro são o ENDEREÇO do ato, e desde 15/09/2026 os quatro moram aqui. O
+   CNJ e o tribunal vinham na calha da direita, o número numa fila só dele: 24
+   dígitos em mono fixavam a largura da calha, e a coluna que eles roubavam era
+   a do resumo — o ato saía com "…" em toda linha da lista enquanto meia tela
+   ficava vazia à direita. Aqui eles não custam altura (a linha já existia).
+
+   A ordem é do mais humano ao mais técnico: quem lê o feed reconhece o caso
+   pelo nome da parte; o número e o tribunal são o que ele copia depois de já
+   ter reconhecido.
+
+   O separador é do CONJUNTO, não do órgão: com `·` só no `::before` do órgão,
+   o número encostava na vara. */
 .linha2 {
   min-width: 0;
   display: flex;
@@ -96,6 +136,19 @@
      linha antiga — assunto, órgão e "autos nº". */
   color: var(--ink-2);
 }
+
+.linha2 > * + *::before {
+  content: '·';
+  margin-right: var(--space-sm);
+  color: var(--ink-3);
+}
+
+/* O tribunal fecha a linha SEM ponto: ele já tem moldura, e separador antes de
+   uma etiqueta é pontuação em cima de pontuação. O invólucro existe porque o
+   `::before` precisa cair FORA da borda da etiqueta — dentro dela, o ponto
+   apareceria impresso no chip. */
+.trib { display: inline-flex; flex: none; }
+.linha2 > .trib::before { content: none; }
 
 .cliente {
   font-weight: 500;
@@ -113,39 +166,14 @@
   color: var(--ink-2);
 }
 
-.orgao::before {
-  content: '·';
-  margin-right: var(--space-sm);
-  color: var(--ink-3);
-}
-
-/* A providência do destinatário. Marcador + frase, no lugar da caixa com
-   moldura e rótulo em caixa alta que ocupava ~50px. */
-.acao {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
-  margin-top: var(--space-2xs);
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.conferir {
-  margin-left: var(--space-sm);
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--alert);
-  white-space: nowrap;
-}
-
 /* No celular a calha é uma LINHA que quebra, não uma coluna: empilhada, ela
    somava três linhas próprias (chips, CNJ, prazo) e a movimentação chegava a
    133px — a mesma altura do cartão que este redesenho substituiu. Em linha,
-   os mesmos elementos cabem em uma ou duas. */
+   os mesmos elementos cabem em uma ou duas.
+
+   Desde 15/09/2026 ela carrega só o TIPO do ato (e o selo "Nova", quando
+   ligado): número e tribunal desceram para a linha da parte, e a procedência
+   saiu da lista. A peça continua na coluna ao lado, fora da âncora. */
 .calha {
   min-width: 0;
   display: flex;
@@ -161,24 +189,24 @@
   min-width: 0;
 }
 
-/* DE ONDE VEIO — a mesma altura e peso da categoria, um degrau mais discreto
-   na cor: as duas dividem a calha, e a categoria responde "a que serve" (o que
-   o advogado filtra), enquanto a origem responde "quem disse" (o que ele
-   confere). Sem moldura, para não competir com o selo "Nova". */
-.origem {
-  flex: none;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: lowercase;
-  color: var(--ink-3);
-  white-space: nowrap;
-}
+/* O TIPO DO ATO — o que a calha da direita guarda, e desde 15/09/2026 a única
+   coisa que ela guarda. Dividia o lugar com a procedência ("diário", "portal"):
+   duas etiquetas cinzas de 10px lado a lado, e a que o advogado usa para
+   filtrar é esta. Quem disse continua respondido na ficha do ato.
 
+   **A anatomia é a de `TribTag`, de propósito** — mesma altura, mesmo padding,
+   mesma borda `--line-strong` (3,28:1; `--line` mede 1,41:1 e reprovaria o
+   piso de 3:1 do WCAG 1.4.11 para elemento de interface). Os dois são
+   classificadores; inventar uma segunda anatomia de etiqueta para o mesmo
+   tamanho é o que faz uma lista parecer montada por duas pessoas. O que os
+   separa é o tipo: o tribunal é mono, o tipo do ato é caixa alta espaçada. */
 .categoria {
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
   font-size: 10px;
   font-weight: 600;
+  line-height: 1.2;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-2);
@@ -196,7 +224,12 @@
   white-space: nowrap;
 }
 
+/* O NÚMERO — penúltimo campo da linha, antes do tribunal. `flex: none` porque
+   ele é chave e não texto corrido: quem cede espaço quando a linha aperta é o
+   nome da parte e a vara, que têm reticências; um CNJ pela metade não
+   identifica processo nenhum. */
 .cnj {
+  flex: none;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 500;
@@ -206,22 +239,14 @@
   white-space: nowrap;
 }
 
-.chevron {
-  display: none;
-  width: 16px;
-  height: 16px;
-  color: var(--ink-3);
-  transition: transform 150ms ease, color 150ms ease;
-}
-
-.item:hover .chevron { color: var(--ink); transform: translateX(2px); }
-
-/* Linha aberta: o chevron aponta para baixo (é o que diz "isto se fecha") e a
-   linha ganha o mesmo fundo do painel, para os dois lerem como um bloco só. */
+/* Linha aberta: ela ganha o mesmo fundo do painel, para os dois lerem como um
+   bloco só, e o título engrossa. Eram TRÊS canais dizendo isto — havia também
+   um chevron que girava 90°. Ele saiu em 15/09/2026: para pagar o giro, o
+   ícone tinha de estar em toda linha, e em 29 de 50 ele era a única coisa na
+   calha — uma seta cinza repetida cinquenta vezes, anunciando de uma lista
+   inteira o que só duas linhas por vez fazem. */
 .item:has(.aberta) { background: var(--paper-2); }
 .item:has(.aberta):hover { background: var(--paper-3); }
-.aberta .chevron { transform: rotate(90deg); color: var(--ink); }
-.aberta:hover .chevron { transform: rotate(90deg) translateX(2px); }
 .aberta .ato { font-weight: 700; }
 
 /* Vermelho até 7 dias, amarelo até 14 e verde acima de 14. */
@@ -258,7 +283,12 @@
   opacity: 0.85;
 }
 
-/* Densidade compacta (painel): uma linha só, sem resumo nem providência. */
+/* Densidade compacta (painel): uma linha só, sem resumo nem providência.
+
+   Aqui o corte em UMA linha continua certo e não é o mesmo defeito do feed: a
+   lista do painel é um resumo de três itens ao lado de outros dois cartões, e
+   quem quer o ato inteiro abre o feed. O `title` no elemento e o clique para a
+   página do ato são as saídas. */
 .compacta {
   gap: var(--space-sm);
   padding-top: var(--space-sm);
@@ -300,31 +330,39 @@
     max-width: 320px;
   }
 
-  .chevron { display: block; }
-
-  /* Medida de leitura. Sem teto, o resumo do ato corria ~160 caracteres por
-     linha num monitor de 1440px — o dobro do confortável. */
-  .ato { max-width: 80ch; }
-  .acao { max-width: 80ch; }
+  /* O RESUMO VAI ATÉ A CALHA — sem teto de medida.
+     Havia `max-width: 80ch` aqui, pela medida de leitura: sem ele o resumo
+     corria ~160 caracteres por linha num monitor de 1440px. O argumento vale
+     para texto CORRIDO e não valia para este campo, porque ele é cortado em
+     duas linhas: o teto não encurtava a leitura, ele só antecipava o "…" — o
+     ato saía truncado com meia tela vazia à direita, que é exatamente o
+     contrário do que a medida existe para comprar. O clamp continua sendo o
+     teto de altura, e agora ele corta só quando a frase realmente não cabe. */
   .orgao { max-width: 34ch; }
 
   .compacta { padding-left: var(--space-lg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .item, .chevron { transition: none; }
-  .item:hover .chevron { transform: none; }
-  .item:has(.aberta):hover .chevron { transform: rotate(90deg); }
+  .item { transition: none; }
 }
 
 /* ---- A calha da peça: UM ícone, documento ou cadeado ----
    Coluna 2 do item, RESERVADA mesmo vazia: aparecendo só onde há peça, ela
    mudava a largura da coluna de texto de linha para linha e a calha da direita
-   (chips, CNJ) dançava na lista. Vazia ela custa 28px e nada mais. */
+   (chips, CNJ) dançava na lista. Vazia ela custa 28px e nada mais.
+
+   **Alinhada pelo TOPO, não pelo centro.** Ela é irmã da linha na grade, então
+   centralizada ela se media pela altura do ITEM inteiro — numa linha alta (duas
+   linhas de resumo, faixa de prazo, painel aberto) o ícone descia dezenas de
+   pixels abaixo da etiqueta do tipo, e os dois deixavam de ser um par. Os 8px
+   são o que põe o centro da caixa de 28px na mesma altura do centro da
+   etiqueta, que começa nos 12px de padding da linha. */
 .docs {
   grid-column: 2;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: var(--space-sm);
   justify-content: flex-end;
   /* `min-width`, não `width`: quando o documento não abre, `DocumentoLink`
      troca o ícone pela MENSAGEM do backend, e numa caixa de 28px ela sairia
@@ -363,6 +401,46 @@
 @container movimento-processo (max-width: 680px) {
   .row.noProcesso { display: flex; flex-direction: column; gap: var(--space-sm); }
   .noProcesso .calha { flex-direction: row; flex-wrap: wrap; align-items: center; text-align: left; max-width: none; }
-  .noProcesso .chevron { display: block; }
   .noProcesso .hora { padding: 0; }
+}
+
+/* ── AINDA NÃO VISTA ───────────────────────────────────────────────────────
+   Um quadrado verde de 6px na calha esquerda, o MESMO sinal do divisor do topo
+   — é ele que liga "12 novas desde ontem" às linhas que as são.
+
+   Marcador, não fundo tingido. O fundo já é o canal do hover e do `signal`
+   (publicação recente), e numa carteira recém-importada as duas coisas
+   coincidem em quase toda linha: somar um terceiro uso do fundo deixaria a
+   lista inteira colorida, que é o mesmo que não marcar nada.
+
+   `::before` na própria linha, dentro do padding: não muda a altura, não
+   reflui a grade e não exige um elemento a mais por linha numa lista de 50. */
+.item[data-nao-vista] { position: relative; }
+
+.item[data-nao-vista]::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 18px;
+  width: 6px;
+  height: 6px;
+  background: var(--brick);
+}
+
+.item[data-nao-vista] .ato { font-weight: 700; }
+
+@media (min-width: 768px) {
+  /* Duas linhas seguram ~180 caracteres numa coluna de desktop — mais que
+     qualquer resumo medido. A terceira só existe para a largura do celular. */
+  .ato { -webkit-line-clamp: 2; line-clamp: 2; }
+}
+
+/* No celular o atalho do documento é o único jeito de abrir a peça sem sair
+   da lista: 28px vira 44px. */
+@media (max-width: 767px) {
+  .docLink,
+  .docTrancado {
+    width: 44px;
+    height: 44px;
+  }
 }

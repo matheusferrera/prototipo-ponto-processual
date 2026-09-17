@@ -1,0 +1,192 @@
+/* A pergunta feita uma vez por processo — ver o docblock do componente. */
+
+.raiz {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.pergunta { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+.opcao,
+.nenhum,
+.desfazer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 11px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.opcao:hover:not(:disabled) { background: var(--brick-soft); border-color: var(--brick); color: var(--brick-deep); }
+
+/* "Nenhum dos dois" fica visualmente mais fraco que as duas opções de cliente:
+   ele é a saída, não uma terceira escolha equivalente. */
+.nenhum { color: var(--ink-2); font-weight: 600; }
+.nenhum:hover:not(:disabled) { background: var(--paper-2); }
+
+.desfazer { color: var(--ink-2); font-weight: 600; }
+.desfazer:hover:not(:disabled) { background: var(--paper-2); }
+
+.opcao:disabled, .nenhum:disabled, .desfazer:disabled { opacity: .55; cursor: default; }
+
+.opcao:focus-visible,
+.nenhum:focus-visible,
+.desfazer:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.opcao svg, .nenhum svg, .desfazer svg { flex: none; }
+
+/* O nome do polo pode ser coletivo (313 partes no TRF1). Corta com reticências
+   em vez de esticar o botão para fora da tela. */
+.nome {
+  min-width: 0;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recusado { font-size: 12px; color: var(--ink-2); }
+
+.erro { flex: 1 1 100%; font-size: 12px; line-height: 1.5; color: var(--alert); }
+
+.girando { animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation: none; }
+  .opcao, .nenhum, .desfazer { transition: none; }
+}
+
+@media (max-width: 767px) {
+  /* No celular os botões ocupam a largura e empilham: dois nomes de parte não
+     cabem lado a lado em 390px sem virar reticências em ambos. */
+  .opcao, .nenhum { width: 100%; min-height: 44px; justify-content: flex-start; }
+  .nome { max-width: none; }
+}
+
+/* ── A PERGUNTA NO LUGAR DO NOME (variante `bloco`) ─────────────────────────
+   Ver o docblock do componente: `indefinido` é ~30% do acervo, e na faixa de
+   identidade a alternativa a perguntar é um vazio onde deveria estar o
+   cliente. */
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 1px solid var(--line-strong);
+  background: var(--paper-2);
+  min-width: 0;
+}
+
+.cartaoTitulo {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+}
+
+.cartaoTexto {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+.cartaoTexto strong { color: var(--ink); font-weight: 650; }
+
+.escolhas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+/* 52px: o alvo é o nome do cliente, e é o único gesto do bloco. */
+.escolha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px var(--space-md);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.escolha:hover:not(:disabled) { border-color: var(--brick); background: var(--brick-soft); }
+.escolha:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.escolha:disabled { opacity: .55; cursor: default; }
+
+.escolhaNome {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.escolhaPolo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* A saída é mais fraca que as duas escolhas: ela não é uma terceira opção
+   equivalente. Sublinhado em vez de caixa, para não virar um terceiro botão. */
+.recusar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.recusar:hover:not(:disabled) { color: var(--ink); }
+.recusar:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.recusar:disabled { opacity: .55; cursor: default; }
+
+.cartaoNota {
+  margin: var(--space-xs) 0 0;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) { .escolha { transition: none; } }

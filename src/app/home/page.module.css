@@ -405,7 +405,7 @@
 }
 .marqueeItem {
   flex-shrink: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
   padding: 12px 22px;
   font-family: var(--mono);
@@ -461,7 +461,7 @@
 .testimonial {
   margin: 0;
   background: var(--paper);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   padding: 24px 22px;
   display: flex;
   flex-direction: column;
@@ -739,4 +739,25 @@ a.footerBrand {
   display: inline-flex;
   align-items: center;
   gap: inherit;
+}
+
+/* Links de texto da landing no piso de toque: o padding com margem negativa
+   estende o alvo sem mover nada. Os do rodapé, empilhados a 10px, ganham a
+   altura de linha inteira. */
+@media (max-width: 767px) {
+  .textCta,
+  .brand {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-block: 10px;
+    margin-block: -10px;
+  }
+  .footerCol a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 12px;
+    margin-block: -12px;
+  }
 }

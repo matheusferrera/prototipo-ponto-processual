@@ -15,6 +15,9 @@
   --color-ink-4:      #9aaa9d;
   --color-line:       #cdd7cf;
   --color-line-soft:  #dce6de;
+  /* 3,28:1 sobre o papel — o piso de 3:1 do WCAG para elemento de interface.
+     `--line` mede 1,41:1 e NÃO o alcança: ver o bloco em :root. */
+  --color-line-strong:#7d8f80;
   --color-brick:      #166534;
   --color-brick-soft: #dcf0e3;
   --color-brick-deep: #14532d;
@@ -56,6 +59,31 @@
   --ink-4:      #9aaa9d;
   --line:       #cdd7cf;
   --line-soft:  #dce6de;
+  /* ── A BORDA QUE CARREGA ESTRUTURA ──────────────────────────────────────
+     Com `--radius: 0px`, a borda é a ÚNICA coisa que separa um painel do
+     outro — não há sombra, não há canto arredondado, não há elevação. E
+     `--line` mede **1,41:1** sobre `--paper` (medido em 15/09/2026), menos da
+     metade do piso de 3:1 que o WCAG 1.4.11 exige de elemento de interface.
+     Em monitor de escritório com brilho baixo, os painéis do dashboard
+     deixavam de ter contorno e a tela virava uma superfície só.
+
+     3,28:1 no papel · 3,04:1 sobre `paper-2` · 2,82:1 sobre `paper-3`.
+     Fica propositalmente ABAIXO de `--ink-3` para não competir com texto.
+
+     > **`--line` continua existindo, e não é sobra.** Ele é o filete INTERNO
+     > de lista — o que separa irmãos dentro de um painel que já tem contorno.
+     > Promovê-lo a `--line-strong` transformaria cada lista numa grade. */
+  --line-strong: #7d8f80;
+  /* ── A LEGENDA QUE PASSA NO AA ──────────────────────────────────────────
+     `--ink-3` mede 4,32:1 no papel e reprova texto pequeno; `--ink-2` é forte
+     demais para o terceiro nível de uma linha (número do processo, "ontem",
+     "sem acesso"). Este fica entre os dois: 5,9:1 sobre `--paper`, 5,5:1 sobre
+     `--paper-2`. Nasceu com a tela de movimentações de 17/09/2026. */
+  --ink-soft:   #56655a;
+  /* O cartão sobre o chão `--paper-2`. Branco puro, e é o único: com
+     `--radius: 0` e sem sombra, o que separa um cartão do chão é o contraste
+     do fundo mais o filete. */
+  --surface:    #ffffff;
   --brick:      #166534;
   --brick-soft: #dcf0e3;
   --brick-deep: #14532d;
@@ -142,8 +170,26 @@
    (bordas, box-shadow) que, sem isso, aciona a barra horizontal da página —
    e essa barra rouba altura da viewport, o que por sua vez faz o `.root`
    (100vh fixo) estourar por baixo e abrir uma SEGUNDA barra, vertical. Quem
-   rola de verdade é só a tabela (.desktopTableWrap), nunca o documento. */
-html, body { height: 100%; overflow-x: hidden; }
+   rola de verdade é só a tabela (.desktopTableWrap), nunca o documento.
+
+   `clip`, não `hidden` (17/09/2026). `hidden` num eixo obriga o outro a
+   `auto`, e isso faz do <body> um CONTÊINER DE ROLAGEM que nunca rola (a
+   altura dele é a do conteúdo): todo `position: sticky` do celular passou a
+   grudar nesse contêiner parado, e não na tela. Medido a 390px, rolando 900px
+   em /movimentacoes, /prazos e /processos: a barra do topo ia junto (topo em
+   −900) e a barra de baixo nunca encostava no pé. `clip` corta a sobra do
+   mesmo jeito e não cria contêiner de rolagem. */
+html, body { overflow-x: clip; }
+
+/* `height: 100%` só a partir do shell fixo. No celular ele fazia do <body> o
+   ROLADOR (html preso em 100% + overflow-x hidden => overflow-y auto no body):
+   medido em 16/09/2026, `documentElement.scrollHeight` ficava em 812 com o
+   body em 3560. Custa caro no iOS: a barra do Safari não recolhe ao rolar,
+   a restauração de posição ao voltar falha e o scroll-to-top pelo relógio
+   não responde. Com o documento rolando, tudo isso é de graça. */
+@media (min-width: 768px) {
+  html, body { height: 100%; }
+}
 
 .sr-only {
   position: absolute;
@@ -271,3 +317,43 @@ body {
     @apply font-sans;
   }
 }
+
+/* ── Celular: pisos de toque e de leitura ─────────────────────────────────
+   Valem para o produto inteiro abaixo de 768px, onde o ponteiro é o dedo.
+   Medido em 16/09/2026 a 375px: 42 campos com fonte < 16px (o iOS dá zoom
+   ao focar cada um deles) e 100+ botões shadcn nos tamanhos sm/xs/icon, que
+   são de mouse (28–32px). */
+@media (max-width: 767px) {
+  /* < 16px em campo de texto = zoom automático do iOS ao focar. */
+  /* `!important` de propósito: é um PISO, e os módulos definem 11–13px com
+     seletor de classe (`.sortControl select`), que ganha de `select` puro. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* shadcn: sm/xs/icon-* viram 44px. `min-height` vence o `h-7`/`size-8`
+     do Tailwind sem precisar tocar em cada chamada. `.group\/button` é o
+     mesmo botão quando é um <a> com `buttonVariants` (sem data-slot). */
+  [data-slot="button"],
+  .group\/button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  [data-slot="button"].size-6,
+  [data-slot="button"].size-7,
+  [data-slot="button"].size-8,
+  .group\/button.size-6,
+  .group\/button.size-7,
+  .group\/button.size-8 {
+    width: 44px;
+    height: 44px;
+  }
+  [data-slot="native-select"],
+  [data-slot="input"] { min-height: 44px; }
+
+  /* Sem o atraso de 300ms do duplo-toque em nada que se toca. */
+  a, button, summary, label, [role="button"] { touch-action: manipulation; }
+}
+

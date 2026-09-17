@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { cn, buildQuery } from '@/lib/utils';
 import { MovimentacaoRow } from '@/components/movimentacoes/MovimentacaoRow/MovimentacaoRow';
+import { AtosDeTramite } from '@/components/movimentacoes/AtosDeTramite/AtosDeTramite';
+import { agruparTramite } from '@/lib/fio-do-prazo';
 import type { Movimentacao } from '@/types';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader/DateGroupHeader';
 import styles from './PageContent.module.css';
@@ -21,23 +23,30 @@ interface PageContentProps {
   porPagina: number;
   /** params de filtro/busca a preservar nos links de paginação */
   listParams?: Record<string, string | undefined>;
-  /** O ato aberto no lugar, quando `?aberta=<id>` aponta para uma linha desta página. */
-  aberta?: { id: string; painel: ReactNode } | null;
 }
 
 export function PageContent({
-  movimentacoes, pageInfo, total, totalPages, currentPage, porPagina, listParams = {}, aberta = null,
+  movimentacoes, pageInfo, total, totalPages, currentPage, porPagina, listParams = {},
 }: PageContentProps) {
   const itemsOnPage = movimentacoes.flatMap(g => g.items).length;
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * porPagina + 1;
   const rangeEnd = (currentPage - 1) * porPagina + itemsOnPage;
   const pageHref = (p: number) => buildQuery(listParams, { page: String(p) });
-  /* O href da linha precisa carregar a PÁGINA atual: `listParams` só tem os
-     filtros, então abrir um ato na página 2 voltaria para a 1 — onde aquele id
-     não está, e nada abriria. */
-  const paramsDaLinha = { ...listParams, page: currentPage > 1 ? String(currentPage) : undefined };
   const hasFilters = ['q', 'tribunal', 'tipo', 'categoria', 'sort'].some(key => Boolean(listParams[key]));
   const isEmpty = total === 0;
+
+  /* Uma linha do feed — a mesma dentro e fora do bloco de trâmite, senão o
+     colapso passaria a ser um segundo renderizador do mesmo ato.
+
+     **O destino é o ATO, e é um link simples.** Até 15/09/2026 era
+     `?aberta=<id>`, que expandia um painel dentro da lista; hoje a navegação é
+     interceptada por `@card/(.)[id]` e o ato abre num card POR CIMA, com a
+     lista parada atrás. Nada aqui precisa saber disso — a linha só aponta para
+     o endereço do ato, e ele funciona dos dois jeitos: card quando se chega da
+     lista, página inteira quando se abre direto. Ver `CardDoAto`. */
+  const renderLinha = (m: Movimentacao) => (
+    <MovimentacaoRow m={m} href={`/movimentacoes/${m.id}`} />
+  );
 
   return (
     <>
@@ -62,23 +71,27 @@ export function PageContent({
                   count={`${g.items.length} ${g.items.length === 1 ? 'movimentação' : 'movimentações'}`}
                 />
 
+                {/* ── O CARTÓRIO COLAPSA ────────────────────────────────
+                    Corridas consecutivas de trâmite e publicação viram uma
+                    linha de 44px com "mostrar" ao lado. São 63% do feed,
+                    medido — e cada uma ocupava a altura de uma sentença.
+
+                    O que está DENTRO de um prazo aberto nunca entra no bloco:
+                    "Decorrido prazo do réu" é trâmite pela categoria e é, com
+                    o relógio correndo, a linha mais importante do dia. Ver
+                    `colapsavelNaLista`. */}
                 <ol className={styles.list}>
-                  {g.items.map(m => {
-                    const estaAberta = aberta?.id === m.id;
-                    return (
-                      <li key={m.id}>
-                        <MovimentacaoRow
-                          m={m}
-                          /* Aberta aponta para o href SEM `aberta`, então o
-                             mesmo clique fecha. Um id por vez: o painel é alto,
-                             e duas linhas abertas apagam o cabeçalho de dia
-                             como ponto de referência. */
-                          href={`/movimentacoes${buildQuery(paramsDaLinha, { aberta: estaAberta ? undefined : m.id })}`}
-                          painel={estaAberta ? aberta.painel : undefined}
-                        />
-                      </li>
-                    );
-                  })}
+                  {agruparTramite(g.items).map((bloco, i) => (
+                    bloco.tipo === 'linha'
+                      ? <li key={bloco.item.id}>{renderLinha(bloco.item)}</li>
+                      : (
+                        <li key={`tramite-${g.date}-${i}`}>
+                          <AtosDeTramite itens={bloco.itens}>
+                            {bloco.itens.map(m => <li key={m.id}>{renderLinha(m)}</li>)}
+                          </AtosDeTramite>
+                        </li>
+                      )
+                  ))}
                 </ol>
               </section>
             ))

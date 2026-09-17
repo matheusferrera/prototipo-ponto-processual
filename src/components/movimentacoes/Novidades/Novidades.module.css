@@ -1,0 +1,530 @@
+/* A aba Novas. Base = celular (390px); ≥768 esconde a frase (ela sobe para a
+   linha das abas); ≥1200 vira a coluna da esquerda da tela dividida. */
+
+.novidades {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-sm);
+}
+
+/* ── A frase e o "Marcar vistas" ─────────────────────────────────────────── */
+
+.resumo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 6px 2px var(--space-lg);
+}
+
+.resumoTexto {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.resumoTexto strong { font-weight: 800; color: var(--ink); }
+
+.teto {
+  margin: var(--space-sm) var(--space-lg) 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.teto a { font-weight: 800; color: var(--brick); }
+
+/* ── Títulos de seção ────────────────────────────────────────────────────── */
+
+.secao {
+  margin: 0;
+  padding: 26px var(--space-lg) var(--space-sm);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+section:first-of-type > .secao { padding-top: 14px; }
+.secao[data-tom='acao'] { color: var(--brick-deep); }
+
+.pilha {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 var(--space-md);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.cnj {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ── Pede sua ação ───────────────────────────────────────────────────────── */
+
+.cartao {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.cartao:hover { border-color: var(--line-strong); }
+
+.faixa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md) 14px;
+  background: var(--brick-soft);
+  color: var(--brick-deep);
+}
+
+.cartao[data-tom='ambar'] .faixa { background: var(--signal-soft); color: var(--signal-ink); }
+.cartao[data-tom='tinto'] .faixa { background: var(--alert-soft); color: var(--alert); }
+
+.faixaLinha {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--space-md);
+}
+
+.faixaDistancia { font-size: 20px; line-height: 1.2; font-weight: 800; }
+.faixaData { font-size: 14px; font-weight: 700; }
+
+.estimado { text-decoration: none; cursor: help; }
+
+.regua {
+  display: block;
+  height: 4px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.regua > span {
+  display: block;
+  height: 4px;
+  background: var(--brick);
+}
+
+.cartao[data-tom='ambar'] .regua > span { background: var(--signal); }
+.cartao[data-tom='tinto'] .regua > span { background: var(--alert); }
+
+/* O bloco de dias é a forma do desktop largo — no celular, a faixa diz o mesmo. */
+.faixaBloco { display: none; }
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-md) 14px 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* O CARTÃO INTEIRO é o link: a área do corpo se estende sobre ele, e as saídas
+   do rodapé pintam por cima. Âncora dentro de âncora é HTML inválido — por isso
+   estender em vez de embrulhar. */
+.corpo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.corpo:focus-visible { outline: none; }
+.corpo:focus-visible::after { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.titulo {
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.confirmar {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--signal-ink);
+}
+
+.resumoAto {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.cliente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-sm);
+  margin-top: var(--space-xs);
+  font-size: 13px;
+}
+
+.clienteNome { font-weight: 700; color: var(--ink); }
+
+.rodape {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+
+.verOQueFazer {
+  flex: 1;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brick);
+  text-decoration: none;
+}
+
+.botaoDoc {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-left: 1px solid var(--line-soft);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.verOQueFazer:hover,
+.botaoDoc:hover { background: var(--paper-2); }
+
+.verOQueFazer:focus-visible,
+.botaoDoc:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+/* ── Um processo ─────────────────────────────────────────────────────────── */
+
+.processo {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.processoCabeca {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-md) 14px;
+}
+
+.processoNome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.processoNome:hover .processoCliente { text-decoration: underline; text-underline-offset: 3px; }
+a.processoNome:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.processoCliente {
+  min-width: 0;
+  font-size: 16px;
+  line-height: 1.3;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.processoTrib {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.corre {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-sm) 10px;
+  background: var(--paper-2);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--brick-deep);
+}
+
+.corre svg { flex: none; }
+.corre[data-tom='tinto'] { background: var(--alert-soft); color: var(--alert); }
+.correTexto { flex: 1; min-width: 0; }
+.correTexto strong { font-weight: 800; }
+.correData { flex: none; font-weight: 700; white-space: nowrap; }
+
+.ato {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ato:hover { background: var(--paper); }
+
+.atoLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-md) var(--space-xs) var(--space-md) 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.atoLink::after,
+.cartorioLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.atoLink:focus-visible,
+.cartorioLink:focus-visible { outline: none; }
+.atoLink:focus-visible::after,
+.cartorioLink:focus-visible::after { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.atoTexto {
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.ato > :last-child:not(.atoLink) { margin: 6px var(--space-xs) 0 0; }
+
+/* ── Só cartório ─────────────────────────────────────────────────────────── */
+
+.soCartorio {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.soCartorioTitulo {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.soCartorioLista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cartorioLinha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding-right: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cartorioLinha:last-child { border-bottom: 0; }
+.cartorioLinha:hover { background: var(--paper); }
+
+.cartorioLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0 10px 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.cartorioTexto { font-size: 14px; line-height: 1.35; font-weight: 600; }
+.cartorioCliente { font-size: 13px; color: var(--ink-2); }
+
+/* ── Fim e tela vazia ────────────────────────────────────────────────────── */
+
+.fim {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 28px var(--space-lg) var(--space-xl);
+  text-align: center;
+}
+
+.fim p { margin: 0; font-size: 14px; color: var(--ink-2); }
+
+.fimLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brick);
+  text-decoration: none;
+}
+
+.vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 64px var(--space-2xl);
+  text-align: center;
+}
+
+.vazioMarca {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brick-soft);
+  color: var(--brick);
+}
+
+.vazioTitulo { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink); }
+
+.vazioTexto {
+  margin: 0;
+  max-width: 320px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.vazioBotao {
+  min-height: 48px;
+  margin-top: var(--space-sm);
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--brick);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.vazioBotao:hover { background: var(--brick-deep); color: #fff; }
+
+/* ── ≥768: a frase sobe para a linha das abas ────────────────────────────── */
+
+@media (min-width: 768px) {
+  .resumo { display: none; }
+
+  .novidades {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 var(--space-xl) var(--space-xl);
+  }
+
+  .pilha,
+  .secao { padding-left: 0; padding-right: 0; }
+  .teto { margin-left: 0; }
+}
+
+/* ── ≥1200: a coluna da esquerda da tela dividida ────────────────────────── */
+
+@media (min-width: 1200px) {
+  .novidades {
+    max-width: none;
+    margin: 0;
+    padding: 0 20px var(--space-xl) var(--space-2xl);
+  }
+
+  .cartao {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .faixa {
+    justify-content: center;
+    padding: var(--space-md) var(--space-xs);
+  }
+
+  .faixaLinha,
+  .regua { display: none; }
+
+  .faixaBloco {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+  }
+
+  .blocoNumero { font-size: 30px; line-height: 1; font-weight: 800; }
+  .blocoNumero[data-hoje] { font-size: 18px; }
+  .blocoUnidade { font-size: 12px; font-weight: 700; }
+  .blocoData { margin-top: var(--space-sm); font-size: 12px; font-weight: 600; }
+
+  .corpo { gap: var(--space-xs); padding: var(--space-md) 14px; }
+  .titulo { font-size: 16px; line-height: 1.3; }
+  .resumoAto { font-size: 14px; -webkit-line-clamp: 2; line-clamp: 2; }
+
+  /* O painel da direita já tem o documento e o "o que fazer". */
+  .rodape { display: none; }
+
+  .processoCliente { font-size: 15px; }
+
+  .cartao[data-selecionado],
+  .ato[data-selecionado],
+  .cartorioLinha[data-selecionado] {
+    outline: 2px solid var(--brick);
+    outline-offset: -2px;
+  }
+
+  .ato[data-selecionado],
+  .cartorioLinha[data-selecionado] {
+    background: color-mix(in srgb, var(--brick-soft) 45%, var(--surface));
+  }
+}

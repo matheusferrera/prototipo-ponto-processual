@@ -1,0 +1,78 @@
+/* A corrida de trâmite colapsada — ver o docblock do componente. */
+
+.bloco {
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper-2);
+}
+
+.resumo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  /* 44px de alvo no celular: o `<summary>` é o único elemento clicável do
+     bloco, e um alvo de 28px numa lista rolável é o que faz o polegar abrir a
+     linha de baixo. */
+  min-height: 44px;
+  /* A calha da esquerda alinha o texto com o ATO das linhas vizinhas (6px de
+     marca + 8px + 36px de hora + 8px), para o bloco ler como parte da lista e
+     não como uma barra por cima dela. */
+  padding: var(--space-sm) var(--space-lg) var(--space-sm) 58px;
+  cursor: pointer;
+  list-style: none;
+  /* O triângulo padrão do Safari/Chrome apareceria ao lado do nosso chevron. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.resumo::-webkit-details-marker { display: none; }
+.resumo:hover { background: var(--paper-3); }
+.resumo:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.seta {
+  flex: none;
+  margin-left: -20px;
+  color: var(--ink-2);
+  transition: transform 120ms ease;
+}
+.bloco[open] .seta { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .seta { transition: none; } }
+
+.contagem {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.tipos {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acao {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick-deep);
+}
+.bloco[open] .acao { display: none; }
+
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--paper);
+  /* O filete separa o que estava escondido do que sempre esteve à vista. */
+  border-top: 1px solid var(--line-strong);
+}
+
+@media (max-width: 767px) {
+  /* No celular a calha da linha é menor; o recuo acompanha, senão o texto do
+     resumo começa depois do da linha de cima. */
+  .resumo { padding-left: 52px; }
+  .seta { margin-left: -18px; }
+}

@@ -1,0 +1,416 @@
+/* O corpo do ato — ver o docblock do componente. A situação em cima, com o fundo
+   do tom; o resto em blocos separados por filete, sem caixa. */
+
+.corpo { display: flex; flex-direction: column; }
+
+.bloco {
+  padding: 22px var(--space-lg) 20px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper);
+}
+
+.bloco:last-child { border-bottom: none; }
+
+.rotulo {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.mono { font-family: var(--mono); font-size: 13px; }
+
+/* ── 0 · A situação ──────────────────────────────────────────────────────── */
+
+.situacao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px var(--space-lg) var(--space-lg);
+  background: var(--paper-2);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+
+.situacao[data-tom='voce'],
+.situacao[data-tom='prazo'] { background: var(--brick-soft); color: var(--brick-deep); }
+.situacao[data-tom='ambar'] { background: var(--signal-soft); color: var(--signal-ink); }
+.situacao[data-tom='tinto'] { background: var(--alert-soft); color: var(--alert); }
+
+.chip {
+  align-self: flex-start;
+  padding: 3px var(--space-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.chip[data-tipo='cheio'] { border-color: var(--brick); background: var(--brick); color: #fff; }
+.chip[data-tipo='contorno'] { border-color: var(--brick); color: var(--brick-deep); }
+
+.situacaoTitulo {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.situacaoPrazo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.situacaoLinha {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--space-md);
+}
+
+.situacaoDistancia { font-size: 20px; font-weight: 800; }
+.situacaoData { font-size: 15px; font-weight: 700; }
+
+.regua {
+  display: block;
+  height: 6px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.regua > span {
+  display: block;
+  height: 6px;
+  background: var(--brick);
+}
+
+.situacao[data-tom='ambar'] .regua > span { background: var(--signal); }
+.situacao[data-tom='tinto'] .regua > span { background: var(--alert); }
+
+.situacaoDetalhe {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.nota {
+  display: flex;
+  gap: var(--space-sm);
+  margin: var(--space-xs) 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.nota svg { flex: none; margin-top: 1px; }
+
+/* A ressalva de data calculada sai em âmbar-tinta: é o aviso que impede uma
+   estimativa de passar por vencimento oficial. */
+.nota[data-alerta] { color: var(--signal-ink); }
+.situacao[data-tom='tinto'] .nota[data-alerta] { color: var(--alert); }
+
+.conta { margin: 0; }
+
+.contaResumo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brick);
+  cursor: pointer;
+  list-style: none;
+}
+
+.contaResumo::-webkit-details-marker { display: none; }
+.contaResumo:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.contaSeta { flex: none; transition: transform .15s ease; }
+details[open] > summary > .contaSeta { transform: rotate(90deg); }
+
+.contaEsconder { display: none; }
+.conta[open] .contaVer { display: none; }
+.conta[open] .contaEsconder { display: inline; }
+
+.contaCorpo {
+  padding: var(--space-xs) var(--space-md);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+/* A cadeia traz o próprio respiro de quando morava no painel — aqui dentro ela
+   já está numa caixa. */
+.contaCorpo > * { margin-top: 0; border-top: 0; }
+
+.verbos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.verbos > * { min-width: 0; }
+.verbos > * > button,
+.verbos > * > summary { width: 100%; }
+
+/* ── 1 · O que aconteceu ─────────────────────────────────────────────────── */
+
+.aconteceu {
+  margin: 10px 0 0;
+  font-size: 17px;
+  line-height: 1.55;
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* Sem leitura, o texto é o rótulo do cartório — curto, e é ele que nomeia o ato. */
+.aconteceu[data-rotulo] { font-weight: 700; }
+
+.registro {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* A CITAÇÃO: não é afirmação nossa, é o texto do juízo — cinza-papel, com o
+   filete da convenção de citação. */
+.citacao {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-md);
+  background: var(--paper-2);
+  border-left: 3px solid var(--line-strong);
+}
+
+.citacaoRotulo {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.citacaoTexto {
+  margin: var(--space-xs) 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.citacaoMais {
+  margin: var(--space-sm) 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brick-deep);
+}
+
+/* ── 2 · O que fazer ─────────────────────────────────────────────────────── */
+
+.fazerTexto {
+  margin: var(--space-md) 0 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* Providência de OUTRA parte não ganha peso de tarefa: é contexto. */
+.bloco[data-outro] .fazerTexto { color: var(--ink-2); }
+
+.fazerRessalva {
+  margin: var(--space-xs) 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.checklist { margin-top: var(--space-md); }
+
+.checklistLista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line-soft);
+}
+
+.checklistLista > li { border-bottom: 1px solid var(--line-soft); }
+
+.checklistItem {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.checklistItem input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--brick);
+}
+
+.checklistItem input:checked + span {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+
+.checklistNota {
+  margin: var(--space-sm) 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.fazerTags {
+  margin: var(--space-md) 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brick-deep);
+}
+
+.bloco[data-outro] .fazerTags { color: var(--ink-2); }
+
+.fazerObs {
+  margin: var(--space-sm) 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.fazerConferir {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--signal-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--signal-ink);
+}
+
+.fazerOrigem {
+  margin: var(--space-md) 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ── 4 · Processo ────────────────────────────────────────────────────────── */
+
+.blocoProcesso { padding-bottom: var(--space-xl); }
+
+.processo {
+  margin: var(--space-md) 0 0;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px var(--space-md);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.processoPar { display: contents; }
+.processoPar dt { color: var(--ink-soft); }
+.processoPar dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.processoPar:first-child dd { font-weight: 700; }
+
+.saidas {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--line-soft);
+}
+
+.saida {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.saida svg { color: var(--ink-2); }
+.saida:hover { color: var(--brick-deep); }
+.saida:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.arquivos { margin-top: var(--space-md); }
+
+.arquivosResumo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brick);
+  cursor: pointer;
+  list-style: none;
+}
+
+.arquivosResumo::-webkit-details-marker { display: none; }
+.arquivosResumo:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+/* ── ≥768: o card do desktop e o painel ao lado da lista ─────────────────── */
+
+@media (min-width: 768px) {
+  .bloco { padding: 28px var(--space-2xl) var(--space-xl); }
+  .situacao { padding: var(--space-xl) var(--space-2xl); gap: var(--space-md); }
+  .situacaoTitulo { font-size: 30px; }
+  .situacaoDistancia { font-size: 22px; }
+  .situacaoLinha,
+  .situacaoPrazo,
+  .nota,
+  .situacaoDetalhe { max-width: 640px; }
+
+  .processo { grid-template-columns: repeat(2, 96px minmax(0, 1fr)); }
+
+  .saidas {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0 var(--space-xl);
+    border-top: 0;
+  }
+
+  .saida {
+    min-height: 44px;
+    justify-content: flex-start;
+    gap: var(--space-xs);
+    border-bottom: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--brick);
+  }
+
+  .saida svg { color: currentColor; }
+
+  .verbos {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .verbos > * > button,
+  .verbos > * > summary { width: auto; }
+}

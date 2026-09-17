@@ -5,20 +5,13 @@ import Link from 'next/link';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import type { Movimentacao, TimelineEvent } from '@/types';
 import type { MovimentacaoDetail } from '@/lib/api.server';
+import { agruparTramite } from '@/lib/fio-do-prazo';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader/DateGroupHeader';
 import { AtoDetalhe } from '../AtoDetalhe/AtoDetalhe';
+import { AtosDeTramite } from '../AtosDeTramite/AtosDeTramite';
 import { MovimentacaoRow } from '../MovimentacaoRow/MovimentacaoRow';
 import { carregarAto } from './carregarAto';
 import styles from './TimelineProcesso.module.css';
-
-/**
- * Quantos atos de um mesmo dia aparecem antes do "mostrar mais".
- *
- * Três porque é o que cabe sem o dia empurrar o seguinte para fora da tela, e
- * porque o caso que motivou o corte é o dia de cartório: seis "Decorrido prazo
- * de FULANO" seguidos, um por parte, que são o mesmo fato repetido.
- */
-const ATOS_VISIVEIS_POR_DIA = 3;
 
 /**
  * Os atos de um DIA, sob um cabeçalho só.
@@ -49,12 +42,27 @@ function DiaDeAtos({ grupo, abertos, onAbrir }: {
   abertos: ReadonlySet<string>;
   onAbrir: (id: string) => void;
 }) {
-  // Um dia de cartório rende seis, oito "Decorrido prazo de FULANO" seguidos —
-  // uma linha por parte, o mesmo fato repetido. Mostrar os três primeiros diz o
-  // que aconteteceu naquele dia; o resto fica a um clique, sem empurrar o dia
-  // seguinte para fora da tela.
-  const visiveis = grupo.atos.slice(0, ATOS_VISIVEIS_POR_DIA);
-  const escondidos = grupo.atos.slice(ATOS_VISIVEIS_POR_DIA);
+  /**
+   * ── O CARTÓRIO COLAPSA, e é aqui que ele mais precisava ──────────────────
+   *
+   * `AtosDeTramite` já rodava no feed e no fio do prazo, e **não nesta lista**
+   * — que é justamente a que mais precisa dele: um processo tem mediana de 40
+   * movimentações, p90 de 288 e máximo de 4.900, e medido em 673 movimentações
+   * de 90 dias, trâmite é 47% e publicação 16%. São **63% da lista**, cada
+   * linha ocupando a altura de uma sentença.
+   *
+   * Isto substituiu o corte anterior por quantidade ("mostrar mais 4
+   * movimentações", depois das três primeiras do dia). Os dois escondem
+   * linhas; a diferença é que aquele não dizia o que escondia — cortava pela
+   * posição, então o quarto ato do dia podia ser a sentença — e este declara:
+   * "25 atos de trâmite · Decorrido prazo, Juntada, Certidão". Colapso que não
+   * declara o conteúdo é filtro secreto, e esta base já teve um.
+   *
+   * **O que está dentro de um prazo aberto nunca entra** (`colapsavelNaLista`):
+   * "Decorrido prazo do réu" é trâmite pela categoria e é, com o relógio
+   * correndo, a linha mais importante do dia.
+   */
+  const blocos = agruparTramite(grupo.atos);
 
   return (
     <li className={styles.dia}>
@@ -73,26 +81,27 @@ function DiaDeAtos({ grupo, abertos, onAbrir }: {
       />
 
       <ul className={styles.diaAtos}>
-        {visiveis.map(e => <AtoLinha key={e.id} e={e} aberto={abertos.has(e.id)} onAbrir={onAbrir} />)}
+        {blocos.map((bloco, i) => (
+          bloco.tipo === 'linha'
+            ? <AtoLinha key={bloco.item.id} e={bloco.item} aberto={abertos.has(bloco.item.id)} onAbrir={onAbrir} />
+            : (
+              <li key={`tramite-${grupo.dia}-${i}`}>
+                {/* Nasce aberto quando um ato lá dentro já foi lido pela IA:
+                    esse ato abre sozinho (ver `comLeituraIa`), e um painel
+                    expandido dentro de um `<details>` fechado é conteúdo
+                    renderizado que ninguém vê. */}
+                <AtosDeTramite
+                  itens={bloco.itens.map(e => ({ categoria: e.categoria ?? null, tipo: e.title }))}
+                  aberto={bloco.itens.some(e => abertos.has(e.id))}
+                >
+                  {bloco.itens.map(e => (
+                    <AtoLinha key={e.id} e={e} aberto={abertos.has(e.id)} onAbrir={onAbrir} />
+                  ))}
+                </AtosDeTramite>
+              </li>
+            )
+        ))}
       </ul>
-
-      {escondidos.length > 0 && (
-        // O agrupamento adicional usa a expansão nativa do navegador.
-        <details className={styles.mais}>
-          <summary className={styles.maisBotao}>
-            <ChevronDown aria-hidden="true" size={14} strokeWidth={2} className={styles.maisSeta} />
-            {/* Os dois rótulos vivem no HTML e o CSS troca qual aparece
-                (`details[open]`). É o que mantém o toggle sem JS. */}
-            <span className={styles.maisFechado}>
-              Mostrar mais {escondidos.length} {escondidos.length === 1 ? 'movimentação' : 'movimentações'}
-            </span>
-            <span className={styles.maisAberto}>Mostrar menos</span>
-          </summary>
-          <ul className={styles.diaAtos}>
-            {escondidos.map(e => <AtoLinha key={e.id} e={e} aberto={abertos.has(e.id)} onAbrir={onAbrir} />)}
-          </ul>
-        </details>
-      )}
     </li>
   );
 }
@@ -165,6 +174,11 @@ function AtoLinha({ e, aberto, onAbrir }: {
       risco: null, complexidade: null, precisaDosAutos: false, observacao: null,
     },
     prazo: detalhe?.prazo ?? e.prazo ?? null,
+    /* O PRAZO EM CURSO — aqui a faixa é ainda mais direta do que no feed:
+       todas as linhas são do MESMO caso, então ela marca exatamente o trecho
+       da linha do tempo que corre dentro de um prazo, e onde ele começou.
+       Sem isso, a timeline era a única das três listas que não dizia isso. */
+    prazoEmCurso: detalhe?.prazoEmCurso ?? e.prazoEmCurso ?? null,
     // Texto extraído OU documento anexado — mesma regra de `temAlgoParaLer`
     // (`api.server.ts`). Antes de carregar o detalhe, `e.temInteiroTeor` já
     // vem com essa conta feita; depois de carregar, `detalhe.documentos` é o

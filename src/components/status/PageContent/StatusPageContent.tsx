@@ -270,9 +270,9 @@ export function StatusPageContent({
                       </div>
                     </td>
 
-                    <td className={styles.tdNum}>{tribunal.activeProcessesCount}</td>
+                    <td className={styles.tdNum} data-label="Processos">{tribunal.activeProcessesCount}</td>
 
-                    <td className={styles.tdNum}>
+                    <td className={styles.tdNum} data-label="Sucesso 24h">
                       {tribunal.successRate === null ? (
                         <span className={styles.noData} title="Nenhuma execução nas últimas 24h">
                           —
@@ -289,7 +289,7 @@ export function StatusPageContent({
                       )}
                     </td>
 
-                    <td className={styles.tdNum}>
+                    <td className={styles.tdNum} data-label="Duração média">
                       {tribunal.latencyMs === null ? (
                         <span className={styles.noData} title="Sem medição no período">
                           —
@@ -299,7 +299,7 @@ export function StatusPageContent({
                       )}
                     </td>
 
-                    <td className={styles.tdSync}>
+                    <td className={styles.tdSync} data-label="Última sincronização">
                       <span className={styles.timeRelative}>{relativeTime(tribunal.lastSyncAt)}</span>
                       <span className={styles.timeAbsolute}>{absoluteTime(tribunal.lastSyncAt)}</span>
                     </td>

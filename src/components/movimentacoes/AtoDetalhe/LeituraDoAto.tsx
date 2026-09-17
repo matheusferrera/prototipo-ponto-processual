@@ -105,11 +105,22 @@ function paraLeitura(a: AnaliseDoAto | null | undefined): LeituraIa | null {
 
 export function LeituraDoAto({
   mov,
+  mostrarLeitura = true,
 }: {
+  /**
+   * Renderiza a leitura inteira (`LeituraIaDoAto`) quando o ato já foi lido.
+   *
+   * `false` no CARD: lá o resumo já é o título do bloco "o que aconteceu" e a
+   * providência, o checklist, a peça e o risco são o bloco "o que fazer" —
+   * mostrar o mesmo conteúdo uma terceira vez transformaria a resposta em eco.
+   * Com `false` sobra o que este componente tem de único: o pedido de leitura,
+   * o acompanhamento da fila e o "ler de novo".
+   */
+  mostrarLeitura?: boolean;
   /**
    * `origem`/`categoria` soltos do `Pick`, e não herdados de
    * `MovimentacaoDetail`: `AtoDoPrazo` (o ato embutido em `/deadlines`, usado
-   * por `PrazoRow`) os declara opcionais — backend anterior a `<data>` não os
+   * pela pauta até 17/09/2026) os declara opcionais — backend anterior a `<data>` não os
    * mandava ali —, e `Pick` exigiria a mesma obrigatoriedade de
    * `MovimentacaoDetail`. `podeLerComIa` já trata ausência como "passa".
    */
@@ -243,7 +254,25 @@ export function LeituraDoAto({
 
   return (
     <div className={styles.bloco}>
-      <LeituraIaDoAto mov={{ ia }} />
+      {lida
+        ? (mostrarLeitura ? <LeituraIaDoAto mov={{ ia }} /> : null)
+        /* O ESTADO NÃO-LIDO, dito em palavras.
+           Medido no acervo em 15/09/2026: dos atos legíveis dos últimos 90
+           dias, **6,1% tinham leitura** numa conta e 8,4% na outra — 15 de 245
+           e 10 de 119. O bloco foi desenhado para a leitura completa, e no caso
+           comum ele aparecia como um botão solto, sem uma palavra explicando o
+           vazio.
+
+           A frase existe por uma razão específica, e não é cosmética: sem ela,
+           a ausência da leitura parece ausência de PRAZO. O prazo desta tela
+           veio da calculadora forense (`prazo-legal.ts`), não da IA, e continua
+           valendo — dizer isso é o que impede alguém de concluir que não há
+           nada a fazer porque "a IA não analisou". */
+        : <p className={styles.semLeitura}>
+            Este ato ainda não foi lido pela IA.{' '}
+            <strong>O prazo acima veio da regra legal e continua valendo</strong> —
+            a leitura acrescenta a peça a produzir, o que falta obter e o risco.
+          </p>}
 
       <div className={styles.pedido}>
         {erro && <span className={styles.erro} role="alert">{erro}</span>}

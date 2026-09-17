@@ -15,30 +15,12 @@
    Todo o resto — grude, tipografia, filete, contagem — é o do feed. */
 .diaCabecalho { padding-inline: var(--space-lg); }
 .diaAtos { list-style: none; margin: 0; padding: 0; }
-.maisBotao {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  width: fit-content;
-  min-height: 44px;
-  padding: var(--space-sm) var(--space-lg);
-  list-style: none;
-  color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.maisBotao::-webkit-details-marker { display: none; }
-.maisBotao:hover { color: var(--ink); background: var(--paper-2); }
-.maisBotao:focus-visible, .carregar:focus-visible, .linkDetalhe:focus-visible {
+/* O "mostrar mais N" por quantidade saiu daqui: quem esconde linha nesta lista
+   agora é `AtosDeTramite`, que DECLARA o que engaveta. Ver `DiaDeAtos`. */
+.carregar:focus-visible, .linkDetalhe:focus-visible {
   outline: 2px solid var(--brick);
   outline-offset: -2px;
 }
-.maisSeta { flex: none; transition: transform 160ms ease; }
-.mais[open] .maisSeta { transform: rotate(180deg); }
-.maisAberto, .mais[open] .maisFechado { display: none; }
-.mais[open] .maisAberto { display: inline; }
 .rodape {
   display: flex;
   align-items: center;
@@ -55,7 +37,7 @@
   gap: var(--space-sm);
   min-height: 44px;
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink);
   font: inherit;
@@ -81,5 +63,4 @@
 .linkDetalhe { display: inline-flex; align-items: center; min-height: 44px; margin-left: var(--space-md); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .girando { animation: none; }
-  .maisSeta { transition: none; }
 }

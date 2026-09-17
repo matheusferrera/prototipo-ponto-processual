@@ -12,6 +12,12 @@ import { ROTA_PAINEL } from '@/lib/rotas';
 export interface SidebarProps {
   active: 'Dashboard' | 'Processos' | 'Movimentações' | 'Prazos' | 'Status' | 'WhatsApp' | 'E-mail' | 'Credenciais' | 'Configurações' | 'Design System';
   onClose?: () => void;
+  /**
+   * Os mesmos números da barra de baixo do celular — novas movimentações e
+   * prazos. Quem não tem o dado não passa, e o menu não mostra número nenhum:
+   * um contador que às vezes some faz a ausência parecer "zero".
+   */
+  contadores?: { prazos?: number; movimentacoes?: number };
 }
 
 const navMain = [
@@ -22,12 +28,13 @@ const navMain = [
   { label: 'WhatsApp', href: '/whatsapp', icon: WhatsAppIcon },
 ] as const;
 
-function NavItem({ label, href, icon: Icon, active, onNavigate }: {
+function NavItem({ label, href, icon: Icon, active, onNavigate, conta }: {
   label: string;
   href: string;
   icon: LucideIcon | typeof WhatsAppIcon;
   active: boolean;
   onNavigate?: () => void;
+  conta?: number;
 }) {
   return (
     <Link
@@ -37,12 +44,18 @@ function NavItem({ label, href, icon: Icon, active, onNavigate }: {
       className={`${styles.navItem}${active ? ` ${styles.navItemActive}` : ''}`}
     >
       <Icon size={17} strokeWidth={1.5} aria-hidden="true" />
-      <span>{label}</span>
+      <span className={styles.navLabel}>{label}</span>
+      {conta !== undefined && conta > 0 && (
+        <span className={styles.navConta} data-tom={label === 'Prazos' ? 'alert' : undefined}>
+          {conta > 99 ? '99+' : conta}
+          <span className="sr-only">{label === 'Prazos' ? ' em aberto' : ' sem ver'}</span>
+        </span>
+      )}
     </Link>
   );
 }
 
-export function Sidebar({ active, onClose }: SidebarProps) {
+export function Sidebar({ active, onClose, contadores }: SidebarProps) {
   return (
     <aside aria-label="Menu lateral" className={`${styles.aside}${onClose ? ` ${styles.asideDrawer}` : ''}`}>
       <div className={styles.accountHeader}>
@@ -52,7 +65,13 @@ export function Sidebar({ active, onClose }: SidebarProps) {
 
       <nav className={styles.navigation} aria-label="Navegação principal">
         {navMain.map(item => (
-          <NavItem key={item.label} {...item} active={active === item.label} onNavigate={onClose} />
+          <NavItem
+            key={item.label}
+            {...item}
+            active={active === item.label}
+            onNavigate={onClose}
+            conta={item.label === 'Prazos' ? contadores?.prazos : item.label === 'Movimentações' ? contadores?.movimentacoes : undefined}
+          />
         ))}
       </nav>
 

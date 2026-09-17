@@ -50,14 +50,47 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+/**
+ * A fenda `@card` mora na RAIZ, e a posição é a decisão.
+ *
+ * Ela existe para `app/@card/(.)movimentacoes/[id]` interceptar a navegação
+ * para um ato **venha ela de onde vier** — e vem de nove lugares: o feed, o
+ * painel, a pauta de prazos, o fio, a timeline do processo, o panorama, as
+ * análises da IA e as movimentações recentes do dashboard. Com o interceptador
+ * dentro de `movimentacoes/`, só os cliques que já estavam no feed abriam o
+ * card; todos os outros caíam na página, e o advogado via a mesma movimentação
+ * de duas formas diferentes dependendo de onde clicou.
+ *
+ * > **E havia um defeito de verdade nessa posição.** Com o interceptador irmão
+ * > do alvo (`movimentacoes/@card/(.)[id]` ao lado de `movimentacoes/[id]`), o
+ * > Next 16.2.5 duplica o marcador em desenvolvimento e recusa a rota:
+ * > `Invalid interception route: /movimentacoes/(.)(.)(.)(.)(.)<id>`. A build
+ * > de produção aceitava, o dev não — o card simplesmente não abria, sem nada
+ * > na tela dizendo por quê. Na raiz o problema não existe.
+ *
+ * `@card/default.tsx` devolve `null`: em toda navegação que NÃO é interceptada
+ * — inclusive o F5 e o link direto — a fenda fica vazia e a página do ato
+ * renderiza sozinha.
+ */
+export default function RootLayout({
+  children,
+  card,
+}: {
+  children: React.ReactNode;
+  card: React.ReactNode;
+}) {
   return (
+    /* Sem `h-full` no <html> nem `height: 100%` no <body>: os dois faziam do
+       body o ROLADOR no celular (html preso na altura da janela). O shell fixo
+       do desktop recebe a altura do globals.css a partir de 768px — ver o
+       comentário de `html, body` lá. */
     <html
       lang="pt-BR"
-      className={cn("h-full", manrope.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
+      className={cn(manrope.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
     >
-      <body style={{ height: '100%', fontFamily: 'var(--font-manrope), system-ui, sans-serif' }}>
+      <body style={{ fontFamily: 'var(--font-manrope), system-ui, sans-serif' }}>
         {children}
+        {card}
       </body>
     </html>
   );

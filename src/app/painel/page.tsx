@@ -239,7 +239,16 @@ export default async function DashboardPage() {
   const atividadeCat = contarPorCategoria(allMovs);
 
   return (
-    <AppLayout active="Dashboard" mobileTitle="Dashboard" mobileBreadcrumb="Início / Dashboard">
+    <AppLayout
+      active="Dashboard"
+      mobileTitle="Dashboard"
+      mobileBreadcrumb="Início / Dashboard"
+      /* O painel já leu a agenda para montar o hero — o contador da barra do
+         celular sai daí, sem custar consulta nenhuma. Conta só o que AINDA
+         VENCE: prazo vencido em aberto é passivo, e um badge somando-o diria
+         "4" para quem tem um prazo esta semana e três de 2024. */
+      contadores={{ prazos: aVencer.length }}
+    >
       <PageHeader basePath="/painel" title="Dashboard" breadcrumb="Início / Dashboard" />
 
       <div className={styles.scroll}>

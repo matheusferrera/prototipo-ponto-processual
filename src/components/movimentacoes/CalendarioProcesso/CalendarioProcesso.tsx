@@ -85,7 +85,9 @@ export interface CalendarioProcessoProps {
  * movimentações.
  *
  * Server Component: a escolha do ano viaja por `?ano=`, como todo filtro deste
- * projeto. O tooltip é o `title` nativo — num grid de 365 casas, um tooltip
+ * projeto. **Nenhum link daqui escreve `?aba=`**: a tela do processo deixou de
+ * ter abas, e um parâmetro que não existe mais só serviria para sujar a URL que
+ * a pessoa copia. O tooltip é o `title` nativo — num grid de 365 casas, um tooltip
  * próprio custaria um client component e um listener por casa para dizer o que o
  * atributo já diz, inclusive sem JavaScript.
  */
@@ -134,7 +136,7 @@ export function CalendarioProcesso({ calendario, ano, basePath, paramsAtuais }: 
             {anos.map((a) => (
               <Link
                 key={a}
-                href={`${basePath}?${new URLSearchParams({ ...limpar(paramsAtuais), aba: 'calendario', ano: String(a) })}`}
+                href={`${basePath}?${new URLSearchParams({ ...limpar(paramsAtuais), ano: String(a) })}`}
                 className={a === ano ? `${styles.ano} ${styles.anoAtivo}` : styles.ano}
                 aria-current={a === ano ? 'page' : undefined}
                 scroll={false}
@@ -182,7 +184,7 @@ export function CalendarioProcesso({ calendario, ano, basePath, paramsAtuais }: 
                     <Link
                       key={j}
                       href={`${basePath}?${new URLSearchParams({
-                        ...limpar(paramsAtuais), aba: 'movimentacoes', from: chave, to: chave,
+                        ...limpar(paramsAtuais), from: chave, to: chave,
                       })}`}
                       className={styles.casa}
                       data-nivel={nivel}

@@ -59,7 +59,7 @@
   width: 100%;
   max-width: 480px;
   background: var(--paper);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   padding: 48px 40px;
   display: flex;
   flex-direction: column;
@@ -93,7 +93,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .title {
@@ -182,7 +182,7 @@
   flex-direction: column;
   gap: 1px;
   background: var(--line);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   margin-top: 8px;
   text-align: left;
   max-height: 240px;
@@ -253,7 +253,7 @@
 
 .badgeDjen {
   background: var(--signal-soft);
-  color: var(--signal);
+  color: var(--signal-ink);
 }
 
 @media (max-width: 640px) {

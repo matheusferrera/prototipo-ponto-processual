@@ -1,0 +1,162 @@
+/* § ONDE ESTÁ — ver o docblock do componente. */
+
+.bloco { min-width: 0; }
+
+.estado {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  min-width: 0;
+}
+
+.fase {
+  padding: 3px 7px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+/* Sem leitura do caso: contorno, sem preenchimento. Ausência não pode ter a
+   cara de dado — é a mesma regra do "a confirmar" do cliente. */
+.faseAConfirmar {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+}
+
+.classe {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.orgao {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.notaFase {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.55;
+  max-width: 62ch;
+}
+
+.ficha {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md) var(--space-lg);
+  margin: var(--space-lg) 0 0;
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--line);
+}
+
+.campo { min-width: 0; }
+
+.campoRotulo {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.campoValor {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.desde { color: var(--ink-2); font-family: var(--ui); }
+
+.sync { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ui); }
+
+.contradicao {
+  margin: var(--space-md) 0 0;
+  padding: 10px var(--space-md);
+  background: var(--signal-soft);
+  color: var(--signal-ink);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* ── O RESTO, que continua fechado ──────────────────────────────────────── */
+
+.detalhes {
+  margin-top: var(--space-sm);
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 80px;
+}
+
+.resumo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+
+.resumo::-webkit-details-marker { display: none; }
+.resumo:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.seta {
+  flex: none;
+  color: var(--ink-2);
+  transition: transform 150ms ease;
+}
+
+.detalhes[open] .seta { transform: rotate(90deg); }
+
+.resumoTitulo { font-size: 13px; font-weight: 700; }
+.resumoNota { color: var(--ink-2); font-size: 12px; }
+
+.corpoDetalhes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-md) 0 var(--space-xl);
+  min-width: 0;
+}
+
+.polo { min-width: 0; }
+
+.poloTitulo {
+  margin: 0 0 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.poloVazio { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+
+.poloLista {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poloItem { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.poloNome { color: var(--ink); font-size: 14px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.poloDoc { color: var(--ink-2); font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
+.poloRepresentantes { color: var(--ink-2); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) { .seta { transition: none; } }

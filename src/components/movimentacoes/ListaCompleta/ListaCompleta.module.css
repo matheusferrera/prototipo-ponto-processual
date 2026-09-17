@@ -1,0 +1,431 @@
+/* A aba Todas. Base = celular; ≥768 a barra de filtros assume o topo;
+   ≥1024 as linhas viram colunas. */
+
+.todas {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── O topo do celular: busca + a frase do recorte ───────────────────────── */
+
+.topoCelular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.busca {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-md);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+}
+
+.busca:focus-within { outline: 2px solid var(--brick); outline-offset: 1px; }
+
+.busca input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.busca input::placeholder { color: var(--ink-soft); }
+
+.recorte {
+  margin: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.recorteTexto { flex: 1; min-width: 0; }
+
+@media (min-width: 768px) {
+  .topoCelular { display: none; }
+}
+
+
+/* ── Os dias ─────────────────────────────────────────────────────────────── */
+
+.lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.colunas { display: none; }
+
+.dia {
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecalhoDia {
+  position: sticky;
+  top: var(--topo-da-lista, 0px);
+  z-index: var(--z-sticky);
+  margin: 0;
+  padding: 14px var(--space-lg) var(--space-sm);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.diaRotulo {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.diaData { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.diaConta { margin-left: auto; font-size: 13px; color: var(--ink-soft); }
+
+.linhas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+/* ── Uma linha ───────────────────────────────────────────────────────────── */
+
+.linha {
+  position: relative;
+  display: grid;
+  /* O documento divide a PRIMEIRA linha com hora, tipo e tribunal (pedido do
+     dono do produto em 17/09/2026): numa coluna própria ao lado das três
+     linhas, ele roubava 48px do texto do ato em toda a altura do item. */
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'cabeca trib doc'
+    'texto texto texto'
+    'rodape rodape rodape';
+  align-items: center;
+  column-gap: var(--space-sm);
+  row-gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.linha:last-child { border-bottom: 0; }
+.linha:hover { background: var(--paper); }
+
+/* No celular a hora e o tipo dividem a linha de cima: "14:32  DESPACHO". */
+.cabeca {
+  grid-area: cabeca;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.hora {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+
+
+.tipo {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.trib {
+  grid-area: trib;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.texto {
+  grid-area: texto;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+/* A linha inteira é o link — estendido, porque o documento ao lado é outro
+   link e âncora dentro de âncora é HTML inválido. */
+.texto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.texto:focus-visible { outline: none; }
+.texto:focus-visible::after { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.rodape {
+  grid-area: rodape;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.parte {
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.cnj {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.situacao { display: flex; margin-top: 6px; }
+.situacao:empty { display: none; }
+
+/* O alvo continua com 48px, mas as margens negativas o deixam ocupar só a
+   altura da linha de texto — senão a primeira linha do item cresceria para
+   48px. À direita, o ícone encosta na calha em vez de ficar recuado. */
+.doc {
+  grid-area: doc;
+  display: flex;
+  margin: -14px -12px -14px 0;
+}
+
+.doc:empty { display: none; }
+
+/* ── O cartório e o divisor ──────────────────────────────────────────────── */
+
+.cartorio {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.cartorio:last-child { border-bottom: 0; }
+
+.divisor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px var(--space-lg) 6px;
+  background: var(--paper-2);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brick);
+  text-align: center;
+}
+
+.divisorFio {
+  flex: 1;
+  height: 2px;
+  background: var(--brick);
+}
+
+/* ── Carregar mais, vazio ────────────────────────────────────────────────── */
+
+.mais {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 20px var(--space-lg) 28px;
+}
+
+.maisBotao {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.maisBotao:hover { background: var(--paper-2); }
+.maisBotao:disabled { cursor: progress; }
+.maisBotao:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.maisErro { margin: 0; font-size: 13px; font-weight: 700; color: var(--alert); }
+
+.girando { animation: girar 0.9s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .girando { animation: none; } }
+
+.vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 64px var(--space-2xl);
+  text-align: center;
+}
+
+.vazioTitulo { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); }
+.vazioTexto { margin: 0; max-width: 360px; font-size: 15px; line-height: 1.5; color: var(--ink-2); }
+
+.vazioLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brick);
+}
+
+/* ── ≥768: o shell rola por dentro, com margem de página ─────────────────── */
+
+@media (min-width: 768px) {
+  .lista { padding: 0 var(--space-2xl) var(--space-xl); }
+
+  .linhas {
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+
+  .cabecalhoDia {
+    padding-left: var(--space-lg);
+    border-bottom-color: var(--line);
+  }
+}
+
+/* ── ≥1024: as colunas ───────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  .colunas,
+  .linha {
+    /* O texto do ato é a coluna que cresce. A situação não tem coluna: a
+       etiqueta (curta) mora embaixo do tipo, e o número do processo embaixo da
+       parte — pedido do dono do produto em 17/09/2026. */
+    /* Parte e texto crescem JUNTOS, o texto com o dobro: com `minmax(160px,
+       240px)` a parte ia ao máximo antes de o texto ganhar qualquer largura, e
+       a 1024px o texto ficava com 70px. O mínimo de 172px é o número do
+       processo inteiro a 11px, que mora embaixo da parte. */
+    grid-template-columns: 48px 136px 60px minmax(172px, 1fr) minmax(0, 2fr) 44px;
+    column-gap: var(--space-lg);
+  }
+
+  .colunas {
+    display: grid;
+    align-items: center;
+    padding: 14px var(--space-lg) var(--space-sm);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  /* DUAS linhas por movimentação: tipo e parte em cima, etiqueta e número
+     embaixo; hora, tribunal, texto e documento ocupam as duas, centrados. */
+  .linha {
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      'hora tipo     trib parte texto doc'
+      'hora situacao trib cnj   texto doc';
+    align-content: center;
+    row-gap: 3px;
+    min-height: 56px;
+    padding: 10px var(--space-lg);
+  }
+
+  .cabeca,
+  .rodape { display: contents; }
+
+  .hora { grid-area: hora; align-self: center; }
+
+  /* O tipo sai do texto quando não é um dos canônicos ("Expedida/certificada"),
+     e numa coluna estreita ele invadia a vizinha. */
+  .tipo {
+    grid-area: tipo;
+    align-self: end;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .situacao { grid-area: situacao; align-self: start; margin-top: 2px; }
+  .situacao:empty { display: block; }
+
+  .trib { align-self: center; }
+
+  .parte {
+    grid-area: parte;
+    align-self: end;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 14px;
+  }
+
+  .cnj {
+    grid-area: cnj;
+    align-self: start;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+  }
+
+  .texto { align-self: center; -webkit-line-clamp: 2; line-clamp: 2; }
+
+  .doc {
+    align-self: center;
+    margin: 0;
+    justify-self: end;
+  }
+
+  .doc:empty { display: block; }
+}
+
+/* Fica no FIM do arquivo de propósito: `.cabecalhoDia` define `top` mais acima,
+   e com a mesma especificidade quem vem depois ganha.
+
+   No celular o documento rola e a barra do topo (título + abas, 112px medidos
+   a 390px e a 360px) gruda por cima de tudo: o cabeçalho do dia gruda logo
+   abaixo dela, senão ele ficaria escondido atrás. */
+@media (max-width: 767px) {
+  .cabecalhoDia { top: 112px; }
+}

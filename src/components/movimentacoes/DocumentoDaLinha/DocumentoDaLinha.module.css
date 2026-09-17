@@ -1,0 +1,34 @@
+.link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--brick);
+}
+
+.link:hover { background: var(--brick-soft); color: var(--brick-deep); }
+.link:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+/* O cadeado da linha é cinza, não tijolo: ele diz "não há o que abrir", e a cor
+   de alerta que tinha antes fazia toda linha de cartório parecer um problema. */
+.trancado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--ink-soft);
+}
+
+.trancadoRotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
