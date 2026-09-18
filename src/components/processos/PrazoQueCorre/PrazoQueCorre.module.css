@@ -257,6 +257,28 @@
 
 .paradoTexto strong { color: var(--ink); font-weight: 650; }
 
+/* O ato que se moveu é um LINK — leva ao mesmo card que a lista abre. Alvo de
+   44px no celular sem empurrar a linha: o padding volta como margem negativa. */
+.paradoLink {
+  color: var(--brick-deep);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.paradoLink:hover { color: var(--brick); }
+.paradoLink:focus-visible { outline: 2px solid var(--brick); outline-offset: 3px; }
+
+@media (max-width: 767px) {
+  .paradoLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 12px;
+    margin-block: -12px;
+  }
+}
+
 .paradoSync {
   display: flex;
   align-items: flex-start;

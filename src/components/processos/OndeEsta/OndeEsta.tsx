@@ -38,10 +38,16 @@ const STATUS: Record<string, string> = { active: 'Ativo', archived: 'Arquivado',
  * responde "onde está" — não à faixa de identidade, onde competiria com o nome
  * do cliente.
  */
-export function OndeEsta({ processo, detalhes }: {
+export function OndeEsta({ processo, detalhes, detalhesAbertos = false }: {
   processo: Processo;
   /** O conteúdo do `<details>` — partes, capa e o resumo do caso, montados pela página. */
   detalhes?: ReactNode;
+  /**
+   * Nasce aberto. O `<details>` existia para a ficha caber numa calha de 352px
+   * ao lado da lista; numa aba só dela, esconder o conteúdo que a aba promete
+   * seria cobrar um clique por nada. Continua recolhível — só não começa assim.
+   */
+  detalhesAbertos?: boolean;
 }) {
   const fase = processo.analiseCaso?.fase ?? null;
   const grau = processo.grau === '1' || processo.grau === '2' ? `${processo.grau}º grau` : null;
@@ -100,7 +106,7 @@ export function OndeEsta({ processo, detalhes }: {
       )}
 
       {detalhes && (
-        <details className={styles.detalhes} id="detalhes-processo">
+        <details className={styles.detalhes} id="detalhes-processo" open={detalhesAbertos || undefined}>
           <summary className={styles.resumo}>
             <ChevronRight aria-hidden="true" size={14} strokeWidth={2} className={styles.seta} />
             <span className={styles.resumoTitulo}>Detalhes do processo</span>

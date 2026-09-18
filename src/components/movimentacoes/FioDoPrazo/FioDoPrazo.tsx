@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import type { EventoDoFio, FioDoPrazo as Fio } from '@/lib/api.server';
+import type { PrazoDoAto } from '@/types';
+import { CadeiaDoPrazo } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
 import { MovimentacaoRow } from '@/components/movimentacoes/MovimentacaoRow/MovimentacaoRow';
 import { AtosDeTramite } from '@/components/movimentacoes/AtosDeTramite/AtosDeTramite';
 import { BaixarPrazo } from '@/components/prazos/BaixarPrazo/BaixarPrazo';
@@ -39,7 +41,16 @@ import styles from './FioDoPrazo.module.css';
  *
  * **Não repete o nome do prazo em cada linha.** Ele é o cabeçalho da tela.
  */
-export function FioDoPrazo({ fio }: { fio: Fio }) {
+export function FioDoPrazo({ fio, prazoDoAto }: {
+  fio: Fio;
+  /**
+   * O prazo como o ATO o descreve — é ele que carrega a `cadeia`, e por isso a
+   * conta do vencimento mora aqui e não no card do ato (ver `CorpoDoCard`).
+   * `null` quando o ato que abriu não foi encontrado, ou quando a conta não
+   * reproduz a data gravada: aí o botão simplesmente não aparece.
+   */
+  prazoDoAto?: PrazoDoAto | null;
+}) {
   const { prazo, regua, eventos, total } = fio;
   const peca = prazo.ato?.ia?.peca?.trim() || prazo.tipo;
   const quando = quandoDoPrazo(regua?.restam ?? prazo.diasRestantes);
@@ -121,6 +132,23 @@ export function FioDoPrazo({ fio }: { fio: Fio }) {
             </Link>
           )}
         </div>
+        {/* ── COMO CHEGAMOS NESSA DATA ────────────────────────────────────
+            Veio do card do ato em 18/09/2026, a pedido do dono do produto: lá
+            ela disputava o lugar com "tudo o que aconteceu neste prazo", e aqui
+            está a tela CUJO assunto é o prazo. Os quatro marcos —
+            disponibilização, publicação, início, vencimento — com o dispositivo
+            de cada um; nada é calculado no navegador.
+
+            **Abre FECHADA**, como abria no card: a conta é conferência de quem
+            quer, não leitura obrigatória de quem só veio ver o que aconteceu. */}
+        {prazoDoAto && (
+          <details className={styles.conta}>
+            <summary className={styles.contaResumo}>Ver como chegamos nessa data</summary>
+            <div className={styles.contaCorpo}>
+              <CadeiaDoPrazo prazo={prazoDoAto} estimado={estimado} />
+            </div>
+          </details>
+        )}
       </header>
 
       {/* ── O DECORRER ───────────────────────────────────────────────────── */}
@@ -154,7 +182,7 @@ export function FioDoPrazo({ fio }: { fio: Fio }) {
                       <AtosDeTramite itens={bloco.itens.map(e => e.item)}>
                         {bloco.itens.map(e => (
                           <li key={e.item.id}>
-                            <MovimentacaoRow m={e.item} noProcesso comHora href={`/movimentacoes/${e.item.id}`} />
+                            <MovimentacaoRow m={e.item} noProcesso comHora comData href={`/movimentacoes/${e.item.id}`} />
                           </li>
                         ))}
                       </AtosDeTramite>
@@ -192,7 +220,7 @@ function Evento({ evento }: { evento: EventoDoFio }) {
       </span>
       <div className={styles.conteudo}>
         {evento.abriuOPrazo && <span className={styles.marco}>o prazo abriu aqui</span>}
-        <MovimentacaoRow m={evento.item} noProcesso comHora href={`/movimentacoes/${evento.item.id}`} />
+        <MovimentacaoRow m={evento.item} noProcesso comHora comData href={`/movimentacoes/${evento.item.id}`} />
       </div>
     </li>
   );

@@ -9,6 +9,7 @@ import { AnalisarProcessoButton } from '@/components/processos/AnalisarProcessoB
 import { CopiarCnj } from '@/components/processos/ProcessoPanorama/ProcessoControls';
 import { ConfirmarCliente } from '@/components/processos/ConfirmarCliente/ConfirmarCliente';
 import { SecaoProcesso } from '@/components/processos/SecaoProcesso/SecaoProcesso';
+import { AbasDoProcesso, type AbaDoProcesso } from '@/components/processos/AbasDoProcesso/AbasDoProcesso';
 import { PrazoQueCorre } from '@/components/processos/PrazoQueCorre/PrazoQueCorre';
 import { MudouOCaso } from '@/components/processos/MudouOCaso/MudouOCaso';
 import { OndeEsta, PoloBlock } from '@/components/processos/OndeEsta/OndeEsta';
@@ -38,9 +39,13 @@ interface Props {
   params: Promise<{ numero: string }>;
   searchParams: Promise<{
     movs?: string; cat?: string | string[]; q?: string; from?: string; to?: string;
-    sort?: string; page?: string; ano?: string;
+    sort?: string; page?: string; ano?: string; aba?: string;
   }>;
 }
+
+/** Nada veio porque nada foi pedido — a aba que não está aberta não busca. */
+const SEM_EVENTOS = { events: [], total: 0 };
+const SEM_CALENDARIO = { dias: [], total: 0, primeiroAno: null, ultimoAno: null };
 
 /** Título do processo: o confronto entre os polos, que é como o PDF e o OG o nomeiam. */
 function confronto(processo: Processo): string {
@@ -72,40 +77,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * A TELA DO PROCESSO — uma rolagem só, na ordem em que o advogado pergunta.
+ * A TELA DO PROCESSO — a identidade fixa, e DUAS abas embaixo.
  *
  * ## A ordem das perguntas
  *
  * Um advogado com ~100 processos não abre um processo para navegar: abre por um
- * motivo. A página responde os motivos na ordem em que eles aparecem, e a lista
- * cronológica — que era a tela inteira — passa a ser a última coisa, não a
- * primeira.
+ * motivo. A página responde os motivos na ordem em que eles aparecem:
  *
  * 1. **de quem é o caso, e de que lado eu estou** — o nome do cliente em 22px,
- *    primeiro item abaixo do CNJ. Era a 5ª linha do cabeçalho, depois do
- *    título, dos três botões e da linha de meta;
+ *    primeiro item abaixo do CNJ, FORA das abas: vale para as duas;
  * 2. **o que corre agora** — o prazo, a régua e a providência;
  * 3. **o que já foi decidido, o que já foi protocolado** — duas linhas fixas;
- * 4. **onde o processo está** — fase, grau, órgão, autuação, valor, à vista;
- * 5. **o que aconteceu** — o mapa do ano e a lista.
+ * 4. **o que aconteceu** — a lista, que é o corpo da aba padrão;
+ * 5. **o que o processo É** — onde está, o mapa do ano e as peças, na aba Ficha.
  *
- * ## As quatro abas viraram uma rolagem
+ * ## Das quatro abas antigas para estas duas
  *
- * Três das quatro eram salas quase sempre vazias, e uma aba cobra um clique
- * para descobrir isso — de novo em cada visita:
+ * As quatro de 2026 (Prazos · Documentos · IA · Movimentações) eram salas quase
+ * sempre vazias, e uma aba cobra um clique para descobrir isso — de novo em cada
+ * visita. Elas viraram uma rolagem só, com a ficha numa calha de 352px à
+ * direita. **As duas de agora não são a volta daquilo**: o que se alterna aqui
+ * não é uma gaveta de dado escasso, é a pergunta — o que ACONTECEU × o que o
+ * processo É. As duas têm conteúdo em todo processo.
  *
- * | aba | medição | onde foi parar |
+ * | aba | medição de antes | onde está hoje |
  * |---|---|---|
- * | Prazos | 11 abertos numa conta de ~100 processos, 4 na outra | bloco no topo |
- * | Documentos | 63% dos pedidos de arquivo ao portal voltam vazios | calha de peças |
- * | IA | a leitura cobre 6,1% dos atos legíveis | dentro do ato |
- * | Movimentações | a única com conteúdo em todo processo | virou a página |
+ * | Prazos | 11 abertos numa conta de ~100 processos | bloco no topo de Movimentações |
+ * | Documentos | 63% dos pedidos de arquivo voltam vazios | § PEÇAS QUE ABREM, na Ficha |
+ * | IA | a leitura cobre 6,1% dos atos legíveis | dentro do card do ato |
+ * | Movimentações | a única com conteúdo em todo processo | a aba padrão |
  *
  * ## A URL continua sendo a fonte da verdade
  *
- * `?cat=`, `?q=`, `?from=`, `?to=`, `?sort=` e `?ano=` seguem existindo e
- * seguem sendo o estado desta tela. **O único parâmetro que deixou de existir é
- * `?aba=`.**
+ * `?cat=`, `?q=`, `?from=`, `?to=`, `?sort=` e `?ano=` seguem sendo o estado
+ * desta tela, e **`?aba=` voltou** — com dois valores (ausente = movimentações,
+ * `ficha`). Trocar de aba preserva o recorte da lista e descarta a página.
  */
 export default async function ProcessoDetailPage({ params, searchParams }: Props) {
   const { numero } = await params;
@@ -126,27 +132,40 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
   const filters = { q: sp.q?.trim(), from, to, sort, page } as const;
   const catParaBackend = todas ? ['todas'] : categorias;
 
+  /* A ABA é a pergunta, e cada uma busca só o que responde a sua. A ficha não
+     precisa das 50 movimentações da primeira página (a consulta mais cara da
+     tela), e a lista não precisa do mapa do ano nem da amostra de peças. */
+  const aba: AbaDoProcesso = sp.aba === 'ficha' ? 'ficha' : 'movimentacoes';
+  const naLista = aba === 'movimentacoes';
+
   const [
     { events: timeline, total: totalMovs },
     prazos,
-    calendario,
+    ultimoAto,
     decisao,
     peticao,
+    calendario,
     comPeca,
   ] = await Promise.all([
-    getProcessoMovements(processo.id, MOVS_PAGE, catParaBackend, filters),
+    naLista ? getProcessoMovements(processo.id, MOVS_PAGE, catParaBackend, filters) : SEM_EVENTOS,
+    // Os prazos alimentam a nota da aba e o bloco do topo — valem nas duas.
     getProcessoPrazos(processo.id),
-    // O mapa pinta o MESMO conjunto que a lista mostra: um dia aceso que o
-    // filtro exclui levaria a um clique que não devolve nada.
-    getCalendarioDoProcesso(processo.id, catParaBackend.join(',')),
+    /* O ÚLTIMO ATO, SEM FILTRO NENHUM. É ele que diz se o processo andou, e
+       por isso não pode sair da `timeline`: ali o recorte da URL manda, e uma
+       busca por "sentença" faria o bloco declarar silêncio num processo que se
+       moveu ontem. Ver `NadaCorre`. */
+    naLista ? getProcessoMovements(processo.id, 1, ['todas'], { sort: 'desc' }) : SEM_EVENTOS,
     /* A última decisão e a última petição vêm de busca própria, não de um
        filtro sobre a página carregada: decisório é 6% e ato de parte 10% dos
        últimos 90 dias, então as 50 primeiras linhas podem não conter nenhum
        dos dois — num processo em execução, a última decisão pode estar a três
        anos de distância. `limit=1` é barato. */
-    getProcessoMovements(processo.id, 1, ['decisorio'], { sort: 'desc' }),
-    getProcessoMovements(processo.id, 1, ['atoDeParte'], { sort: 'desc' }),
-    getProcessoMovements(processo.id, PECAS_AMOSTRA, ['todas'], { comDocumento: true, sort: 'desc' }),
+    naLista ? getProcessoMovements(processo.id, 1, ['decisorio'], { sort: 'desc' }) : SEM_EVENTOS,
+    naLista ? getProcessoMovements(processo.id, 1, ['atoDeParte'], { sort: 'desc' }) : SEM_EVENTOS,
+    // O mapa pinta o MESMO conjunto que a lista mostra: um dia aceso que o
+    // filtro exclui levaria a um clique que não devolve nada.
+    naLista ? SEM_CALENDARIO : getCalendarioDoProcesso(processo.id, catParaBackend.join(',')),
+    naLista ? SEM_EVENTOS : getProcessoMovements(processo.id, PECAS_AMOSTRA, ['todas'], { comDocumento: true, sort: 'desc' }),
   ]);
 
   const { prazo, vencidos, semData } = panoramaProcesso(timeline, prazos);
@@ -167,6 +186,19 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
   const paramsAtuais = {
     cat: categorias.length ? categorias.join(',') : undefined,
     q: filters.q, from, to, sort: sort === 'asc' ? 'asc' : undefined,
+  };
+
+  /* Trocar de aba PRESERVA o recorte da lista: quem filtrou por decisões, foi
+     ver a ficha e voltou encontra o mesmo filtro. O que não viaja é `page` —
+     voltar para a página 7 de uma lista que a pessoa não está mais lendo é
+     devolvê-la ao meio do processo. */
+  const hrefDaAba = (proxima: AbaDoProcesso): string => {
+    const query = new URLSearchParams();
+    if (proxima === 'ficha') query.set('aba', 'ficha');
+    for (const [chave, valor] of Object.entries(paramsAtuais)) if (valor) query.set(chave, valor);
+    if (sp.ano) query.set('ano', sp.ano);
+    const busca = query.toString();
+    return busca ? `${basePath}?${busca}` : basePath;
   };
 
   const { ativo, passivo, outras } = nomeDoCaso(processo);
@@ -284,7 +316,13 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
                   {outras > 0 && (
                     <>
                       {qualificacao ? ' · ' : ''}
-                      <a href="#detalhes-processo" className={styles.maisPartes}>+{outras} partes</a>
+                      {/* As partes por extenso moram na FICHA desde 17/09/2026.
+                          Uma âncora `#` daqui apontaria para um elemento que
+                          não está montado enquanto a aba das movimentações está
+                          aberta — o clique não faria nada. */}
+                      <Link href={`${hrefDaAba('ficha')}#partes-do-processo`} className={styles.maisPartes}>
+                        +{outras} partes
+                      </Link>
                     </>
                   )}
                   {/* A correção só aparece quando a resposta foi DELE: o que a
@@ -330,133 +368,146 @@ export default async function ProcessoDetailPage({ params, searchParams }: Props
           </div>
         </header>
 
-        {/* ══ o corpo ═══════════════════════════════════════════════════════
-            UM DOM SÓ, duas formas. No celular `.principal` e `.calha` são
-            `display: contents` e as seis seções viram irmãs numa coluna,
-            reordenadas por `order`; a partir de 1180px os envoltórios voltam a
-            existir e viram as duas colunas. Renderizar o mapa e o "onde está"
-            duas vezes — uma por layout — duplicaria `id`s (`#detalhes-processo`,
-            `#calendario-title`) e o `aria-labelledby` passaria a apontar para
-            dois elementos. */}
+        {/* ══ o corpo — DUAS ABAS ══════════════════════════════════════════
+            A ficha era uma calha de 352px à direita, e no celular ela não era
+            calha nenhuma: as três seções caíam empilhadas ENTRE o prazo e a
+            lista. Agora cada pergunta recebe a tela inteira — ver
+            `AbasDoProcesso`. Uma aba por vez também significa um DOM por vez:
+            não há mais `display: contents` + `order` reordenando seis seções
+            conforme a largura. */}
+        <AbasDoProcesso aba={aba} href={hrefDaAba} movimentacoes={processo.movimentacoesCount} />
+
         <div className={styles.corpo}>
-          <div className={styles.principal}>
-            <SecaoProcesso
-              id="corre-agora"
-              titulo="§ O QUE CORRE AGORA"
-              nota={prazosAbertos === 0 ? 'nenhum prazo' : `${prazosAbertos} ${prazosAbertos === 1 ? 'prazo aberto' : 'prazos abertos'}`}
-              className={`${styles.secao} ${styles.ordemCorre}`}
-            >
-              <PrazoQueCorre prazo={prazo} vencidos={vencidos} semData={semData} processo={processo} />
-            </SecaoProcesso>
-
-            <SecaoProcesso
-              id="mudou-o-caso"
-              titulo="§ O QUE MUDOU O CASO"
-              className={`${styles.secao} ${styles.ordemMudou}`}
-            >
-              <MudouOCaso decisao={decisao.events[0] ?? null} peticao={peticao.events[0] ?? null} />
-            </SecaoProcesso>
-
-            <SecaoProcesso
-              id="o-que-aconteceu"
-              titulo="§ O QUE ACONTECEU"
-              nota={`${processo.movimentacoesCount} ${processo.movimentacoesCount === 1 ? 'movimentação' : 'movimentações'}`}
-              className={`${styles.secao} ${styles.ordemLista}`}
-            >
-              <ProcessoMovementFilters
-                basePath={basePath}
-                filtros={{ q: filters.q, from, to, sort, categorias, ano: sp.ano }}
-                total={totalMovs}
-              />
-
-              <div className={styles.lista}>
-                <TimelineProcesso
-                  key={JSON.stringify([processo.id, categorias, todas, filters.q, from, to, sort])}
-                  processId={processo.id}
-                  inicial={timeline}
-                  total={totalMovs}
-                  porPagina={MOVS_PAGE}
-                  // O MESMO array que a página 1 usou, não as categorias cruas:
-                  // sem filtro a página pede `['todas']` (trâmite incluído)
-                  // enquanto uma lista vazia faria o backend aplicar o default,
-                  // que ESCONDE trâmite — e a página 2 viria de outro conjunto.
-                  filtros={{ categorias: catParaBackend, q: filters.q, from, to, sort }}
+          {aba === 'movimentacoes' ? (
+            <>
+              <SecaoProcesso
+                id="corre-agora"
+                titulo="§ O QUE CORRE AGORA"
+                nota={prazosAbertos === 0 ? 'nenhum prazo' : `${prazosAbertos} ${prazosAbertos === 1 ? 'prazo aberto' : 'prazos abertos'}`}
+                className={styles.secao}
+              >
+                <PrazoQueCorre
+                  prazo={prazo}
+                  vencidos={vencidos}
+                  semData={semData}
+                  processo={processo}
+                  ultimoAto={ultimoAto.events[0] ?? null}
                 />
-              </div>
-            </SecaoProcesso>
-          </div>
+              </SecaoProcesso>
 
-          <aside className={styles.calha} aria-label="Ficha do processo">
-            <SecaoProcesso
-              id="onde-esta"
-              titulo="§ ONDE ESTÁ"
-              nota={processo.syncError ? 'consulta falhou' : processo.lastScrapedAt ? `consultado ${tempoCurto(processo.lastScrapedAt)}` : null}
-              className={`${styles.secao} ${styles.ordemOnde}`}
-            >
-              <OndeEsta
-                processo={processo}
-                detalhes={
-                  <>
-                    <div className={styles.partesGrid} id="partes-do-processo">
-                      <PoloBlock titulo="Polo ativo" partes={processo.poloAtivo} />
-                      <PoloBlock titulo="Polo passivo" partes={processo.poloPassivo} />
-                    </div>
-                    <dl className={styles.ficha}>
-                      <div><dt>Assunto</dt><dd>{processo.assunto ?? '—'}</dd></div>
-                      <div><dt>Classe judicial</dt><dd>{processo.classeJudicial ?? processo.materia}</dd></div>
-                      <div><dt>Alertas WhatsApp</dt><dd>{processo.whatsEnabled ? 'Ativos' : 'Desativados'}</dd></div>
-                    </dl>
-                    {/* A SÍNTESE DO CASO, que vem de graça com o processo
-                        (`analiseCaso`) e não custa uma ida a mais. Ela fica
-                        aqui dentro porque é leitura, não fato do dia: o que a
-                        tela promove da análise é a FASE, lá em cima. */}
-                    {processo.analiseCaso?.sintese && (
-                      <div className={styles.sintese}>
-                        <p className={styles.sinteseTitulo}>
-                          <Sparkles aria-hidden="true" size={14} strokeWidth={2} />
-                          Resumo do caso pela IA
-                          {processo.analiseCaso.confianca === 'baixa' && <span className={styles.sinteseRessalva}>leitura incerta</span>}
-                        </p>
-                        <p className={styles.sinteseTexto}>{processo.analiseCaso.sintese}</p>
-                        {processo.analiseCaso.atualizadaEm && (
-                          <p className={styles.sinteseData}>
-                            Lido em {new Date(processo.analiseCaso.atualizadaEm).toLocaleDateString('pt-BR')} · confira no ato original
-                          </p>
-                        )}
+              <SecaoProcesso
+                id="mudou-o-caso"
+                titulo="§ O QUE MUDOU O CASO"
+                className={styles.secao}
+              >
+                <MudouOCaso decisao={decisao.events[0] ?? null} peticao={peticao.events[0] ?? null} />
+              </SecaoProcesso>
+
+              <SecaoProcesso
+                id="o-que-aconteceu"
+                titulo="§ O QUE ACONTECEU"
+                nota={`${processo.movimentacoesCount} ${processo.movimentacoesCount === 1 ? 'movimentação' : 'movimentações'}`}
+                className={`${styles.secao} ${styles.secaoLista}`}
+              >
+                <ProcessoMovementFilters
+                  basePath={basePath}
+                  filtros={{ q: filters.q, from, to, sort, categorias, ano: sp.ano }}
+                  total={totalMovs}
+                />
+
+                <div className={styles.lista}>
+                  <TimelineProcesso
+                    key={JSON.stringify([processo.id, categorias, todas, filters.q, from, to, sort])}
+                    processId={processo.id}
+                    inicial={timeline}
+                    total={totalMovs}
+                    porPagina={MOVS_PAGE}
+                    // O MESMO array que a página 1 usou, não as categorias cruas:
+                    // sem filtro a página pede `['todas']` (trâmite incluído)
+                    // enquanto uma lista vazia faria o backend aplicar o default,
+                    // que ESCONDE trâmite — e a página 2 viria de outro conjunto.
+                    filtros={{ categorias: catParaBackend, q: filters.q, from, to, sort }}
+                  />
+                </div>
+              </SecaoProcesso>
+            </>
+          ) : (
+            <>
+              <SecaoProcesso
+                id="onde-esta"
+                titulo="§ ONDE ESTÁ"
+                nota={processo.syncError ? 'consulta falhou' : processo.lastScrapedAt ? `consultado ${tempoCurto(processo.lastScrapedAt)}` : null}
+                className={styles.secao}
+              >
+                <OndeEsta
+                  processo={processo}
+                  /* Na aba, o `<details>` nasce ABERTO: ele existia para a
+                     ficha caber numa calha de 352px ao lado da lista, e aqui
+                     não há mais nada disputando a tela — um clique para ver o
+                     que a aba promete seria um pedágio. */
+                  detalhesAbertos
+                  detalhes={
+                    <>
+                      <div className={styles.partesGrid} id="partes-do-processo">
+                        <PoloBlock titulo="Polo ativo" partes={processo.poloAtivo} />
+                        <PoloBlock titulo="Polo passivo" partes={processo.poloPassivo} />
                       </div>
-                    )}
-                  </>
-                }
-              />
-            </SecaoProcesso>
+                      <dl className={styles.ficha}>
+                        <div><dt>Assunto</dt><dd>{processo.assunto ?? '—'}</dd></div>
+                        <div><dt>Classe judicial</dt><dd>{processo.classeJudicial ?? processo.materia}</dd></div>
+                        <div><dt>Alertas WhatsApp</dt><dd>{processo.whatsEnabled ? 'Ativos' : 'Desativados'}</dd></div>
+                      </dl>
+                      {/* A SÍNTESE DO CASO, que vem de graça com o processo
+                          (`analiseCaso`) e não custa uma ida a mais. Ela fica
+                          aqui dentro porque é leitura, não fato do dia: o que a
+                          tela promove da análise é a FASE, lá em cima. */}
+                      {processo.analiseCaso?.sintese && (
+                        <div className={styles.sintese}>
+                          <p className={styles.sinteseTitulo}>
+                            <Sparkles aria-hidden="true" size={14} strokeWidth={2} />
+                            Resumo do caso pela IA
+                            {processo.analiseCaso.confianca === 'baixa' && <span className={styles.sinteseRessalva}>leitura incerta</span>}
+                          </p>
+                          <p className={styles.sinteseTexto}>{processo.analiseCaso.sintese}</p>
+                          {processo.analiseCaso.atualizadaEm && (
+                            <p className={styles.sinteseData}>
+                              Lido em {new Date(processo.analiseCaso.atualizadaEm).toLocaleDateString('pt-BR')} · confira no ato original
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  }
+                />
+              </SecaoProcesso>
 
-            <SecaoProcesso
-              id="caso-no-tempo"
-              titulo="§ O CASO NO TEMPO"
-              className={`${styles.secao} ${styles.ordemTempo}`}
-            >
-              {/* O MAPA DO CASO — construído, com rota de backend, e que nenhum
-                  arquivo do app montava: a constante `ABAS` tinha quatro
-                  valores e `calendario` não era um deles. Cada quadrado é um
-                  dia e é um link que filtra a lista naquele dia — é a resposta
-                  para o processo de 4.900 movimentações e para o que atravessa
-                  37 anos. */}
-              <CalendarioProcesso
-                calendario={calendario}
-                ano={ano}
-                basePath={basePath}
-                paramsAtuais={paramsAtuais}
-              />
-            </SecaoProcesso>
+              <SecaoProcesso
+                id="caso-no-tempo"
+                titulo="§ O CASO NO TEMPO"
+                className={styles.secao}
+              >
+                {/* O MAPA DO CASO — cada quadrado é um dia e é um link que
+                    filtra a lista naquele dia. Ele volta para a aba das
+                    movimentações, que é onde a resposta do clique aparece: é a
+                    resposta para o processo de 4.900 movimentações e para o que
+                    atravessa 37 anos. */}
+                <CalendarioProcesso
+                  calendario={calendario}
+                  ano={ano}
+                  basePath={basePath}
+                  paramsAtuais={paramsAtuais}
+                />
+              </SecaoProcesso>
 
-            <SecaoProcesso
-              id="pecas-que-abrem"
-              titulo="§ PEÇAS QUE ABREM"
-              className={`${styles.secao} ${styles.ordemPecas}`}
-            >
-              <PecasQueAbrem eventos={comPeca.events} totalComPeca={comPeca.total} />
-            </SecaoProcesso>
-          </aside>
+              <SecaoProcesso
+                id="pecas-que-abrem"
+                titulo="§ PEÇAS QUE ABREM"
+                className={styles.secao}
+              >
+                <PecasQueAbrem eventos={comPeca.events} totalComPeca={comPeca.total} />
+              </SecaoProcesso>
+            </>
+          )}
         </div>
       </div>
     </AppLayout>

@@ -1,0 +1,53 @@
+/* As duas abas da tela do processo. O desenho é o de `AbasDaTela` — mesma
+   sublinha, mesma contagem — porque as duas telas alternam a mesma coisa:
+   a pergunta, não o filtro. */
+
+.abas {
+  display: flex;
+  gap: var(--space-xl);
+  padding: 0 var(--processo-gutter);
+  border-bottom: 1px solid var(--line);
+}
+
+.aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  /* 46px é o alvo de toque do celular e a altura da faixa no desktop. */
+  height: 46px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.aba:hover { color: var(--ink); }
+
+.aba[aria-current='page'] {
+  font-weight: 800;
+  color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--brick);
+}
+
+.aba:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.conta {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-3);
+  color: var(--brick-deep);
+  font: 12px/1 var(--mono);
+  font-weight: 700;
+}
+
+/* No celular as duas dividem a largura: com duas abas não há faixa que role, e
+   um alvo de ponta a ponta é mais fácil de acertar com o polegar. */
+@media (max-width: 767px) {
+  .abas { gap: 0; padding: 0; }
+  .aba { flex: 1 1 0; justify-content: center; }
+}

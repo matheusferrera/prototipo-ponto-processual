@@ -191,28 +191,28 @@
 
 /* ── o corpo ────────────────────────────────────────────────────────────── */
 
+/* UMA COLUNA, a da aba aberta, com a LARGURA INTEIRA da tela. Era uma grade de
+   duas — conteúdo à esquerda, ficha numa calha de 352px à direita — que no
+   celular virava `display: contents` + `order` para reintercalar seis seções
+   numa coluna só. Com a ficha em aba própria (ver `AbasDoProcesso`), não há mais
+   duas colunas para conciliar nem ordem para declarar: a ordem do DOM é a ordem
+   da tela, nas duas larguras.
+
+   **Sem teto de medida**, por decisão do dono do produto em 17/09/2026. Quem
+   precisa de medida de leitura já a impõe por dentro — a prosa da síntese da IA
+   tem `max-width: 68ch`, e a linha da lista distribui em colunas em vez de
+   esticar o texto. */
 .corpo {
+  padding-top: var(--space-xl);
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-/* No celular os dois envoltórios somem da caixa: as seis seções viram irmãs
-   diretas de `.corpo` e a ordem é declarada por `order`, sem duplicar DOM. */
-.principal, .calha { display: contents; }
-
 .secao { padding: 0 var(--processo-gutter) var(--space-xl); min-width: 0; }
 
-/* A ordem em que o advogado pergunta. */
-.ordemCorre { order: 1; }
-.ordemMudou { order: 2; }
-.ordemOnde  { order: 3; }
-.ordemTempo { order: 4; }
-.ordemLista { order: 5; padding-bottom: calc(var(--space-2xl) + env(safe-area-inset-bottom)); }
-
-/* A calha de peças é de desktop: no celular o ícone de cada linha já diz se a
-   peça abre — e o cadeado já nomeia o que não abre, na própria linha do ato. */
-.ordemPecas { display: none; }
+/* A última seção da aba encosta na borda de baixo do scrollport. */
+.secaoLista { padding-bottom: calc(var(--space-2xl) + env(safe-area-inset-bottom)); }
 
 /* A lista sangra para as bordas do scrollport; quem devolve o recuo do texto é
    o padding da própria linha (`MovimentacaoRow`) e o do cabeçalho de dia. */
@@ -296,39 +296,12 @@
   .ficha { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* ── ≥1180px: a calha da direita ────────────────────────────────────────── */
+/* ── ≥1180px ────────────────────────────────────────────────────────────── */
 
 @media (min-width: 1180px) {
-  .corpo {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 352px;
-    align-items: start;
-  }
-
-  .principal {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding-top: 20px;
-  }
-
-  /* A calha carrega em PARALELO o que não compete com a leitura: onde está, o
-     mapa do caso no tempo e as peças que abrem. Nada se repete entre coluna e
-     calha. */
-  .calha {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding-top: 20px;
-    border-left: 1px solid var(--line);
-  }
-
-  .secao { order: 0; padding-bottom: 22px; }
-  .ordemPecas { display: block; }
-  /* Na coluna, a direita respira 32px do filete da calha em vez do gutter. */
-  .principal > .secao { padding-right: var(--space-2xl); }
-  .calha > .secao { padding-inline: var(--processo-gutter); }
-  .ordemLista { padding-bottom: calc(var(--space-2xl) + env(safe-area-inset-bottom)); }
+  .corpo { padding-top: 20px; }
+  .secao { padding-bottom: 22px; }
+  .secaoLista { padding-bottom: calc(var(--space-2xl) + env(safe-area-inset-bottom)); }
 }
 
 @media (prefers-reduced-motion: reduce) { .botao { transition: none; } }

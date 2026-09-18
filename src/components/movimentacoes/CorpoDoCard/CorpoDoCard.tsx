@@ -1,17 +1,14 @@
 import Link from 'next/link';
 import { ChevronRight, Info } from 'lucide-react';
-import type { MovimentacaoDetail } from '@/lib/api.server';
+import type { FioDoPrazo, MovimentacaoDetail } from '@/lib/api.server';
 import type { PrazoDoAto, PrazoEmCurso } from '@/types';
 import {
-  CadeiaDoPrazo,
   DocumentosDoAto,
   TeorDoAto,
 } from '@/components/movimentacoes/AtoDetalhe/AtoDetalhe';
 import { LeituraDoAto } from '@/components/movimentacoes/AtoDetalhe/LeituraDoAto';
 import { BaixarPrazo } from '@/components/prazos/BaixarPrazo/BaixarPrazo';
 import { LembrarPrazo } from '@/components/prazos/LembrarPrazo/LembrarPrazo';
-import { trechoDeAbertura } from '@/lib/abertura-do-ato';
-import { blocosDoAto } from '@/lib/ato-texto';
 import { fracaoDoPrazo, mexeComOPrazo } from '@/lib/fio-do-prazo';
 import {
   comoTitulo,
@@ -58,23 +55,53 @@ import styles from './CorpoDoCard.module.css';
  * caixa com "nenhuma providência identificada" é lida como *não há nada a
  * fazer* — a leitura errada no lugar mais caro do produto.
  */
-export function CorpoDoCard({ mov }: { mov: MovimentacaoDetail }) {
+export function CorpoDoCard({ mov, fio }: {
+  mov: MovimentacaoDetail;
+  /**
+   * O que aconteceu DENTRO do prazo deste ato — buscado pelas duas páginas que
+   * montam o card. `null` quando o ato não tem prazo, ou quando o fio veio
+   * vazio. Ver `Situacao`.
+   */
+  fio?: FioDoPrazo | null;
+}) {
+  /**
+   * **SEM LEITURA DA IA, O INTEIRO TEOR ABRE** — pedido do dono do produto em
+   * 18/09/2026, e ele corrige o caso que motivou o pedido.
+   *
+   * Sem leitura (94% dos atos legíveis), o card abria com o rótulo do cartório
+   * — "Decisão — 9ª Vara Federal Cível da SJAM" — e, abaixo, um TRECHO citado
+   * do próprio ato. O trecho preferia o campo `FINALIDADE`, mas quando o ato
+   * não tem esse rótulo (é o caso de todo ato colhido da consulta pública) ele
+   * caía no começo do texto, que é a CAPA: "PODER JUDICIÁRIO JUSTIÇA FEDERAL
+   * Seção Judiciária do Amazonas 9ª Vara Federal". Uma citação em destaque para
+   * dizer o nome do tribunal que já está escrito duas vezes acima — e o texto
+   * que respondia a pergunta ficava atrás de um clique, 4.836 caracteres logo
+   * abaixo.
+   *
+   * Agora o corte de 800 caracteres vale só quando a IA leu: ali o resumo já
+   * responde "o que aconteceu", e o teor é a segunda via. Sem resumo, o teor É
+   * a resposta, e nenhum tamanho justifica escondê-lo — no desktop ele rola
+   * dentro da própria caixa (`max-height: 52vh`), e o `<details>` continua
+   * recolhível para quem quiser fechar.
+   */
+  const leu = temLeituraIa(mov);
+
   return (
     <div className={styles.corpo}>
-      <Situacao mov={mov} />
+      <Situacao mov={mov} fio={fio ?? null} />
       <OQueAconteceu mov={mov} />
       <OQueFazer mov={mov} />
       <section className={styles.bloco}>
-        <TeorDoAto mov={mov} abrirAte={CHARS_ABERTO} />
+        <TeorDoAto mov={mov} abrirAte={leu ? CHARS_ABERTO : Number.POSITIVE_INFINITY} />
       </section>
-      <ProcessoDoAto mov={mov} />
+      <ProcessoDoAto mov={mov} comFioAcima={Boolean(fio?.eventos.length)} />
     </div>
   );
 }
 
 /**
- * Acima disto o teor abre FECHADO — o corte do celular: a 390px, 800
- * caracteres já são ~20 linhas, e o ato do diário tem 8 KB de média.
+ * Acima disto o teor abre FECHADO **quando a IA leu** — o corte do celular: a
+ * 390px, 800 caracteres já são ~20 linhas, e o ato do diário tem 8 KB de média.
  */
 const CHARS_ABERTO = 800;
 
@@ -265,7 +292,7 @@ function vereditoDoAto(mov: MovimentacaoDetail): Veredito | null {
   return null;
 }
 
-function Situacao({ mov }: { mov: MovimentacaoDetail }) {
+function Situacao({ mov, fio }: { mov: MovimentacaoDetail; fio: FioDoPrazo | null }) {
   const v = vereditoDoAto(mov);
   if (!v) return null;
   const aberto = v.verbos ? prazoAbertoDoAto(mov) : null;
@@ -302,23 +329,31 @@ function Situacao({ mov }: { mov: MovimentacaoDetail }) {
         </p>
       )}
 
-      {/* A CONTA DO VENCIMENTO — os quatro marcos que produzem a data, com o
-          dispositivo de cada um. Troca um pedido de fé por uma conferência de
-          quinze segundos. Nada é calculado aqui: os marcos vêm de
-          `prazo.cadeia`, e sem eles a data fica sozinha.
+      {/* ── TUDO O QUE ACONTECEU NESTE PRAZO ──────────────────────────────
+          Aqui ficava a CONTA do vencimento ("Ver como chegamos na data"), que
+          em 18/09/2026 foi para a tela do fio a pedido do dono do produto — é
+          lá que o assunto é o prazo, e aqui o lugar vale mais para o que
+          aconteceu dentro dele.
 
-          **Abre FECHADA** (pedido do dono do produto em 17/09/2026): aberta,
-          ela empurrava "O que aconteceu" para baixo da dobra no celular, e a
-          conta é conferência de quem quer, não leitura de todo ato. */}
-      {v.conta && (
+          A troca não é só de conteúdo: a conta responde "esta data está certa?",
+          que se confere uma vez; a lista responde "mudou alguma coisa desde que
+          isto abriu?", que é a pergunta de quem abre o ato com o relógio
+          correndo. O caso caro é a outra parte protocolar no dia 13 dos seus
+          15 — uma linha entre dezoito mil, e agora ela está dentro do card.
+
+          **Abre FECHADA**, como a conta abria: aberta, empurraria "O que
+          aconteceu" para baixo da dobra no celular. */}
+      {fio && (
         <details className={styles.conta}>
           <summary className={styles.contaResumo}>
             <ChevronRight size={16} aria-hidden="true" className={styles.contaSeta} />
-            <span className={styles.contaVer}>Ver como chegamos na data</span>
-            <span className={styles.contaEsconder}>Esconder a conta</span>
+            <span className={styles.contaVer}>
+              Ver tudo o que aconteceu neste prazo{outrosNoFio(fio, mov.id) > 0 ? ` · ${outrosNoFio(fio, mov.id)} ${outrosNoFio(fio, mov.id) === 1 ? 'movimentação' : 'movimentações'}` : ''}
+            </span>
+            <span className={styles.contaEsconder}>Esconder o que aconteceu</span>
           </summary>
           <div className={styles.contaCorpo}>
-            <CadeiaDoPrazo prazo={mov.prazo} estimado={v.prazo?.estimado ?? false} />
+            <FioNoCard fio={fio} atoId={mov.id} />
           </div>
         </details>
       )}
@@ -335,22 +370,85 @@ function Situacao({ mov }: { mov: MovimentacaoDetail }) {
   );
 }
 
+/**
+ * O FIO, COMPACTO — data e o que aconteceu, uma linha cada.
+ *
+ * Não é o `FioDoPrazo` da tela do fio, e não podia ser: aquele traz o cabeçalho
+ * do prazo (peça, régua, verbos), que aqui está 40px acima, no bloco da
+ * situação. O que sobra é o que o card não tem: a sequência.
+ *
+ * Cada linha leva ao ato, e é a mesma fenda `@card` — o card do prazo troca
+ * pelo card do ato clicado, sem sair da lista que está atrás dos dois.
+ */
+function outrosNoFio(fio: FioDoPrazo, atoId: string): number {
+  return fio.eventos.filter(e => e.item.id !== atoId).length;
+}
+
+function FioNoCard({ fio, atoId }: { fio: FioDoPrazo; atoId: string }) {
+  /* O PRÓPRIO ATO SAI DA LISTA. Ele é o card inteiro, 200px abaixo, em
+     "O que aconteceu" — repeti-lo aqui é escrever o mesmo parágrafo duas vezes
+     na mesma tela. Medido: 5 dos 11 prazos abertos de uma conta não tiveram
+     nenhuma movimentação depois do ato que os abriu, então este é o caso
+     COMUM, e para ele a resposta certa é uma frase, não uma lista de um item. */
+  const outros = fio.eventos.filter(e => e.item.id !== atoId);
+
+  if (outros.length === 0) {
+    return (
+      <>
+        <p className={styles.fioSilencio}>
+          Nada mais aconteceu neste processo desde que o prazo abriu.
+        </p>
+        <Link href={`/movimentacoes/fio/${encodeURIComponent(fio.prazo.id)}`} className={styles.fioSaida}>
+          Abrir o fio do prazo
+          <ChevronRight size={16} aria-hidden="true" />
+        </Link>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ol className={styles.fio}>
+        {outros.map(e => (
+          <li key={e.item.id} className={styles.fioItem} data-abriu={e.abriuOPrazo || undefined}>
+            <Link href={`/movimentacoes/${encodeURIComponent(e.item.id)}`} className={styles.fioLinha}>
+              <span className={styles.fioDia}>{e.item.quandoCurto ?? ''}</span>
+              <span className={styles.fioTexto}>
+                {resumoMovimentacao(e.item)}
+                {e.abriuOPrazo && <span className={styles.fioMarco}>o prazo abriu aqui</span>}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+
+      {fio.total > fio.eventos.length && (
+        <p className={styles.fioTeto}>Mostrando {outros.length} de {fio.total - 1}.</p>
+      )}
+
+      {/* A tela do fio continua existindo, e é onde mora a conta do vencimento
+          e a régua. Daqui se APONTA para lá — nunca se redesenha. */}
+      <Link href={`/movimentacoes/fio/${encodeURIComponent(fio.prazo.id)}`} className={styles.fioSaida}>
+        Abrir o fio do prazo
+        <ChevronRight size={16} aria-hidden="true" />
+      </Link>
+    </>
+  );
+}
+
 /* ── 1 · O que aconteceu ─────────────────────────────────────────────────── */
 
 /**
  * Prosa, não manchete: o resumo da IA é um parágrafo, e o elemento mais pesado
  * do card é a situação acima dele.
  *
- * Sem leitura (94% dos atos legíveis), o rótulo do cartório é o texto e **o
- * próprio ato fala** — o trecho de `FINALIDADE`, citado — e o pedido de
- * leitura aparece logo abaixo.
+ * Sem leitura (94% dos atos legíveis), o rótulo do cartório é o texto e quem
+ * fala em seguida é **o ato inteiro**, aberto no bloco de baixo — ver
+ * `CorpoDoCard`. Aqui fica só o pedido de leitura.
  */
 function OQueAconteceu({ mov }: { mov: MovimentacaoDetail }) {
   const leu = temLeituraIa(mov);
   const texto = resumoMovimentacao({ ia: mov.ia, detail: mov.descricao });
-  const abertura = !leu && mov.textoOriginal?.trim()
-    ? trechoDeAbertura(blocosDoAto(mov.textoOriginal))
-    : null;
 
   return (
     <section className={styles.bloco}>
@@ -361,18 +459,6 @@ function OQueAconteceu({ mov }: { mov: MovimentacaoDetail }) {
           ato no sistema do tribunal. Sem leitura ele JÁ É o texto acima. */}
       {leu && mov.descricao.trim() && texto !== mov.descricao.trim() && (
         <p className={styles.registro}>Como o tribunal registrou: “{mov.descricao}”</p>
-      )}
-
-      {abertura && (
-        <figure className={styles.citacao}>
-          <figcaption className={styles.citacaoRotulo}>
-            {abertura.rotulo ? `o ato diz, em ${abertura.rotulo.toLowerCase()}:` : 'o ato diz:'}
-          </figcaption>
-          <blockquote className={styles.citacaoTexto}>
-            {abertura.trecho}{abertura.truncado && '…'}
-          </blockquote>
-          {abertura.truncado && <p className={styles.citacaoMais}>o texto inteiro está abaixo ↓</p>}
-        </figure>
       )}
 
       {!leu && <LeituraDoAto mov={mov} mostrarLeitura={false} />}
@@ -467,7 +553,7 @@ const FONTE_CURTA: Record<string, string> = {
  * e o processo. Os arquivos que não couberam na barra de baixo ficam aqui,
  * recolhidos.
  */
-function ProcessoDoAto({ mov }: { mov: MovimentacaoDetail }) {
+function ProcessoDoAto({ mov, comFioAcima = false }: { mov: MovimentacaoDetail; comFioAcima?: boolean }) {
   const proc = mov.processData;
   const tribunal = proc?.tribunal.replace(/G[12]$/, '');
   const cliente = proc?.summary?.partes && proc.summary.partes !== '—' ? nomeLegivel(proc.summary.partes) : null;
@@ -503,7 +589,10 @@ function ProcessoDoAto({ mov }: { mov: MovimentacaoDetail }) {
       </dl>
 
       <div className={styles.saidas}>
-        {mov.prazoEmCurso && (
+        {/* Some quando o bloco da situação já mostrou o fio — dois links com o
+            mesmo nome no mesmo card, um deles 300px abaixo do outro, é a mesma
+            oferta escrita duas vezes. */}
+        {mov.prazoEmCurso && !comFioAcima && (
           <Link href={`/movimentacoes/fio/${encodeURIComponent(mov.prazoEmCurso.id)}`} className={styles.saida}>
             Tudo o que aconteceu neste prazo
             <ChevronRight size={18} aria-hidden="true" />

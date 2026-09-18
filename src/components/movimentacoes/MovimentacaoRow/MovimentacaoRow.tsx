@@ -62,6 +62,15 @@ export interface MovimentacaoRowProps {
   /** Mostra a hora do ato à esquerda. O DJEN publica em data, não em hora. */
   comHora?: boolean;
   /**
+   * Mostra também o DIA, acima da hora — `hoje` · `ontem` · `27 ago`.
+   *
+   * Só quem não tem cabeçalho de dia precisa disto. O feed agrupa as linhas sob
+   * `DateGroupHeader` e a timeline do processo também; o FIO não agrupa (ele é
+   * uma janela só, do ato que abriu até hoje), e ali uma linha marcada apenas
+   * "16:08" não responde quando aconteceu — que é a pergunta da tela.
+   */
+  comData?: boolean;
+  /**
    * Para onde a linha leva. O padrão é a página do ato; o feed passa
    * `?aberta=<id>` para abrir no lugar — e, quando já está aberta, o href que
    * fecha. **Continua sendo um link**, então o botão voltar fecha o painel, o
@@ -102,7 +111,7 @@ const DOC_TITULO: Record<string, string> = {
 };
 
 export function MovimentacaoRow({
-  m, densidade = 'confortavel', comHora = false, href, painel, noProcesso = false, onToggle, selo = false,
+  m, densidade = 'confortavel', comHora = false, comData = false, href, painel, noProcesso = false, onToggle, selo = false,
   semNomeDoPrazo = false,
 }: MovimentacaoRowProps) {
   const compacta = densidade === 'compacta';
@@ -143,7 +152,8 @@ export function MovimentacaoRow({
   const conteudo = (
     <>
       {comHora && (
-        <span className={styles.hora} aria-hidden={m.time ? undefined : true}>
+        <span className={styles.hora} aria-hidden={m.time || (comData && m.quandoCurto) ? undefined : true}>
+          {comData && m.quandoCurto && <span className={styles.dia}>{m.quandoCurto}</span>}
           {m.time ?? ''}
         </span>
       )}
@@ -249,9 +259,13 @@ export function MovimentacaoRow({
       {conteudo}
     </button>
   ) : (
+    /* `aria-expanded` só quando ESTA linha tem painel para expandir. Com o ato
+       abrindo no card por cima da lista, `painel` deixou de existir nos quatro
+       consumidores — e um link que navega anunciando "recolhido" mente para o
+       leitor de tela sobre o que o clique faz. */
     <Link href={href ?? `/movimentacoes/${m.id}`} scroll={href ? false : undefined}
-      id={idTitulo} aria-expanded={href ? aberta : undefined}
-      aria-controls={href && aberta ? idPainel : undefined} className={classeLinha}>
+      id={idTitulo} aria-expanded={painel === undefined ? undefined : aberta}
+      aria-controls={aberta ? idPainel : undefined} className={classeLinha}>
       {conteudo}
     </Link>
   );

@@ -191,36 +191,6 @@ details[open] > summary > .contaSeta { transform: rotate(90deg); }
 
 /* A CITAÇÃO: não é afirmação nossa, é o texto do juízo — cinza-papel, com o
    filete da convenção de citação. */
-.citacao {
-  margin: var(--space-md) 0 0;
-  padding: var(--space-md);
-  background: var(--paper-2);
-  border-left: 3px solid var(--line-strong);
-}
-
-.citacaoRotulo {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-.citacaoTexto {
-  margin: var(--space-xs) 0 0;
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.citacaoMais {
-  margin: var(--space-sm) 0 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--brick-deep);
-}
-
 /* ── 2 · O que fazer ─────────────────────────────────────────────────────── */
 
 .fazerTexto {
@@ -414,3 +384,84 @@ details[open] > summary > .contaSeta { transform: rotate(90deg); }
   .verbos > * > button,
   .verbos > * > summary { width: auto; }
 }
+
+/* ── O FIO DENTRO DO CARD ─────────────────────────────────────────────────
+   A sequência do prazo, em uma linha por ato: o dia à esquerda, numa calha
+   estreita, e o que aconteceu à direita. Sem trilho nem pontos — a régua e o
+   desenho do tempo são da tela do fio; aqui o que se lê é a lista. */
+.fio {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fioItem { border-top: 1px solid var(--line-soft); }
+.fioItem:first-child { border-top: 0; }
+
+.fioLinha {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: baseline;
+  padding: var(--space-sm) 0;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.fioLinha:hover .fioTexto { color: var(--brick-deep); }
+.fioLinha:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.fioDia {
+  font: 11px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.fioTexto {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* O ato que abriu o prazo: o marco vai DEPOIS do texto, como etiqueta, para a
+   coluna do dia continuar alinhada em toda a lista. */
+.fioMarco {
+  display: inline-block;
+  margin-left: var(--space-sm);
+  padding: 1px 6px;
+  background: var(--paper-3);
+  color: var(--brick-deep);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.fioItem[data-abriu] .fioTexto { font-weight: 650; }
+
+.fioTeto { margin: var(--space-sm) 0 0; color: var(--ink-2); font-size: 12px; }
+
+.fioSaida {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-top: var(--space-xs);
+  color: var(--brick-deep);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.fioSaida:hover { color: var(--brick); }
+.fioSaida:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+/* Silêncio É resposta — e é dito em uma frase, não num quadro vazio. */
+.fioSilencio { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }

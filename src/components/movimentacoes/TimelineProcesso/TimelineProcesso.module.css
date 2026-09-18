@@ -17,7 +17,7 @@
 .diaAtos { list-style: none; margin: 0; padding: 0; }
 /* O "mostrar mais N" por quantidade saiu daqui: quem esconde linha nesta lista
    agora é `AtosDeTramite`, que DECLARA o que engaveta. Ver `DiaDeAtos`. */
-.carregar:focus-visible, .linkDetalhe:focus-visible {
+.carregar:focus-visible {
   outline: 2px solid var(--brick);
   outline-offset: -2px;
 }
@@ -52,15 +52,6 @@
 @keyframes girar { to { transform: rotate(360deg); } }
 .erro { color: var(--alert); font-size: 13px; }
 .vazio { padding: var(--space-lg) 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
-.estadoDetalhe {
-  padding: var(--space-lg);
-  border-bottom: 1px solid var(--line);
-  background: var(--paper-2);
-  color: var(--ink-2);
-  font-size: 13px;
-}
-.estadoDetalhe p { margin: 0 0 var(--space-sm); }
-.linkDetalhe { display: inline-flex; align-items: center; min-height: 44px; margin-left: var(--space-md); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .girando { animation: none; }
 }

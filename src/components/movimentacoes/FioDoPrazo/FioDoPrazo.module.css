@@ -291,3 +291,31 @@
   .evento,
   .eventoTramite { grid-template-columns: 14px minmax(0, 1fr); column-gap: var(--space-lg); }
 }
+
+/* ── A CONTA DO VENCIMENTO ────────────────────────────────────────────────
+   Veio do card do ato em 18/09/2026. Fecha o cabeçalho do fio: depois dela
+   começa o decorrer, que é o conteúdo da tela. */
+.conta {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--space-md);
+}
+
+.contaResumo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--brick-deep);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.contaResumo::-webkit-details-marker { display: none; }
+.contaResumo::before { content: '▸'; margin-right: 8px; font-size: 11px; }
+.conta[open] .contaResumo::before { content: '▾'; }
+.contaResumo:hover { color: var(--brick); }
+.contaResumo:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+
+.contaCorpo { padding-top: var(--space-sm); }

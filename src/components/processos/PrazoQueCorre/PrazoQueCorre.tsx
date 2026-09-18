@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Clock3 } from 'lucide-react';
-import type { Prazo, Processo } from '@/types';
+import type { Prazo, Processo, TimelineEvent } from '@/types';
 import { quandoDoPrazo } from '@/lib/fio-do-prazo';
 import { duracaoLonga, tempoCurto, tomDoPrazo } from '@/lib/processo-apresentacao';
 import { StatusDot } from '@/components/ui/StatusDot/StatusDot';
@@ -119,7 +119,7 @@ function regua(prazo: Prazo): { fracao: number; de: string; ate: string } | null
  * como "vence hoje", em vermelho, no único campo em que errar tarde custa o
  * prazo.
  */
-export function PrazoQueCorre({ prazo, vencidos, semData, processo }: {
+export function PrazoQueCorre({ prazo, vencidos, semData, processo, ultimoAto }: {
   /** O prazo mais próximo do vencimento, ou `null` quando nada corre. */
   prazo: Prazo | null;
   /** Quantos passaram da data sem encerramento registrado. */
@@ -127,8 +127,13 @@ export function PrazoQueCorre({ prazo, vencidos, semData, processo }: {
   /** Quantos expedientes estão sem data definida. */
   semData: number;
   processo: Processo;
+  /**
+   * A última movimentação do processo, **sem os filtros da tela** — é ela que
+   * decide se o silêncio existe. Ver `NadaCorre`.
+   */
+  ultimoAto?: UltimoAto | null;
 }) {
-  if (!prazo) return <NadaCorre processo={processo} />;
+  if (!prazo) return <NadaCorre processo={processo} ultimo={ultimoAto ?? null} />;
 
   const tom = tomDoPrazo({ diasRestantes: prazo.diasRestantes });
   const quando = quandoDoPrazo(prazo.diasRestantes);
@@ -228,7 +233,13 @@ export function PrazoQueCorre({ prazo, vencidos, semData, processo }: {
           virar um botão que leva a lugar nenhum. */}
       {prazo.movementId && (
         <div className={styles.saidas}>
-          <Link href={`/movimentacoes/fio/${encodeURIComponent(prazo.movementId)}`} className={`${styles.botao} ${styles.botaoForte}`}>
+          {/* `prazo.id`, não `prazo.movementId`: a rota do fio é
+              `GET /deadlines/{id}/fio`, e o `findDeadline` casa por `Deadline.id`.
+              Com o id do MOVIMENTO o backend devolvia 404 e a tela caía no
+              `notFound()` — medido em 18/09/2026, o mesmo prazo responde 200 com
+              o id do prazo e 404 com o do ato. O botão mais visível deste bloco
+              não levava a lugar nenhum. */}
+          <Link href={`/movimentacoes/fio/${encodeURIComponent(prazo.id)}`} className={`${styles.botao} ${styles.botaoForte}`}>
             Ver o fio do prazo →
           </Link>
           <Link href={`/movimentacoes/${encodeURIComponent(prazo.movementId)}`} className={styles.botao}>
@@ -240,32 +251,85 @@ export function PrazoQueCorre({ prazo, vencidos, semData, processo }: {
   );
 }
 
+/** O que a tela precisa saber da última movimentação — nada além disto. */
+export type UltimoAto = Pick<TimelineEvent, 'id' | 'title' | 'dia'>;
+
+/** Dias inteiros entre hoje e um `YYYY-MM-DD` de Brasília. */
+function diasDesde(dia: string): number | null {
+  const [ano, mes, d] = dia.split('-').map(Number);
+  if (!ano || !mes || !d) return null;
+  const hoje = new Date();
+  const hojeUTC = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  return Math.floor((hojeUTC - Date.UTC(ano, mes - 1, d)) / 86_400_000);
+}
+
+/** "hoje" · "ontem" · "há 9 dias" — a distância, na palavra que se usa. */
+function quandoMoveu(dias: number): string {
+  if (dias <= 0) return 'hoje';
+  if (dias === 1) return 'ontem';
+  return `há ${dias} dias`;
+}
+
 /**
- * NADA CORRE — e a frase que importa não é essa.
+ * NADA CORRE — e não é a mesma coisa que "nada acontece".
  *
- * Metade de um acervo está parada. Para esses, "nenhum prazo em aberto" é
- * verdade e não é notícia; o que o advogado precisa saber é se o silêncio é do
- * TRIBUNAL ou da nossa consulta. "Consultado há 3 h, sem falha" é o que
- * transforma "nada aconteceu" em "nós conferimos, e nada aconteceu" — que é o
- * produto. Os dois campos já vêm na resposta (`lastScrapedAt`, `syncError`).
+ * Este bloco responde por PRAZO, e o título dizia "Nada corre." sempre que não
+ * havia prazo aberto — inclusive num processo que tinha se movimentado no dia
+ * anterior, com a movimentação visível na lista logo abaixo. Pior: o corpo
+ * escrevia "Nenhuma movimentação desde 16/09/2026 — 1 dia de silêncio", usando
+ * como marco de SILÊNCIO exatamente a data do ato que acabara de chegar. Uma
+ * tela desmentindo a outra metade de si mesma.
+ *
+ * Agora são dois fatos separados, e o segundo decide o título:
+ *
+ * | última movimentação | título | corpo |
+ * |---|---|---|
+ * | até 30 dias | "Nenhum prazo em aberto." | o que foi, quando foi, e o link para o ato |
+ * | mais que isso, ou nenhuma | "Nada corre." | o silêncio, por extenso |
+ *
+ * **O marco é o ato, não `Process.lastMovAt`.** Os dois deveriam concordar e
+ * não concordam: medido em 17/09/2026, `lastMovAt` vem **3 h à frente** do
+ * `ocorridoEm` do mesmo movimento (21:37 contra 18:37) — a coluna guarda um
+ * instante UTC de verdade onde o resto do banco grava wall-clock de Brasília.
+ * Impresso com `timeZone: 'UTC'`, um ato das 21h vira o dia seguinte. `dia` do
+ * evento é a MESMA chave que agrupa a lista, então o bloco e a linha abaixo
+ * dele nunca mais podem nomear dias diferentes para o mesmo fato.
+ *
+ * Metade de um acervo está de fato parada, e para esses o silêncio continua
+ * sendo a notícia: "consultado há 3 h, sem falha" é o que transforma "nada
+ * aconteceu" em "nós conferimos, e nada aconteceu" — que é o produto.
  */
-function NadaCorre({ processo }: { processo: Processo }) {
-  const silencio = duracaoLonga(processo.lastMovAt);
+function NadaCorre({ processo, ultimo }: { processo: Processo; ultimo: UltimoAto | null }) {
   const falhou = Boolean(processo.syncError);
+  const dias = ultimo ? diasDesde(ultimo.dia) : null;
+  /* Sem ato na mão (filtro estreito, lista vazia) o campo da capa ainda
+     responde — é o mesmo dado, com um dia de folga na virada da noite. */
+  const silencio = duracaoLonga(processo.lastMovAt);
+  const andou = ultimo !== null && dias !== null && dias <= 30;
 
   return (
     <div className={`${styles.cartao} ${styles.parado}`}>
-      <p className={styles.paradoTitulo}>Nada corre.</p>
-      <p className={styles.paradoTexto}>
-        Nenhum prazo em aberto.{' '}
-        {processo.lastMovAt && silencio ? (
-          <>
-            Nenhuma movimentação desde{' '}
-            <strong>{new Date(processo.lastMovAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</strong> —{' '}
-            <strong>{silencio}</strong> de silêncio.
-          </>
-        ) : 'Nenhuma movimentação registrada nesta consulta.'}
-      </p>
+      <p className={styles.paradoTitulo}>{andou ? 'Nenhum prazo em aberto.' : 'Nada corre.'}</p>
+
+      {andou ? (
+        <p className={styles.paradoTexto}>
+          O processo se moveu <strong>{quandoMoveu(dias!)}</strong>, e nada do que chegou abriu prazo.{' '}
+          <Link href={`/movimentacoes/${encodeURIComponent(ultimo!.id)}`} className={styles.paradoLink}>
+            {ultimo!.title}
+          </Link>
+        </p>
+      ) : (
+        <p className={styles.paradoTexto}>
+          Nenhum prazo em aberto.{' '}
+          {processo.lastMovAt && silencio ? (
+            <>
+              Nenhuma movimentação desde{' '}
+              <strong>{new Date(processo.lastMovAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</strong> —{' '}
+              <strong>{silencio}</strong> de silêncio.
+            </>
+          ) : 'Nenhuma movimentação registrada nesta consulta.'}
+        </p>
+      )}
 
       <p className={styles.paradoSync}>
         <StatusDot state={falhou ? 'alert' : 'quiet'} />
@@ -277,7 +341,9 @@ function NadaCorre({ processo }: { processo: Processo }) {
         ) : processo.lastScrapedAt ? (
           <span>
             Consultado <strong>{tempoCurto(processo.lastScrapedAt)}</strong>, sem falha.{' '}
-            <strong>O silêncio é do tribunal, não da consulta.</strong>
+            {andou
+              ? <>A tela está em dia com o tribunal.</>
+              : <><strong>O silêncio é do tribunal, não da consulta.</strong></>}
           </span>
         ) : (
           <span>Aguardando a primeira consulta a este processo.</span>

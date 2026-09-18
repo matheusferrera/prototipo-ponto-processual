@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { AppLayout } from '@/components/layout/AppLayout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader/PageHeader';
 import { FioDoPrazo } from '@/components/movimentacoes/FioDoPrazo/FioDoPrazo';
-import { getFioDoPrazo } from '@/lib/api.server';
+import { getFioDoPrazo, getMovimentacao } from '@/lib/api.server';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -38,6 +38,13 @@ export default async function FioDoPrazoPage({ params }: Props) {
   const fio = await getFioDoPrazo(id);
   if (!fio) notFound();
 
+  /* O ATO QUE ABRIU, só pela CADEIA. `/deadlines/{id}/fio` não devolve os
+     marcos da contagem — medido em 18/09/2026: nem no `prazo`, nem nos eventos
+     —, e quem os carrega é a visão do movimento (`PrazoDoAto.cadeia`). É uma
+     requisição a mais, no servidor, para a conta do vencimento poder morar
+     aqui em vez de no card do ato. */
+  const ato = fio.prazo.movementId ? await getMovimentacao(fio.prazo.movementId) : null;
+
   const peca = fio.prazo.ato?.ia?.peca?.trim() || fio.prazo.tipo;
 
   return (
@@ -51,7 +58,7 @@ export default async function FioDoPrazoPage({ params }: Props) {
         title="O fio do prazo"
         breadcrumb={`Início / Movimentações / ${peca}`}
       />
-      <FioDoPrazo fio={fio} />
+      <FioDoPrazo fio={fio} prazoDoAto={ato?.prazo ?? null} />
     </AppLayout>
   );
 }

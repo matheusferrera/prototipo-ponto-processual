@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CorpoDoCard } from '@/components/movimentacoes/CorpoDoCard/CorpoDoCard';
 import { CardDoAto } from '@/components/movimentacoes/CardDoAto/CardDoAto';
-import { getMovimentacao } from '@/lib/api.server';
+import { getFioDoPrazo, getMovimentacao } from '@/lib/api.server';
 import { getAbsoluteUrl } from '@/lib/site-url';
 import { cabecalhoDoAto } from '@/components/movimentacoes/CardDoAto/identidade';
 import { AcoesDoDocumento, temAcoesDeDocumento } from '@/components/movimentacoes/AcoesDoDocumento/AcoesDoDocumento';
@@ -67,6 +67,14 @@ export default async function MovimentacaoPage({ params }: Props) {
   const mov = await getMovimentacao(id);
   if (!mov) notFound();
 
+  /* O FIO DO PRAZO DESTE ATO — o que o bloco da situação mostra desde
+     18/09/2026, no lugar da conta do vencimento (que foi para a tela do fio).
+     `mov.prazo.id` é o prazo que ESTE ato abriu; `prazoEmCurso.id` é o prazo do
+     processo que já corria quando ele chegou. Sem nenhum dos dois não há fio, e
+     o bloco não existe. */
+  const idDoPrazo = mov.prazo?.id ?? mov.prazoEmCurso?.id ?? null;
+  const fio = idDoPrazo ? await getFioDoPrazo(idDoPrazo) : null;
+
   const { tipo, onde } = cabecalhoDoAto(mov);
 
   return (
@@ -77,7 +85,7 @@ export default async function MovimentacaoPage({ params }: Props) {
       fecharPara="/movimentacoes"
       acoes={temAcoesDeDocumento(mov) ? <AcoesDoDocumento mov={mov} /> : undefined}
     >
-      <CorpoDoCard mov={mov} />
+      <CorpoDoCard mov={mov} fio={fio} />
     </CardDoAto>
   );
 }

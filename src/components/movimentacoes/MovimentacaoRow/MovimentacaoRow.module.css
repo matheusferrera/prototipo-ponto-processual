@@ -444,3 +444,12 @@
     height: 44px;
   }
 }
+
+/* O DIA acima da hora — só onde não há cabeçalho de dia agrupando as linhas
+   (o fio). Em bloco, para a coluna continuar sendo uma coluna: lado a lado,
+   "27 ago 16:08" empurraria o texto do ato em 40px numa lista inteira. */
+.dia {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+}

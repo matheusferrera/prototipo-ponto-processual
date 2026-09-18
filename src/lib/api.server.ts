@@ -1786,6 +1786,11 @@ export async function getFioDoPrazo(id: string): Promise<FioDoPrazo | null> {
           tipo: extractTipo(e.descricao),
           detail: e.descricao,
           time: horaDoAto(ocorrido),
+          /* A DATA, e não só a hora. O feed nomeia o dia num cabeçalho que
+             agrupa as linhas; o fio não tem cabeçalho de dia — ele é uma
+             janela só, de dias a semanas —, então uma linha marcada apenas
+             "16:08" não diz QUANDO aconteceu, que é a pergunta da tela. */
+          quandoCurto: quandoCurto(ocorrido),
           /* SEM SELO DE NOVIDADE no fio. A pergunta desta tela é "o que
              aconteceu desde que o prazo abriu" — TUDO aqui é, por construção,
              recente em relação a ela, e um selo em cinco de cinco linhas deixa

@@ -1,16 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useState } from 'react';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import type { Movimentacao, TimelineEvent } from '@/types';
-import type { MovimentacaoDetail } from '@/lib/api.server';
 import { agruparTramite } from '@/lib/fio-do-prazo';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader/DateGroupHeader';
-import { AtoDetalhe } from '../AtoDetalhe/AtoDetalhe';
 import { AtosDeTramite } from '../AtosDeTramite/AtosDeTramite';
 import { MovimentacaoRow } from '../MovimentacaoRow/MovimentacaoRow';
-import { carregarAto } from './carregarAto';
 import styles from './TimelineProcesso.module.css';
 
 /**
@@ -37,11 +33,7 @@ function agruparPorDia(eventos: TimelineEvent[]): { dia: string; dataCurta: stri
   return grupos;
 }
 
-function DiaDeAtos({ grupo, abertos, onAbrir }: {
-  grupo: ReturnType<typeof agruparPorDia>[number];
-  abertos: ReadonlySet<string>;
-  onAbrir: (id: string) => void;
-}) {
+function DiaDeAtos({ grupo }: { grupo: ReturnType<typeof agruparPorDia>[number] }) {
   /**
    * ── O CARTÓRIO COLAPSA, e é aqui que ele mais precisava ──────────────────
    *
@@ -83,20 +75,11 @@ function DiaDeAtos({ grupo, abertos, onAbrir }: {
       <ul className={styles.diaAtos}>
         {blocos.map((bloco, i) => (
           bloco.tipo === 'linha'
-            ? <AtoLinha key={bloco.item.id} e={bloco.item} aberto={abertos.has(bloco.item.id)} onAbrir={onAbrir} />
+            ? <AtoLinha key={bloco.item.id} e={bloco.item} />
             : (
               <li key={`tramite-${grupo.dia}-${i}`}>
-                {/* Nasce aberto quando um ato lá dentro já foi lido pela IA:
-                    esse ato abre sozinho (ver `comLeituraIa`), e um painel
-                    expandido dentro de um `<details>` fechado é conteúdo
-                    renderizado que ninguém vê. */}
-                <AtosDeTramite
-                  itens={bloco.itens.map(e => ({ categoria: e.categoria ?? null, tipo: e.title }))}
-                  aberto={bloco.itens.some(e => abertos.has(e.id))}
-                >
-                  {bloco.itens.map(e => (
-                    <AtoLinha key={e.id} e={e} aberto={abertos.has(e.id)} onAbrir={onAbrir} />
-                  ))}
+                <AtosDeTramite itens={bloco.itens.map(e => ({ categoria: e.categoria ?? null, tipo: e.title }))}>
+                  {bloco.itens.map(e => <AtoLinha key={e.id} e={e} />)}
                 </AtosDeTramite>
               </li>
             )
@@ -106,62 +89,26 @@ function DiaDeAtos({ grupo, abertos, onAbrir }: {
   );
 }
 
-/** A mesma linha e o mesmo detalhe do feed, com carregamento ao expandir. */
-function AtoLinha({ e, aberto, onAbrir }: {
-  e: TimelineEvent;
-  aberto: boolean;
-  onAbrir: (id: string) => void;
-}) {
-  const [detalhe, setDetalhe] = useState<MovimentacaoDetail | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function carregar() {
-    if (carregando) return;
-    setCarregando(true);
-    setErro(null);
-    try {
-      const ato = await carregarAto(e.id);
-      if (!ato) throw new Error('Ato não encontrado');
-      setDetalhe(ato);
-    } catch {
-      setErro('Não foi possível carregar o ato. Tente novamente.');
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  function alternar() {
-    onAbrir(e.id);
-    if (!aberto && !detalhe) void carregar();
-  }
-
-  /**
-   * A linha que JÁ NASCE ABERTA (lida pela IA — ver `comLeituraIa`) busca o
-   * detalhe uma vez, sozinha.
-   *
-   * Só o `fetch` mora no efeito, e nenhum `setState` síncrono: quem decide
-   * quais abrem é o render do pai. O detalhe (teor, peças, prazo por extenso)
-   * continua custando uma requisição por linha — e é por isso que só as lidas
-   * abrem: numa timeline de 150 atos, abrir todas seriam 150 requisições para
-   * mostrar, na maioria, "sem inteiro teor".
-   */
-  useEffect(() => {
-    if (!aberto || detalhe || carregando || erro) return;
-    // `react-hooks/set-state-in-effect` marca o `setCarregando(true)` que
-    // `carregar` faz na primeira linha. É falso positivo aqui, e a própria
-    // regra diz por quê: ela sanciona o efeito que "subscribe for updates from
-    // some external system" — que é literalmente o que este faz, buscar o ato
-    // na API. O que ela quer evitar é state derivado de state, e a alternativa
-    // (adiar por microtask) só existiria para enganar o linter.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void carregar();
-    // `aberto` sozinho é a dependência CERTA: os outros três são guardas de
-    // "já está em andamento", não gatilhos. Incluí-los faria o efeito rodar de
-    // novo a cada passo do próprio carregamento.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aberto]);
-
+/**
+ * A MESMA LINHA DO FEED — e, como lá, um LINK.
+ *
+ * Até 17/09/2026 esta era a única lista do produto em que a movimentação
+ * ABRIA NO LUGAR: a linha era um `<button>` que expandia `AtoDetalhe` abaixo
+ * dela, com uma requisição por linha aberta. Era o painel que o feed já tinha
+ * abandonado em 15/09 — e pelos mesmos dois motivos, que aqui pesam mais:
+ *
+ * 1. **a lista se mexia.** Um ato do diário tem 8 KB de média e 151 KB no
+ *    maior deste acervo; abrir a terceira linha de um dia empurrava o resto do
+ *    processo centenas de pixels para baixo;
+ * 2. **o painel não cabia a conta do prazo** nem os documentos — o card cabe, e
+ *    é o mesmo card que o feed, a pauta e o fio já abrem.
+ *
+ * O `href` é o endereço do ato; quem o abre POR CIMA da página do processo é a
+ * fenda `app/@card/(.)movimentacoes/[id]`, que intercepta a navegação venha ela
+ * de onde vier. Sem JavaScript, no clique do meio e em nova aba, o mesmo link
+ * leva à página do ato — que renderiza o mesmo card.
+ */
+function AtoLinha({ e }: { e: TimelineEvent }) {
   const movimentacao: Movimentacao = {
     id: e.id, tribunal: '', cnj: '', orgaoJulgador: '', assunto: '',
     parte: '', tipo: e.title, detail: e.title,
@@ -173,47 +120,32 @@ function AtoLinha({ e, aberto, onAbrir }: {
       oQueFazer: null, peca: null, checklist: [], documentosNecessarios: [],
       risco: null, complexidade: null, precisaDosAutos: false, observacao: null,
     },
-    prazo: detalhe?.prazo ?? e.prazo ?? null,
+    prazo: e.prazo ?? null,
     /* O PRAZO EM CURSO — aqui a faixa é ainda mais direta do que no feed:
        todas as linhas são do MESMO caso, então ela marca exatamente o trecho
-       da linha do tempo que corre dentro de um prazo, e onde ele começou.
-       Sem isso, a timeline era a única das três listas que não dizia isso. */
-    prazoEmCurso: detalhe?.prazoEmCurso ?? e.prazoEmCurso ?? null,
+       da linha do tempo que corre dentro de um prazo, e onde ele começou. */
+    prazoEmCurso: e.prazoEmCurso ?? null,
     // Texto extraído OU documento anexado — mesma regra de `temAlgoParaLer`
-    // (`api.server.ts`). Antes de carregar o detalhe, `e.temInteiroTeor` já
-    // vem com essa conta feita; depois de carregar, `detalhe.documentos` é o
-    // que faltava considerar — sem isto, abrir um ato do PDPJ com peça
-    // trocava o selo de "Com" para "Sem" no instante em que o detalhe chegava.
-    // Os dois sinais da linha. Quando o detalhe já foi carregado ele manda —
-    // ele tem o texto de verdade, não só o booleano da listagem.
-    temInteiroTeor: detalhe
-      ? Boolean(detalhe.textoOriginal?.trim())
-      : e.temInteiroTeor,
-    documentoEstado: detalhe?.documentoEstado ?? e.documentoEstado,
+    // (`api.server.ts`), com a conta já feita na listagem.
+    temInteiroTeor: e.temInteiroTeor,
+    documentoEstado: e.documentoEstado,
     // Os dois SINAIS DE PEÇA que a linha usa para decidir entre o ícone de
     // documento e o cadeado. Sem eles a timeline do processo era a única lista
     // que nunca oferecia a certidão de publicação — e, pior, mostrava cadeado
     // em ato cuja certidão o CNJ serve para 100% do diário, porque `sigiloso`
     // depende justamente de `!temCertidao`.
-    temCertidao: detalhe?.temCertidao ?? e.temCertidao,
+    temCertidao: e.temCertidao,
     temDocumentoDoAto: e.temDocumentoDoAto,
   };
 
-  const painel = !aberto ? undefined : detalhe ? <AtoDetalhe mov={detalhe} /> : (
-    <div className={styles.estadoDetalhe} aria-busy={carregando}>
-      {erro ? (
-        <>
-          <p role="alert">{erro}</p>
-          <button type="button" className={styles.carregar} onClick={() => void carregar()}>Tentar novamente</button>
-          <Link href={`/movimentacoes/${encodeURIComponent(e.id)}`} className={styles.linkDetalhe}>Abrir a página do ato →</Link>
-        </>
-      ) : <p role="status">Carregando detalhes do ato…</p>}
-    </div>
-  );
-
   return (
     <li>
-      <MovimentacaoRow m={movimentacao} noProcesso comHora onToggle={alternar} painel={painel} />
+      <MovimentacaoRow
+        m={movimentacao}
+        noProcesso
+        comHora
+        href={`/movimentacoes/${encodeURIComponent(e.id)}`}
+      />
     </li>
   );
 }
@@ -242,18 +174,6 @@ export interface TimelineProcessoProps {
 }
 
 /**
- * Os atos que a IA já leu — os que nascem abertos.
- *
- * `ia.resumo` vem da coluna quente na própria listagem, sem custo, então dá
- * para decidir isto no render e sem I/O. É por isso que a semente mora aqui e
- * não num efeito: `setState` síncrono dentro de `useEffect` é justamente o que
- * o React 19 reprova, e o valor já é conhecido antes da primeira pintura.
- */
-function comLeituraIa(eventos: TimelineEvent[]): Set<string> {
-  return new Set(eventos.filter(e => e.ia?.resumo?.trim()).map(e => e.id));
-}
-
-/**
  * A linha do tempo do processo, com "Carregar mais" que ANEXA.
  *
  * Era paginação com Anterior/Próxima, e o gesto é que estava errado: cada clique
@@ -275,23 +195,6 @@ function comLeituraIa(eventos: TimelineEvent[]): Set<string> {
  */
 export function TimelineProcesso({ processId, inicial, total, porPagina, filtros }: TimelineProcessoProps) {
   const [eventos, setEventos] = useState(inicial);
-  /**
-   * As linhas ABERTAS — conjunto, não uma só.
-   *
-   * Era `string | null` (uma por vez). Virou conjunto para que o ato **já lido
-   * pela IA nasça aberto**: se alguém pagou a leitura, esconder o resultado
-   * atrás de um clique é esconder justamente o que se comprou. O ato sem
-   * leitura continua fechado — ali o clique ainda vale, porque abrir custa uma
-   * requisição e não há resumo esperando.
-   */
-  const [abertos, setAbertos] = useState<ReadonlySet<string>>(() => comLeituraIa(inicial));
-  const alternar = useCallback((id: string) => {
-    setAbertos((atual) => {
-      const proximo = new Set(atual);
-      if (!proximo.delete(id)) proximo.add(id);
-      return proximo;
-    });
-  }, []);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pagina, setPagina] = useState(1);
@@ -331,10 +234,6 @@ export function TimelineProcesso({ processId, inicial, total, porPagina, filtros
         const vistos = new Set(atuais.map(e => e.id));
         return [...atuais, ...events.filter(e => !vistos.has(e.id))];
       });
-      // As páginas seguintes também abrem o que a IA leu — senão a regra valeria
-      // só para a primeira, e a mesma linha se comportaria de dois jeitos
-      // conforme o momento em que entrou na lista.
-      setAbertos(atual => new Set([...atual, ...comLeituraIa(events)]));
       setPagina(proxima);
     } catch (falha) {
       console.error('Não foi possível carregar mais movimentações.', falha);
@@ -356,7 +255,7 @@ export function TimelineProcesso({ processId, inicial, total, porPagina, filtros
     <>
       <ol className={styles.dias}>
         {agruparPorDia(eventos).map(grupo => (
-          <DiaDeAtos key={grupo.dia} grupo={grupo} abertos={abertos} onAbrir={alternar} />
+          <DiaDeAtos key={grupo.dia} grupo={grupo} />
         ))}
       </ol>
 
