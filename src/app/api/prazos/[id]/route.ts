@@ -13,9 +13,9 @@ const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
  *
  * ## O que passa daqui para lá, e o que não passa
  *
- * `PATCH /deadlines/{id}` aceita sete campos (`tipoDocumento`, `parte`,
- * `prazo`, `dataLimite`, `natureza`, `fechado`). Esta rota só encaminha
- * **`fechado`**, e o recorte é deliberado: os outros seis são o RESULTADO do
+ * `PATCH /deadlines/{id}` aceita os campos calculados do prazo e os verbos do
+ * advogado. Esta rota encaminha **`fechado`**, **`lembrarEm`** e **`deQuem`**;
+ * o recorte é deliberado: os demais são o RESULTADO do
  * cálculo forense — dias, data-limite, natureza —, e deixar a tela reescrevê-los
  * abriria um segundo caminho para a data do prazo mudar, ao lado da calculadora
  * e da leitura por IA. Duas camadas discutindo a mesma data é como se inventa um
@@ -23,6 +23,8 @@ const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
  * real.
  *
  * Dar baixa não decide data nenhuma: diz que o expediente foi cumprido.
+ * `deQuem` também é afirmação do advogado e o backend a guarda separadamente
+ * para que uma reanálise não a desfaça.
  *
  * **`lembrarEm` também atravessa**, pelo mesmo critério: o lembrete é a data em
  * que o ADVOGADO quer rever o prazo, não a data do prazo. Até 17/09/2026 esta
@@ -40,17 +42,24 @@ export async function PATCH(
   const token = jar.get('access_token')?.value;
   if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  const corpo = (await req.json().catch(() => ({}))) as { fechado?: unknown; lembrarEm?: unknown };
+  const corpo = (await req.json().catch(() => ({}))) as {
+    fechado?: unknown;
+    lembrarEm?: unknown;
+    deQuem?: unknown;
+  };
   const temFechado = corpo.fechado !== undefined;
   const temLembrete = corpo.lembrarEm !== undefined;
+  const temDeQuem = corpo.deQuem !== undefined;
   /* `null` apaga o lembrete; ausente o preserva — a mesma disciplina do backend. */
   const lembreteValido = corpo.lembrarEm === null
     || (typeof corpo.lembrarEm === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(corpo.lembrarEm));
-  if ((!temFechado && !temLembrete)
+  const deQuemValido = corpo.deQuem === 'destinatario' || corpo.deQuem === 'parteContraria';
+  if ((!temFechado && !temLembrete && !temDeQuem)
     || (temFechado && typeof corpo.fechado !== 'boolean')
-    || (temLembrete && !lembreteValido)) {
+    || (temLembrete && !lembreteValido)
+    || (temDeQuem && !deQuemValido)) {
     return NextResponse.json(
-      { error: 'Informe `fechado` como booleano ou `lembrarEm` como AAAA-MM-DD (ou null).', code: 'CORPO_INVALIDO' },
+      { error: 'Informe um campo válido para atualizar o prazo.', code: 'CORPO_INVALIDO' },
       { status: 400 },
     );
   }
@@ -62,6 +71,7 @@ export async function PATCH(
       body: JSON.stringify({
         ...(temFechado && { fechado: corpo.fechado }),
         ...(temLembrete && { lembrarEm: corpo.lembrarEm }),
+        ...(temDeQuem && { deQuem: corpo.deQuem }),
       }),
       cache: 'no-store',
     });

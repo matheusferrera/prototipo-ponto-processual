@@ -593,6 +593,8 @@ export interface Prazo {
   metodoPrazo?: PrazoDoAto['metodoPrazo'];
   fundamento?: string | null;
   deQuem?: PrazoDoAto['deQuem'];
+  /** Resposta explícita do advogado; quando existe, vence inferências futuras. */
+  deQuemManual?: PrazoDoAto['deQuem'];
   /** Diário (ciência na publicação) ou portal (ciência na expedição — a mais cedo possível). */
   canal?: PrazoDoAto['canal'];
   /** Dobra do CPC 180/183/186 — só entra quando o cliente é conhecido e o prazo é legal ou supletivo. */

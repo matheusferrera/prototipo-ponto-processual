@@ -1,372 +1,49 @@
-/* Dashboard — a mesma gramática visual das outras telas, menos densa.
-   Mobile-first: base = celular (tudo empilhado). >=768px liga a barra de
-   sincronização no header, o hero em duas colunas e a grade feed + lateral.
+.scroll { flex: 1; min-height: 0; background: var(--paper-2); }
+.conteudo { display: flex; flex-direction: column; gap: var(--space-sm); width: min(100%, 1440px); margin: 0 auto; padding: var(--space-sm) var(--space-md) calc(82px + env(safe-area-inset-bottom)); }
+.abertura { display: flex; flex-direction: column; gap: var(--space-sm); }
+.corpo { display: grid; gap: var(--space-xl); }
+.pilha, .lateral { display: flex; flex-direction: column; gap: var(--space-xl); min-width: 0; }
+.grupo { scroll-margin-top: 66px; }
+.grupoCabecalho { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-xs); }
+.grupoCabecalho > div { display: flex; align-items: baseline; gap: var(--space-sm); }
+.grupoCabecalho span { color: var(--brick); font: 700 13px/1 var(--mono); }
+.grupoCabecalho h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.cartoes { display: grid; gap: var(--space-md); }
+.excedentes { display: flex; align-items: center; min-height: 44px; margin-top: var(--space-sm); padding: 0 var(--space-md); border: 1px solid var(--line); background: var(--paper); color: var(--brick); font-size: 13px; font-weight: 800; text-decoration: none; }
+.avisoCanal { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-md); padding: var(--space-md); border: 1px solid var(--signal); background: var(--signal-soft); }
+.avisoCanal strong { color: var(--signal-ink); font-size: 13px; }
+.avisoCanal p { margin: 2px 0 0; color: var(--ink-2); font-size: 11px; }
+.avisoCanal a { min-height: 44px; display: flex; align-items: center; color: var(--signal-ink); font-size: 12px; font-weight: 800; text-decoration: none; }
+.whatsapp { display: grid; grid-template-columns: 24px 1fr 12px; align-items: center; gap: var(--space-md); min-height: 70px; padding: var(--space-md) var(--space-lg); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); text-decoration: none; }
+.whatsapp:hover { background: var(--paper-2); }
+.whatsapp:active { background: var(--paper-3); }
+.whatsapp:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.whatsapp svg { width: 20px; height: 20px; color: var(--brick); }
+.whatsapp span { display: flex; flex-direction: column; }
+.whatsapp strong { font-size: 14px; }
+.whatsapp small { color: var(--ink-soft); font-size: 11px; }
+.zerado, .vazio { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-md); padding: var(--space-xl) var(--space-lg); border: 1px solid var(--line-strong); background: var(--surface); }
+.zeradoMarca { display: grid; place-items: center; width: 48px; height: 48px; background: var(--brick); color: white; font-size: 24px; font-weight: 800; }
+.zerado h2, .vazio h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+.zerado > p, .vazio > p { max-width: 620px; margin: 0; color: var(--ink-2); }
+.zerado > a, .vazio > a { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 44px; color: var(--brick); font-weight: 800; text-decoration: none; }
+.vazio > svg { width: 30px; height: 30px; color: var(--brick); }
+.baixados { width: 100%; border-top: 1px solid var(--line); padding-top: var(--space-md); }
+.baixados h3 { margin: 0 0 var(--space-sm); font-size: 13px; }
+.baixados > div { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); min-height: 52px; border-top: 1px solid var(--line-soft); }
+.baixados > div > span { font-size: 12px; font-weight: 700; }
 
-   Hierarquia: o bloco "Precisa de você" domina (número grande + prazos mais
-   urgentes); abaixo, o feed de movimentações e a coluna lateral (heatmap de 30
-   dias, prazos por natureza e a carteira). Ritmo vertical por um `gap` só, não
-   por margens espalhadas. `--ink-3`/`--ink-4` ficam fora de texto (reprovam AA). */
-
-/* ===== Barra de sincronização (mobile) — no desktop ela vive no header ===== */
-.syncStrip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
-  flex-shrink: 0;
-}
-.syncStripText {
-  font-family: var(--mono);
-  font-size: var(--text-caption);
-  letter-spacing: 0.04em;
-}
-
-/* ===== Scroll + container ===== */
-.scroll { flex: 1; overflow: auto; }
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-lg);
-}
-
-/* ===== Aviso de cobertura (só dados públicos) ===== */
-.coverage {
-  padding: var(--space-md) var(--space-lg);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-  background: var(--signal-soft);
-  border: 1px solid color-mix(in srgb, var(--signal) 30%, var(--line));
-}
-.coverageIcon {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--signal-ink);
-  border: 1px solid color-mix(in srgb, var(--signal) 45%, transparent);
-}
-.coverageTitle { font-size: var(--text-small); font-weight: 800; letter-spacing: -0.01em; color: var(--signal-ink); }
-.coverageText { margin-top: var(--space-2xs); font-size: var(--text-caption); line-height: 1.6; color: var(--ink-2); max-width: 74ch; }
-.coverageCta {
-  flex-shrink: 0;
-  align-self: center;
-  font-family: var(--ui);
-  font-weight: 700;
-  font-size: var(--text-caption);
-  color: #fff;
-  background: var(--signal-ink);
-  padding: 9px 16px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.coverageCta:hover { background: color-mix(in srgb, var(--signal-ink) 88%, #000); }
-
-/* ===== Resumo geral (prazos) =====
-   A casca é a genérica (`.panel`), então aqui fica só o que é do card: a faixa
-   de números e a linha de prazo. A linha segue a MESMA gramática das
-   movimentações — caso como título, etiqueta com o quando e o número, chips
-   embaixo —, porque duas listas empilhadas na mesma coluna com duas gramáticas
-   é o que fazia o painel parecer dois produtos. */
-
-/* ---- A linha de prazo ---- */
-.prazoItem {
-  display: block;
-  padding: var(--space-md) var(--space-lg);
-  border-top: 1px solid var(--line);
-  color: inherit;
-  text-decoration: none;
-}
-
-.prazoItem:hover .prazoCaso { color: var(--brick); }
-
-.prazoCabeca { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
-
-.prazoCaso {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--text-body);
-  font-weight: 700;
-  color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.prazoEtiqueta {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
-  margin-top: var(--space-2xs);
-  min-width: 0;
-}
-
-/* O QUANDO carrega a urgência, e é a ÚNICA cor da linha. Antes a cor vinha num
-   `style` inline no número de dias; virou atributo para a regra morar no CSS
-   junto das outras. */
-.prazoQuando {
-  flex-shrink: 0;
-  font-family: var(--mono);
-  font-size: var(--text-small);
-  font-weight: 700;
-  color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.prazoQuando[data-urgencia='critica'] { color: var(--alert); }
-.prazoQuando[data-urgencia='alta'] { color: var(--brick); }
-
-.prazoCnj {
-  min-width: 0;
-  font-family: var(--mono);
-  font-size: var(--text-cnj);
-  color: var(--ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.prazoChips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-top: var(--space-sm);
-}
-
-/* Mesmo chip das movimentações: 11px, sem borda, sobre `--paper-2` (7,8:1 com
-   `--ink-2`). Eram 9px em caixa alta com borda, e a diferença de 2px mais a
-   borda faziam duas famílias de chip na mesma tela. */
-.prazoChip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2xs);
-  padding: 2px 6px;
-  background: var(--paper-2);
-  color: var(--ink-2);
-  font-size: var(--text-caption);
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.prazoChip[data-manifestacao] { background: var(--brick-soft); color: var(--brick); }
-.prazoChip[data-estimado] { background: var(--signal-soft); color: var(--signal-ink); }
-
-/* ===== Painel genérico ===== */
-.panel { border: 1px solid var(--line-strong); background: var(--paper); }
-.panelHead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--line-soft);
-}
-.panelTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--text-lbl);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--ink-2);
-  white-space: nowrap;
-}
-.panelTitle::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; background: var(--brick); }
-.panelMeta { font-size: var(--text-caption); color: var(--ink-2); margin-left: auto; }
-.panelCount { font-family: var(--mono); font-size: var(--text-caption); font-weight: 700; color: var(--ink-2); margin-left: auto; }
-.panelLink { font-size: var(--text-caption); font-weight: 700; color: var(--brick); text-decoration: none; white-space: nowrap; flex-shrink: 0; margin-left: auto; }
-.panelLink:hover { text-decoration: underline; }
-.panelFooterLink {
-  display: block;
-  padding: var(--space-md) var(--space-lg);
-  border-top: 1px solid var(--line-soft);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  color: var(--brick);
-  text-decoration: none;
-}
-.panelFooterLink:hover { text-decoration: underline; }
-.panelEmpty { padding: var(--space-xl) var(--space-lg); font-size: var(--text-caption); color: var(--ink-2); text-align: center; }
-
-/* ===== Grade ===== */
-.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
-.mainCol { display: flex; flex-direction: column; gap: var(--space-lg); min-width: 0; }
-.side { display: flex; flex-direction: column; gap: var(--space-lg); }
-
-
-/* A nota do passivo: link discreto no pé do card, nunca manchete. */
-.heroNota {
-  display: inline-block;
-  margin-top: var(--space-md);
-  color: var(--ink-2);
-  font-size: var(--text-sm, 12px);
-  text-decoration: none;
-}
-.heroNota:hover { color: var(--alert); text-decoration: underline; }
-
-/* ===== Heatmap 30 dias ===== */
-.heatBody { padding: var(--space-lg); }
-/* 7 colunas = 1 semana por linha, 4 linhas. A janela é múltipla de 7 e termina
-   HOJE, então cada coluna é sempre o mesmo dia da semana — é isso que dá
-   sentido à régua abaixo. */
-.heatGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-/* A régua repete o mesmo grid para as letras caírem sob as casas. */
-.heatRegua {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
-  margin-top: var(--space-xs);
-}
-.heatDia {
-  text-align: center;
-  color: var(--ink-2);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-}
-/* Hoje é a última casa: um anel em vez de cor, para não competir com a rampa
-   sequencial — mudar a cor da casa mentiria sobre o volume dela. */
-.heatHoje { outline: 2px solid var(--ink); outline-offset: -2px; }
-.heatCell {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ===== Rosca (prazos por natureza) ===== */
-
-/* ===== Carteira (composição + atividade) ===== */
-.carteiraBody { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-lg); }
-.barRow { display: flex; align-items: center; gap: var(--space-md); }
-.barLabel { font-size: var(--text-caption); font-weight: 700; color: var(--ink-2); width: 76px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.barTrack { flex: 1; height: 6px; background: var(--paper-3); position: relative; }
-.barFill { position: absolute; inset: 0 auto 0 0; height: 100%; }
-.barValue { font-family: var(--mono); font-weight: 700; font-size: var(--text-small); color: var(--ink-2); min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
-.carteiraDivider { margin-top: var(--space-xs); padding-top: var(--space-md); border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: var(--space-sm); }
-.carteiraLinha { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
-.carteiraRotulo { font-size: var(--text-caption); color: var(--ink-2); }
-.carteiraValor { font-family: var(--mono); font-size: var(--text-small); font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.carteiraValor[data-destaque] { color: var(--brick); }
-.carteiraNota { font-size: var(--text-caption); color: var(--ink-2); line-height: 1.5; }
-.subHead { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-2); margin: var(--space-xs) 0 var(--space-2xs); }
-
-/* ===== Empty states ===== */
-.empty {
-  border: 1px dashed var(--line);
-  background: var(--paper);
-  padding: 40px var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-md);
-}
-.emptyIcon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--brick-soft); color: var(--brick); flex-shrink: 0; }
-.emptyTitle { font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: var(--ink); }
-.emptyDesc { font-size: var(--text-body); line-height: 1.6; color: var(--ink-2); max-width: 440px; }
-.emptySecundario { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-caption); font-weight: 700; color: var(--ink-2); text-decoration: none; padding: var(--space-xs) 0; }
-.emptySecundario:hover { color: var(--brick); }
-
-/* ===== Tablet / desktop ===== */
 @media (min-width: 768px) {
-  .syncStrip { display: none; }
-  .content { gap: var(--space-xl); padding: var(--space-xl) var(--space-2xl); }
-
-  .coverage { padding: var(--space-lg) var(--space-xl); gap: var(--space-lg); flex-wrap: nowrap; }
-
-  .hero { padding: var(--space-2xl); }
-  .heroDias { font-size: 30px; min-width: 60px; }
-  .heroRow { gap: var(--space-xl); padding: var(--space-lg) 0; }
-  .heroRowTitle { font-size: var(--text-h2); }
-
-  .grid { grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-xl); }
-  .mainCol { gap: var(--space-xl); }
-
-  .heatCell { height: 32px; }
+  .scroll { overflow-y: auto; }
+  .conteudo { gap: var(--space-lg); padding: var(--space-xl) var(--space-2xl) var(--space-3xl); }
+  .abertura { gap: var(--space-md); }
+  .corpo { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; gap: var(--space-2xl); }
+  .cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grupoCabecalho { padding-inline: 0; }
+  .grupo { scroll-margin-top: var(--space-xl); }
 }
 
-
-/* ── Aviso de canal ausente ───────────────────────────────────────────────────
-   Faixa acima do conteúdo, no vocabulário do painel: borda de 1px, raio zero,
-   quadrado da marca à esquerda. Usa `signal` (âmbar) e não `alert` (vermelho)
-   de propósito — não há nada errado, há algo faltando; vermelho aqui gastaria
-   a cor que o prazo vencido precisa. */
-.avisoCanal {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
-  margin-bottom: var(--space-lg);
-  border: 1px solid #e6c368;
-  background: var(--signal-soft);
-}
-
-.avisoCanalMarca {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  background: var(--signal-ink);
-}
-
-.avisoCanalTexto { min-width: 0; }
-
-.avisoCanalTexto strong {
-  display: block;
-  font-size: var(--text-body);
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--signal-ink);
-}
-
-.avisoCanalTexto p {
-  margin: 2px 0 0;
-  font-size: var(--text-small);
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-
-.avisoCanalAcao {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: var(--text-small);
-  font-weight: 700;
-  color: var(--signal-ink);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.avisoCanalAcao:hover { text-decoration: underline; }
-
-/* No celular a ação desce: a calha de 16px não comporta texto + link na mesma
-   linha sem truncar um dos dois. */
-@media (max-width: 640px) {
-  .avisoCanal { flex-wrap: wrap; }
-  .avisoCanalAcao { margin-left: 14px; }
-}
-
-/* Links de texto de 17px de altura: o padding com margem negativa estende o
-   alvo até 44px sem mudar o lugar do link. */
-@media (max-width: 767px) {
-  .panelLink,
-  .avisoCanalAcao {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding-block: 12px;
-    margin-block: -12px;
-  }
+@media (max-width: 600px) {
+  .avisoCanal { grid-template-columns: 1fr; }
+  .avisoCanal a { grid-column: 1; }
 }

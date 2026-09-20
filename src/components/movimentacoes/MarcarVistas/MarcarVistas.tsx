@@ -13,7 +13,14 @@ import styles from './MarcarVistas.module.css';
  * um Server Component, e ela só sabe para onde voltar porque o endereço diz.
  * `nunca` é a conta que ainda não tinha marcado nada.
  */
-export function MarcarVistas({ vistasAte }: { vistasAte: string | null }) {
+export function MarcarVistas({
+  vistasAte,
+  destino = '/movimentacoes?vista=novas',
+}: {
+  vistasAte: string | null;
+  /** Para reutilizar o verbo fora da aba Novas sem tirar a pessoa da tela. */
+  destino?: string;
+}) {
   const router = useRouter();
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -25,8 +32,9 @@ export function MarcarVistas({ vistasAte }: { vistasAte: string | null }) {
     try {
       const res = await fetch('/api/movimentacoes/vistas', { method: 'POST' });
       if (!res.ok) throw new Error();
+      const separador = destino.includes('?') ? '&' : '?';
       const voltar = encodeURIComponent(vistasAte ?? 'nunca');
-      iniciar(() => router.replace(`/movimentacoes?vista=novas&voltar=${voltar}`, { scroll: false }));
+      iniciar(() => router.replace(`${destino}${separador}voltar=${voltar}`, { scroll: false }));
     } catch {
       setErro('Não foi possível marcar.');
     } finally {

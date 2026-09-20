@@ -1372,6 +1372,7 @@ type BackendDeadline = {
    */
   canal?: PrazoDoAto['canal'];
   deQuem?: PrazoDoAto['deQuem'];
+  deQuemManual?: PrazoDoAto['deQuem'];
   emDobro?: boolean | null;
   fundamento?: string | null;
   publicadoEm?: string | null;
@@ -1519,6 +1520,7 @@ function toPrazo(d: BackendDeadline): Prazo {
     metodoPrazo: d.metodoPrazo,
     fundamento: d.fundamento?.trim() || null,
     deQuem: d.deQuem ?? null,
+    deQuemManual: d.deQuemManual ?? null,
     canal: d.canal ?? null,
     emDobro: d.emDobro ?? null,
     publicadoEm: d.publicadoEm ?? null,
@@ -2213,4 +2215,3 @@ export interface CanalWhatsapp {
 export async function getCanalWhatsapp(): Promise<CanalWhatsapp | null> {
   return backendGetOrNull<CanalWhatsapp>('/users/me/whatsapp', [204, 404]);
 }
-

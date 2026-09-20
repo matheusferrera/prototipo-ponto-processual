@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock3, LoaderCircle, X } from 'lucide-react';
 import styles from './LembrarPrazo.module.css';
@@ -64,17 +64,41 @@ export function LembrarPrazo({
   prazoId,
   vencimentoISO,
   lembrarEm,
+  toolbar = false,
 }: {
   prazoId: string;
   /** `YYYY-MM-DD`. Sem data de vencimento não há de onde contar. */
   vencimentoISO: string | null;
   lembrarEm: string | null;
+  /** Integra o controle à barra de ações do cartão de triagem. */
+  toolbar?: boolean;
 }) {
   const router = useRouter();
   const menu = useRef<HTMLDetailsElement>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [, iniciarRefresh] = useTransition();
+
+  useEffect(() => {
+    function fecharFora(evento: PointerEvent) {
+      const atual = menu.current;
+      if (atual?.open && evento.target instanceof Node && !atual.contains(evento.target)) {
+        atual.open = false;
+      }
+    }
+    function fecharComEscape(evento: KeyboardEvent) {
+      if (evento.key === 'Escape' && menu.current?.open) {
+        menu.current.open = false;
+        evento.preventDefault();
+      }
+    }
+    document.addEventListener('pointerdown', fecharFora);
+    document.addEventListener('keydown', fecharComEscape);
+    return () => {
+      document.removeEventListener('pointerdown', fecharFora);
+      document.removeEventListener('keydown', fecharComEscape);
+    };
+  }, []);
 
   /* Sem vencimento não há como oferecer "três dias antes" — e um lembrete solto
      numa data absoluta seria outro produto. O expediente pendente de ciência
@@ -106,7 +130,7 @@ export function LembrarPrazo({
   // Já marcado: o botão vira o estado, com a saída ao lado.
   if (lembrarEm) {
     return (
-      <span className={styles.marcado}>
+      <span className={`${styles.marcado} ${toolbar ? styles.toolbar : ''}`}>
         <Clock3 size={14} aria-hidden="true" />
         Lembrar em {diaMes(lembrarEm)}
         <button
@@ -127,7 +151,7 @@ export function LembrarPrazo({
   return (
     <details
       ref={menu}
-      className={styles.raiz}
+      className={`${styles.raiz} ${toolbar ? styles.toolbar : ''}`}
       /* O menu vive na linha de prazo, que é clicável inteira. Nenhum
          ancestral deve reagir ao clique que abre o menu — ver
          `semAbrirOPainel` em `BaixarPrazo`, o mesmo motivo. */

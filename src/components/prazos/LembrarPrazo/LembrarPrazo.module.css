@@ -138,6 +138,27 @@
   left: 0;
 }
 
+/* Altura, corpo e respiro vêm do `.rodape` do cartão de triagem por herança —
+   ver o comentário lá. `flex` NÃO é declarado aqui de propósito: quem reparte
+   a faixa é o rodapé, e uma declaração local de `.raiz.toolbar` (0,2,0)
+   passaria por cima dele sem que a ordem entre os dois módulos fosse previsível. */
+.raiz.toolbar { min-width: 0; }
+.raiz.toolbar .botao {
+  width: 100%;
+  min-height: var(--acao-altura, 48px);
+  padding-inline: var(--acao-respiro, 12px);
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--acao-corpo, 13px);
+  font-weight: 750;
+}
+.raiz.toolbar .botao:hover { background: var(--paper-2); color: var(--ink); }
+.raiz.toolbar .botao:active { background: var(--paper-3); }
+/* Respiro só à esquerda: o "✕" de 32px já é a margem direita deste segmento,
+   e somar o respiro depois dele engorda o bloco mais largo da faixa. */
+.marcado.toolbar { justify-content: center; min-width: 0; min-height: var(--acao-altura, 48px); padding-left: var(--acao-respiro, 12px); padding-right: 0; font-size: var(--acao-corpo, 13px); }
+
 @media (max-width: 767px) {
   .menu { max-width: calc(100vw - 32px); }
 }

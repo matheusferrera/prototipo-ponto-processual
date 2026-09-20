@@ -23,6 +23,8 @@ export interface UsuarioAtual {
    * dizer, e é o porteiro do `/onboarding`.
    */
   oab: { numero: string; uf: string } | null;
+  /** Até que dia a varredura pública do DJEN foi concluída. */
+  djenSyncedUntil: string | null;
 }
 
 /**

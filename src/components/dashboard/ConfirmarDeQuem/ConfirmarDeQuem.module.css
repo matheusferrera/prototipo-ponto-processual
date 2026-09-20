@@ -1,0 +1,58 @@
+/* Único verbo do rodapé: ele toma a faixa inteira (`.rodape > button`), e as
+   medidas vêm dos tokens herdados do cartão de triagem — ver o comentário em
+   `CartaoDeTriagem.module.css`. */
+.gatilho {
+  min-height: var(--acao-altura, 48px);
+  padding: 0 var(--acao-respiro, 12px);
+  border: 0;
+  background: transparent;
+  color: var(--brick);
+  font-family: var(--ui);
+  font-size: var(--acao-corpo, 13px);
+  font-weight: 750;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.gatilho:hover { background: var(--brick-soft); }
+.gatilho:active { background: var(--paper-3); }
+.gatilho:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
+.folha {
+  position: fixed;
+  inset: auto 0 0;
+  width: min(100%, 520px);
+  max-height: calc(100dvh - var(--space-xl));
+  margin: auto auto 0;
+  overflow-y: auto;
+  padding: var(--space-xl) var(--space-lg) calc(var(--space-xl) + env(safe-area-inset-bottom));
+  border: 1px solid var(--line-strong);
+  border-bottom: 0;
+  background: var(--surface);
+  color: var(--ink);
+}
+.folha::backdrop { background: color-mix(in srgb, var(--ink) 52%, transparent); }
+
+.cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-lg); }
+.cabecalho h2 { margin: 0; font-size: 24px; line-height: 1.15; letter-spacing: -0.03em; }
+.fechar { display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.fechar svg { width: 18px; height: 18px; }
+.explicacao { margin: var(--space-lg) 0; color: var(--ink-2); font-size: 14px; }
+.opcoes { display: flex; flex-direction: column; gap: var(--space-sm); }
+.opcoes button { display: flex; flex-direction: column; gap: var(--space-xs); min-height: 76px; padding: var(--space-md) var(--space-lg); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-family: var(--ui); text-align: left; cursor: pointer; }
+.opcoes button:first-child { border-color: var(--brick); background: var(--brick-soft); color: var(--brick-deep); }
+.opcoes button:hover:not(:disabled) { border-color: var(--brick); background: var(--paper-2); }
+.opcoes button:active:not(:disabled) { background: var(--paper-3); }
+.opcoes button:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.opcoes button:disabled { cursor: progress; opacity: .65; }
+.opcoes strong { font-size: 15px; }
+.opcoes span { color: var(--ink-2); font-size: 12px; }
+.estado, .erro { display: flex; align-items: center; gap: var(--space-sm); margin: var(--space-md) 0 0; font-size: 12px; }
+.estado svg { width: 16px; height: 16px; animation: girar .8s linear infinite; }
+.erro { color: var(--alert); font-weight: 700; }
+@keyframes girar { to { transform: rotate(360deg); } }
+
+@media (min-width: 768px) {
+  .folha { inset: 0; margin: auto; border-bottom: 1px solid var(--line-strong); padding: var(--space-2xl); }
+}

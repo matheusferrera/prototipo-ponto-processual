@@ -1,0 +1,7 @@
+.raiz { display: grid; grid-template-columns: 20px 1fr 12px; align-items: center; gap: var(--space-sm); min-height: 56px; padding: var(--space-sm) var(--space-md); border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-decoration: none; }
+.raiz > svg { width: 18px; height: 18px; color: var(--brick); }
+.raiz > span { display: flex; flex-direction: column; min-width: 0; }
+.raiz strong { font-size: 12px; }
+.raiz small { color: var(--ink-soft); font-size: 11px; }
+.raiz .falha { color: var(--alert); font-weight: 700; }
+.raiz > b { color: var(--ink-soft); font-size: 18px; }

@@ -59,12 +59,18 @@ export function BaixarPrazo({
   prazoId,
   fechado,
   compacto = false,
+  toolbar = false,
+  atualizarPagina = true,
 }: {
   prazoId: string;
   /** O estado que veio do servidor. */
   fechado: boolean;
   /** Variante do kanban e do celular: os dois verbos dividem a largura. */
   compacto?: boolean;
+  /** Integra o verbo a uma barra de ações, sem virar um botão preenchido isolado. */
+  toolbar?: boolean;
+  /** No painel, o recibo precisa permanecer no cartão até a próxima visita. */
+  atualizarPagina?: boolean;
 }) {
   const router = useRouter();
   const [estado, setEstado] = useState<Estado>(fechado ? 'baixado' : 'repouso');
@@ -88,16 +94,35 @@ export function BaixarPrazo({
       /* O refresh vem DEPOIS da confirmação e dentro de uma transição: a linha
          não pisca, e os contadores do topo (que são Server Components) chegam
          atualizados na próxima pintura. */
-      iniciarRefresh(() => router.refresh());
+      if (atualizarPagina) iniciarRefresh(() => router.refresh());
     } catch (falha) {
       setEstado('repouso');
       setErro(falha instanceof Error ? falha.message : 'Não foi possível salvar.');
     }
   }
 
+  if (estado === 'baixado' && toolbar) {
+    return (
+      <span className={`${styles.raiz} ${styles.compacto} ${styles.toolbar}`}>
+        <button
+          type="button"
+          className={styles.reciboAcao}
+          aria-label="Baixado. Desfazer baixa"
+          onClick={semAbrirOPainel(() => void alternar(false))}
+        >
+          <Check size={14} aria-hidden="true" />
+          <span>
+            <strong>Baixado</strong>
+            <small>Desfazer</small>
+          </span>
+        </button>
+      </span>
+    );
+  }
+
   if (estado === 'baixado') {
     return (
-      <span className={`${styles.raiz} ${compacto ? styles.compacto : ''}`}>
+      <span className={`${styles.raiz} ${compacto ? styles.compacto : ''} ${toolbar ? styles.toolbar : ''}`}>
         <span className={styles.feito}>
           <Check size={14} aria-hidden="true" />
           Baixado
@@ -115,7 +140,7 @@ export function BaixarPrazo({
   }
 
   return (
-    <span className={`${styles.raiz} ${compacto ? styles.compacto : ''}`}>
+    <span className={`${styles.raiz} ${compacto ? styles.compacto : ''} ${toolbar ? styles.toolbar : ''}`}>
       {erro && <span className={styles.erro} role="alert">{erro}</span>}
       <button
         type="button"

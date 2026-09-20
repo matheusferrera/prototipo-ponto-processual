@@ -1,0 +1,12 @@
+.raiz { border: 1px solid var(--line-strong); background: var(--surface); }
+.raiz header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-md); padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--line); }
+.raiz h2 { margin: 0; font-size: 18px; }
+.raiz header b { font: 700 22px/1 var(--mono); }
+.raiz ul { margin: 0; padding: 0; list-style: none; }
+.raiz li + li { border-top: 1px solid var(--line-soft); }
+.raiz li a { display: flex; flex-direction: column; gap: 2px; min-height: 72px; padding: 11px var(--space-lg); color: inherit; text-decoration: none; }
+.raiz li strong { font-size: 13px; }
+.raiz li span { color: var(--ink-2); font-size: 12px; }
+.raiz li small { color: var(--ink-soft); font: 11px/1.3 var(--mono); overflow-wrap: anywhere; }
+.todos { display: flex; align-items: center; min-height: 44px; padding: 0 var(--space-lg); border-top: 1px solid var(--line); color: var(--brick); font-size: 12px; font-weight: 800; text-decoration: none; }
+.vazio { margin: 0; padding: var(--space-lg); color: var(--ink-soft); font-size: 13px; }

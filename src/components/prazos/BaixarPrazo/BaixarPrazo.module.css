@@ -102,8 +102,64 @@
 .compacto .protocolei { width: 100%; }
 .compacto .erro { grid-column: 1 / -1; text-align: left; max-width: none; }
 
+/* Dentro do cartão de triagem, os verbos pertencem à mesma barra. A ação
+   continua primária pela cor e pelo peso, sem criar um bloco verde solto. */
+/* `--acao-altura`, `--acao-corpo` e `--acao-respiro` são herdados do `.rodape`
+   do cartão de triagem — ver o comentário lá. O fallback é o que vale quando
+   o verbo aparecer numa barra que ainda não declara os tokens. */
+.toolbar {
+  align-items: stretch;
+  width: auto;
+  min-width: 0;
+  gap: 0;
+}
+.toolbar .protocolei,
+.toolbar .desfazer {
+  width: 100%;
+  min-height: var(--acao-altura, 48px);
+  padding-inline: var(--acao-respiro, 12px);
+  border: 0;
+  background: transparent;
+  color: var(--brick-deep);
+  font-size: var(--acao-corpo, 13px);
+  font-weight: 750;
+}
+.toolbar .protocolei:hover:not(:disabled),
+.toolbar .desfazer:hover { background: var(--brick-soft); color: var(--brick-deep); }
+.toolbar .protocolei:active:not(:disabled),
+.toolbar .desfazer:active { background: var(--paper-3); }
+.toolbar .feito { flex: 1 1 auto; justify-content: center; min-height: var(--acao-altura, 48px); font-size: var(--acao-corpo, 13px); padding-inline: var(--acao-respiro, 12px); }
+.toolbar .desfazer { flex: 0 0 auto; width: auto; color: var(--ink-2); }
+.reciboAcao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: var(--acao-altura, 48px);
+  padding: 4px var(--acao-respiro, 12px);
+  border: 0;
+  background: var(--brick-soft);
+  color: var(--brick-deep);
+  font-family: var(--ui);
+  cursor: pointer;
+}
+.reciboAcao > span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+.reciboAcao strong { font-size: 12px; }
+.reciboAcao small { font-size: 10px; font-weight: 650; }
+.reciboAcao:hover { background: var(--paper-3); }
+.reciboAcao:active { background: var(--quiet-soft); }
+.reciboAcao:focus-visible { outline: 2px solid var(--brick); outline-offset: -2px; }
+
 @media (min-width: 768px) {
   .protocolei, .desfazer { min-height: 34px; padding: 0 12px; font-size: 12px; }
   .compacto { display: flex; width: auto; }
   .compacto .protocolei { width: auto; }
+  /* O botão SOLTO encolhe para 34px no desktop; o SEGMENTO da barra de ação,
+     não — ele tem de medir exatamente a altura da faixa. Este `@media` trazia
+     um `min-height: 44px` para `.toolbar`, e como vem depois no arquivo com a
+     mesma especificidade, era ele quem valia: o "Protocolei" ficava 4px mais
+     baixo que o "Ver tarefa" ao lado. A regra saiu; a altura é o token. */
+  .compacto.toolbar { display: flex; width: auto; }
+  .compacto.toolbar .protocolei { width: 100%; }
 }
